@@ -1,0 +1,24 @@
+node_modules
+dist
+dist-ssr
+.DS_Store
+*.local
+*.log
+.vite
+*.Zone.Identifier
+
+# TS incremental build artifacts
+*.tsbuildinfo
+
+# Generated from vite.config.ts
+vite.config.js
+vite.config.d.ts
+
+# Editor
+.idea
+.vscode
+*.swp
+
+# Env
+.env
+.env.*
