@@ -2,8 +2,8 @@ import { createContext, useCallback, useContext, useMemo, useState, type ReactNo
 import { Outlet } from 'react-router-dom'
 import {
   checklistDef,
-  chatGeneralInicial,
-  estadoInicial,
+  chatGeneralInicialParaProyecto,
+  estadoInicialParaProyecto,
   matchItemsByKeyword,
   inspector,
   type ChatMessage,
@@ -22,120 +22,175 @@ function horaAhora() {
   return new Date().toLocaleTimeString('es-CL', { hour: '2-digit', minute: '2-digit', hour12: false })
 }
 
-type ChecklistContextValue = {
+type ProyectoChecklistState = {
   itemsState: Record<string, ItemState>
   chatGeneral: ChatMessage[]
-  marcarManual: (itemId: string, status: ChecklistStatus, justificacion?: string) => void
-  enviarMensajeGeneral: (texto: string, tipo?: EvidenciaTipo) => void
-  enviarMensajeItem: (itemId: string, texto: string, tipo?: EvidenciaTipo) => void
+}
+
+function estadoInicialProyecto(proyectoId: string): ProyectoChecklistState {
+  return {
+    itemsState: estadoInicialParaProyecto(proyectoId),
+    chatGeneral: chatGeneralInicialParaProyecto(proyectoId),
+  }
+}
+
+function ensureProyecto(
+  proyectoId: string,
+  porProyecto: Record<string, ProyectoChecklistState>,
+): Record<string, ProyectoChecklistState> {
+  if (porProyecto[proyectoId]) return porProyecto
+  return { ...porProyecto, [proyectoId]: estadoInicialProyecto(proyectoId) }
+}
+
+type ChecklistContextValue = {
+  getProyectoState: (proyectoId: string) => ProyectoChecklistState
+  marcarManual: (proyectoId: string, itemId: string, status: ChecklistStatus, justificacion?: string) => void
+  enviarMensajeGeneral: (proyectoId: string, texto: string, tipo?: EvidenciaTipo) => void
+  enviarMensajeItem: (proyectoId: string, itemId: string, texto: string, tipo?: EvidenciaTipo) => void
 }
 
 const ChecklistContext = createContext<ChecklistContextValue | null>(null)
 
 export function ChecklistProvider({ children }: { children: ReactNode }) {
-  const [itemsState, setItemsState] = useState<Record<string, ItemState>>(estadoInicial)
-  const [chatGeneral, setChatGeneral] = useState<ChatMessage[]>(chatGeneralInicial)
+  const [porProyecto, setPorProyecto] = useState<Record<string, ProyectoChecklistState>>({})
 
-  const marcarManual = useCallback((itemId: string, status: ChecklistStatus, justificacion?: string) => {
-    setItemsState((prev) => ({
-      ...prev,
-      [itemId]: {
-        ...prev[itemId],
-        status,
-        origen: 'manual',
-        justificacionNoAplica: status === 'na' ? justificacion : undefined,
-      },
-    }))
-  }, [])
+  const getProyectoState = useCallback(
+    (proyectoId: string) => porProyecto[proyectoId] ?? estadoInicialProyecto(proyectoId),
+    [porProyecto],
+  )
 
-  const enviarMensajeGeneral = useCallback((texto: string, tipo: EvidenciaTipo = 'texto') => {
+  const marcarManual = useCallback(
+    (proyectoId: string, itemId: string, status: ChecklistStatus, justificacion?: string) => {
+      setPorProyecto((prev) => {
+        const base = ensureProyecto(proyectoId, prev)
+        const proyectoState = base[proyectoId]
+        return {
+          ...base,
+          [proyectoId]: {
+            ...proyectoState,
+            itemsState: {
+              ...proyectoState.itemsState,
+              [itemId]: {
+                ...proyectoState.itemsState[itemId],
+                status,
+                origen: 'manual',
+                justificacionNoAplica: status === 'na' ? justificacion : undefined,
+              },
+            },
+          },
+        }
+      })
+    },
+    [],
+  )
+
+  const enviarMensajeGeneral = useCallback((proyectoId: string, texto: string, tipo: EvidenciaTipo = 'texto') => {
     if (!texto.trim()) return
     const hora = horaAhora()
     const inspectorMsg: ChatMessage = { id: nextId('gm'), role: 'inspector', texto, tipo, hora }
-
     const matched = matchItemsByKeyword(texto)
 
-    if (matched.length === 0) {
+    setPorProyecto((prev) => {
+      const base = ensureProyecto(proyectoId, prev)
+      const proyectoState = base[proyectoId]
+
+      if (matched.length === 0) {
+        const iaMsg: ChatMessage = {
+          id: nextId('gm'),
+          role: 'ia',
+          texto:
+            'No logro identificar a qué ítem del checklist corresponde esto. ¿Me puedes decir a cuál te refieres, o contármelo dentro del chat de ese ítem?',
+          hora,
+        }
+        return {
+          ...base,
+          [proyectoId]: { ...proyectoState, chatGeneral: [...proyectoState.chatGeneral, inspectorMsg, iaMsg] },
+        }
+      }
+
+      const nextItemsState = { ...proyectoState.itemsState }
+      for (const def of matched) {
+        const prevItem = nextItemsState[def.id]
+        if (prevItem.status === 'na') continue
+        nextItemsState[def.id] = {
+          ...prevItem,
+          status: 'ok',
+          origen: 'chat',
+          evidencia: [...prevItem.evidencia, { id: nextId('ev'), tipo, origen: 'chat-general', texto, hora }],
+        }
+      }
+
+      const titulos = matched.map((d) => `"${d.titulo}"`).join(' y ')
       const iaMsg: ChatMessage = {
         id: nextId('gm'),
         role: 'ia',
-        texto:
-          'No logro identificar a qué ítem del checklist corresponde esto. ¿Me puedes decir a cuál te refieres, o contármelo dentro del chat de ese ítem?',
+        texto: `Marqué ${titulos} como cumplido${matched.length > 1 ? 's' : ''} con tu ${
+          tipo === 'foto' ? 'mensaje y la foto adjunta' : tipo === 'audio' ? 'declaración por voz' : 'mensaje'
+        }.`,
         hora,
       }
-      setChatGeneral((prev) => [...prev, inspectorMsg, iaMsg])
-      return
-    }
 
-    setItemsState((prev) => {
-      const next = { ...prev }
-      for (const def of matched) {
-        const prevState = next[def.id]
-        if (prevState.status === 'na') continue
-        next[def.id] = {
-          ...prevState,
-          status: 'ok',
-          origen: 'chat',
-          evidencia: [
-            ...prevState.evidencia,
-            { id: nextId('ev'), tipo, origen: 'chat-general', texto, hora },
-          ],
+      return {
+        ...base,
+        [proyectoId]: {
+          itemsState: nextItemsState,
+          chatGeneral: [...proyectoState.chatGeneral, inspectorMsg, iaMsg],
+        },
+      }
+    })
+  }, [])
+
+  const enviarMensajeItem = useCallback(
+    (proyectoId: string, itemId: string, texto: string, tipo: EvidenciaTipo = 'texto') => {
+      if (!texto.trim()) return
+      const def = checklistDef.find((d) => d.id === itemId)
+      if (!def) return
+      const hora = horaAhora()
+      const inspectorMsg: ChatMessage = { id: nextId('im'), role: 'inspector', texto, tipo, hora }
+
+      setPorProyecto((prev) => {
+        const base = ensureProyecto(proyectoId, prev)
+        const proyectoState = base[proyectoId]
+        const prevItem = proyectoState.itemsState[itemId]
+        const evidencia = [...prevItem.evidencia, { id: nextId('ev'), tipo, origen: 'chat-item' as const, texto, hora }]
+        const tieneFoto = tipo === 'foto' || evidencia.some((e) => e.tipo === 'foto')
+
+        let iaTexto: string
+        let status: ChecklistStatus
+
+        if (def.requiereFoto && !tieneFoto) {
+          status = 'warn'
+          iaTexto = `Para dar este ítem por cumplido necesito una foto que respalde tu declaración — ${def.criterioNormativo}. ¿Puedes subir una foto?`
+        } else {
+          status = 'ok'
+          iaTexto = `Marqué "${def.titulo}" como cumplido con ${tipo === 'foto' ? 'la foto adjunta' : 'tu declaración'}.`
         }
-      }
-      return next
-    })
 
-    const titulos = matched.map((d) => `"${d.titulo}"`).join(' y ')
-    const iaMsg: ChatMessage = {
-      id: nextId('gm'),
-      role: 'ia',
-      texto: `Marqué ${titulos} como cumplido${matched.length > 1 ? 's' : ''} con tu ${
-        tipo === 'foto' ? 'mensaje y la foto adjunta' : tipo === 'audio' ? 'declaración por voz' : 'mensaje'
-      }.`,
-      hora,
-    }
-    setChatGeneral((prev) => [...prev, inspectorMsg, iaMsg])
-  }, [])
+        const iaMsg: ChatMessage = { id: nextId('im'), role: 'ia', texto: iaTexto, hora }
 
-  const enviarMensajeItem = useCallback((itemId: string, texto: string, tipo: EvidenciaTipo = 'texto') => {
-    if (!texto.trim()) return
-    const def = checklistDef.find((d) => d.id === itemId)
-    if (!def) return
-    const hora = horaAhora()
-    const inspectorMsg: ChatMessage = { id: nextId('im'), role: 'inspector', texto, tipo, hora }
+        const nextItem: ItemState = {
+          ...prevItem,
+          status: prevItem.status === 'na' ? prevItem.status : status,
+          origen: 'chat',
+          evidencia,
+          chat: [...prevItem.chat, inspectorMsg, iaMsg],
+        }
 
-    setItemsState((prev) => {
-      const prevState = prev[itemId]
-      const evidencia = [...prevState.evidencia, { id: nextId('ev'), tipo, origen: 'chat-item' as const, texto, hora }]
-      const tieneFoto = tipo === 'foto' || evidencia.some((e) => e.tipo === 'foto')
-
-      let iaTexto: string
-      let status: ChecklistStatus
-
-      if (def.requiereFoto && !tieneFoto) {
-        status = 'warn'
-        iaTexto = `Para dar este ítem por cumplido necesito una foto que respalde tu declaración — ${def.criterioNormativo}. ¿Puedes subir una foto?`
-      } else {
-        status = 'ok'
-        iaTexto = `Marqué "${def.titulo}" como cumplido con ${tipo === 'foto' ? 'la foto adjunta' : 'tu declaración'}.`
-      }
-
-      const iaMsg: ChatMessage = { id: nextId('im'), role: 'ia', texto: iaTexto, hora }
-
-      const nextState: ItemState = {
-        ...prevState,
-        status: prevState.status === 'na' ? prevState.status : status,
-        origen: 'chat',
-        evidencia,
-        chat: [...prevState.chat, inspectorMsg, iaMsg],
-      }
-      return { ...prev, [itemId]: nextState }
-    })
-  }, [])
+        return {
+          ...base,
+          [proyectoId]: {
+            ...proyectoState,
+            itemsState: { ...proyectoState.itemsState, [itemId]: nextItem },
+          },
+        }
+      })
+    },
+    [],
+  )
 
   const value = useMemo(
-    () => ({ itemsState, chatGeneral, marcarManual, enviarMensajeGeneral, enviarMensajeItem }),
-    [itemsState, chatGeneral, marcarManual, enviarMensajeGeneral, enviarMensajeItem],
+    () => ({ getProyectoState, marcarManual, enviarMensajeGeneral, enviarMensajeItem }),
+    [getProyectoState, marcarManual, enviarMensajeGeneral, enviarMensajeItem],
   )
 
   return <ChecklistContext.Provider value={value}>{children}</ChecklistContext.Provider>
@@ -145,6 +200,20 @@ export function useChecklist() {
   const ctx = useContext(ChecklistContext)
   if (!ctx) throw new Error('useChecklist debe usarse dentro de ChecklistProvider')
   return ctx
+}
+
+export function useProyectoChecklist(proyectoId: string) {
+  const { getProyectoState, marcarManual, enviarMensajeGeneral, enviarMensajeItem } = useChecklist()
+  const { itemsState, chatGeneral } = getProyectoState(proyectoId)
+  return {
+    itemsState,
+    chatGeneral,
+    marcarManual: (itemId: string, status: ChecklistStatus, justificacion?: string) =>
+      marcarManual(proyectoId, itemId, status, justificacion),
+    enviarMensajeGeneral: (texto: string, tipo?: EvidenciaTipo) => enviarMensajeGeneral(proyectoId, texto, tipo),
+    enviarMensajeItem: (itemId: string, texto: string, tipo?: EvidenciaTipo) =>
+      enviarMensajeItem(proyectoId, itemId, texto, tipo),
+  }
 }
 
 export const inspectorActual = inspector

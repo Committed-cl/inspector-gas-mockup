@@ -26,10 +26,12 @@ const badgeClass: Record<ChecklistStatus, string> = {
 type Props = {
   def: ChecklistItemDef
   state: ItemState
+  proyectoId: string
   onMarcar: (status: ChecklistStatus, justificacion?: string) => void
 }
 
-export default function ChecklistDesktopRow({ def, state, onMarcar }: Props) {
+export default function ChecklistDesktopRow({ def, state, proyectoId, onMarcar }: Props) {
+  const itemHref = `/checklist/${proyectoId}/${def.id}`
   return (
     <div className="rounded-xl border border-hairline bg-white px-4 py-3 hover:shadow-sm transition-shadow">
       <div className="flex items-start gap-3">
@@ -37,7 +39,7 @@ export default function ChecklistDesktopRow({ def, state, onMarcar }: Props) {
         <div className="flex-1 min-w-0">
           <div className="flex items-start justify-between gap-3">
             <Link
-              to={`/checklist/${def.id}`}
+              to={itemHref}
               className="text-[13.5px] font-semibold text-ink leading-tight hover:text-brand hover:underline underline-offset-2"
             >
               {def.titulo}
@@ -59,7 +61,7 @@ export default function ChecklistDesktopRow({ def, state, onMarcar }: Props) {
 
           <div className="mt-2 flex items-center gap-3 flex-wrap">
             <ManualEstadoControl status={state.status} permiteNoAplica={def.permiteNoAplica} onMarcar={onMarcar} size="sm" />
-            <Link to={`/checklist/${def.id}`} className="text-[11px] text-brand/80 hover:underline">
+            <Link to={itemHref} className="text-[11px] text-brand/80 hover:underline">
               {state.evidencia.length > 0
                 ? `${state.evidencia.length} evidencia${state.evidencia.length > 1 ? 's' : ''}`
                 : 'Sin evidencia'}{' '}

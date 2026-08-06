@@ -1,11 +1,27 @@
-import { Link } from 'react-router-dom'
-import { checklistDef, SECCIONES, proyectoChecklist } from '../data/checklistMatrizInterior'
-import { useChecklist, inspectorActual } from '../state/ChecklistContext'
+import { Link, useParams } from 'react-router-dom'
+import { checklistDef, SECCIONES, nombreFormulario } from '../data/checklistMatrizInterior'
+import { useProyectoChecklist, inspectorActual } from '../state/ChecklistContext'
+import { proyectos } from '../data/mock'
 import ChecklistDesktopRow from '../components/ChecklistDesktopRow'
 import ChatPanel from '../components/ChatPanel'
 
 export default function ChecklistCompleto() {
-  const { itemsState, marcarManual, chatGeneral, enviarMensajeGeneral } = useChecklist()
+  const { proyectoId = '' } = useParams()
+  const proyecto = proyectos.find((p) => p.id === proyectoId)
+  const { itemsState, marcarManual, chatGeneral, enviarMensajeGeneral } = useProyectoChecklist(proyectoId)
+
+  if (!proyecto) {
+    return (
+      <div className="min-h-screen grid place-items-center bg-base">
+        <div className="text-center">
+          <p className="text-ink font-semibold">Proyecto no encontrado</p>
+          <Link to="/checklist" className="text-brand text-[13px] mt-2 inline-block">
+            ← Volver al listado de proyectos
+          </Link>
+        </div>
+      </div>
+    )
+  }
 
   const total = checklistDef.length
   const completados = checklistDef.filter((d) => ['ok', 'na'].includes(itemsState[d.id].status)).length
@@ -19,9 +35,9 @@ export default function ChecklistCompleto() {
               <span className="h-1.5 w-1.5 rounded-full bg-accent" />
               Nuevo · versión desktop
             </div>
-            <h1 className="text-[19px] font-bold text-ink leading-tight">{proyectoChecklist.nombre}</h1>
+            <h1 className="text-[19px] font-bold text-ink leading-tight">{proyecto.nombre}</h1>
             <p className="text-[12.5px] text-muted mt-0.5">
-              {proyectoChecklist.formulario} · Contratista {proyectoChecklist.contratista}
+              {nombreFormulario} · Contratista {proyecto.instaladora}
             </p>
           </div>
           <div className="text-right">
@@ -38,8 +54,8 @@ export default function ChecklistCompleto() {
             </div>
           </div>
         </div>
-        <Link to="/" className="inline-flex items-center gap-1 text-[12px] text-brand mt-3">
-          ← Volver a la demo
+        <Link to="/checklist" className="inline-flex items-center gap-1 text-[12px] text-brand mt-3">
+          ← Volver al listado de proyectos
         </Link>
       </header>
 
@@ -58,6 +74,7 @@ export default function ChecklistCompleto() {
                         key={def.id}
                         def={def}
                         state={itemsState[def.id]}
+                        proyectoId={proyectoId}
                         onMarcar={(status, justificacion) => marcarManual(def.id, status, justificacion)}
                       />
                     ))}

@@ -59,12 +59,11 @@ export const inspector = {
   rol: 'Gestor Interior Obra',
 }
 
-export const proyectoChecklist = {
-  nombre: 'Los Tres Antonios',
-  direccion: 'Av. Las Condes 5432, Puente Alto',
-  contratista: 'GasTec Chile',
-  formulario: 'Formulario Puesta en Servicio Matriz Interior',
-}
+export const nombreFormulario = 'Formulario Puesta en Servicio Matriz Interior'
+
+// Único proyecto con avance de demo pre-cargado (declaraciones, evidencia, chat).
+// El resto de los proyectos parte con el checklist en blanco.
+export const proyectoConDemoId = 'los-tres-antonios'
 
 export const checklistDef: ChecklistItemDef[] = [
   // Pruebas
@@ -375,7 +374,7 @@ function msg(id: string, role: ChatRole, texto: string, hora: string, tipo?: Evi
   return { id, role, texto, hora, tipo }
 }
 
-export const chatGeneralInicial: ChatMessage[] = [
+const chatGeneralInicialLosTresAntonios: ChatMessage[] = [
   msg(
     'g1',
     'inspector',
@@ -390,12 +389,16 @@ export const chatGeneralInicial: ChatMessage[] = [
   ),
 ]
 
-export const estadoInicial: Record<string, ItemState> = Object.fromEntries(
-  checklistDef.map((def) => [def.id, { status: 'pending' as ChecklistStatus, origen: null, evidencia: [], chat: [] }]),
-)
+export function estadoVacioChecklist(): Record<string, ItemState> {
+  return Object.fromEntries(
+    checklistDef.map((def) => [def.id, { status: 'pending' as ChecklistStatus, origen: null, evidencia: [], chat: [] }]),
+  )
+}
+
+const estadoInicialLosTresAntonios: Record<string, ItemState> = estadoVacioChecklist()
 
 function setEstado(id: string, patch: Partial<ItemState>) {
-  estadoInicial[id] = { ...estadoInicial[id], ...patch }
+  estadoInicialLosTresAntonios[id] = { ...estadoInicialLosTresAntonios[id], ...patch }
 }
 
 // Estado de partida para la demo — mezcla realista de verde/amarillo/rojo/no aplica.
@@ -501,4 +504,18 @@ setEstado('conducto-sombrerete', {
 export function matchItemsByKeyword(texto: string): ChecklistItemDef[] {
   const lower = texto.toLowerCase()
   return checklistDef.filter((def) => def.keywords.some((k) => lower.includes(k)))
+}
+
+export function estadoInicialParaProyecto(proyectoId: string): Record<string, ItemState> {
+  return proyectoId === proyectoConDemoId ? estadoInicialLosTresAntonios : estadoVacioChecklist()
+}
+
+export function chatGeneralInicialParaProyecto(proyectoId: string): ChatMessage[] {
+  return proyectoId === proyectoConDemoId ? chatGeneralInicialLosTresAntonios : []
+}
+
+export function completadosParaProyecto(proyectoId: string): { completados: number; total: number } {
+  const estado = estadoInicialParaProyecto(proyectoId)
+  const completados = checklistDef.filter((d) => ['ok', 'na'].includes(estado[d.id].status)).length
+  return { completados, total: checklistDef.length }
 }

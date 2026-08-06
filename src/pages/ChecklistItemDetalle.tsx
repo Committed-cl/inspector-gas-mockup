@@ -1,6 +1,7 @@
 import { Link, useParams } from 'react-router-dom'
 import { checklistDef } from '../data/checklistMatrizInterior'
-import { useChecklist } from '../state/ChecklistContext'
+import { useProyectoChecklist } from '../state/ChecklistContext'
+import { proyectos } from '../data/mock'
 import ChatPanel from '../components/ChatPanel'
 import ManualEstadoControl from '../components/ManualEstadoControl'
 
@@ -19,17 +20,18 @@ const origenEvidencia = {
 } as const
 
 export default function ChecklistItemDetalle() {
-  const { itemId } = useParams()
-  const { itemsState, marcarManual, enviarMensajeItem } = useChecklist()
+  const { proyectoId = '', itemId } = useParams()
+  const proyecto = proyectos.find((p) => p.id === proyectoId)
+  const { itemsState, marcarManual, enviarMensajeItem } = useProyectoChecklist(proyectoId)
   const def = checklistDef.find((d) => d.id === itemId)
 
-  if (!def) {
+  if (!proyecto || !def) {
     return (
       <div className="min-h-screen grid place-items-center bg-base">
         <div className="text-center">
-          <p className="text-ink font-semibold">Ítem no encontrado</p>
+          <p className="text-ink font-semibold">{!proyecto ? 'Proyecto no encontrado' : 'Ítem no encontrado'}</p>
           <Link to="/checklist" className="text-brand text-[13px] mt-2 inline-block">
-            ← Volver al checklist
+            ← Volver al listado de proyectos
           </Link>
         </div>
       </div>
@@ -41,7 +43,7 @@ export default function ChecklistItemDetalle() {
   return (
     <div className="h-screen flex flex-col bg-base overflow-hidden">
       <header className="border-b border-hairline bg-white px-6 py-4">
-        <Link to="/checklist" className="inline-flex items-center gap-1 text-[12.5px] text-brand mb-2">
+        <Link to={`/checklist/${proyectoId}`} className="inline-flex items-center gap-1 text-[12.5px] text-brand mb-2">
           <svg viewBox="0 0 24 24" fill="currentColor" className="h-4 w-4">
             <path d="M14.7 6.3a1 1 0 0 0-1.4 0l-5 5a1 1 0 0 0 0 1.4l5 5a1 1 0 1 0 1.4-1.4L10.42 12l4.28-4.3a1 1 0 0 0 0-1.4Z" />
           </svg>
@@ -49,7 +51,9 @@ export default function ChecklistItemDetalle() {
         </Link>
         <div className="flex items-start justify-between gap-4">
           <div>
-            <p className="text-[11.5px] uppercase tracking-wide text-muted font-semibold">{def.seccion}</p>
+            <p className="text-[11.5px] uppercase tracking-wide text-muted font-semibold">
+              {proyecto.nombre} · {def.seccion}
+            </p>
             <h1 className="text-[19px] font-bold text-ink mt-0.5 leading-tight">{def.titulo}</h1>
           </div>
           <span className={`shrink-0 text-[11px] font-semibold px-2 py-1 rounded-md ${statusColor[state.status]}`}>
