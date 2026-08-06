@@ -19,13 +19,9 @@ export type ChatMessage = {
 export type Evidencia = {
   id: string
   tipo: EvidenciaTipo
-  origen: 'chat-item' | 'chat-general' | 'manual' | 'marcado-manual'
+  origen: 'chat-item' | 'chat-general' | 'manual'
   texto: string
   hora: string
-  // Solo presente en entradas que vienen de marcar cumple/no cumple/no aplica a
-  // mano — registra qué resultó de esa acción, para poder pintar el punto de la
-  // lista de evidencias acorde (verde/ámbar/rojo/gris) en vez de siempre verde.
-  resultado?: ChecklistStatus
 }
 
 export type ItemState = {
@@ -538,11 +534,8 @@ export function matchItemsByKeyword(texto: string): ChecklistItemDef[] {
 // Un ítem solo puede quedar en verde si ya tiene la evidencia que exige — foto
 // específicamente cuando el checklist la requiere, o cualquier evidencia cargada
 // en los demás casos. El botón "Cumple" por sí solo nunca alcanza.
-// El registro del propio marcado manual (origen "marcado-manual") no cuenta como
-// esa evidencia — si contara, un clic bastaría para justificarse a sí mismo.
 export function tieneEvidenciaSuficiente(def: ChecklistItemDef, evidencia: Evidencia[]): boolean {
-  const evidenciaReal = evidencia.filter((e) => e.origen !== 'marcado-manual')
-  return def.requiereFoto ? evidenciaReal.some((e) => e.tipo === 'foto') : evidenciaReal.length > 0
+  return def.requiereFoto ? evidencia.some((e) => e.tipo === 'foto') : evidencia.length > 0
 }
 
 export function hintEvidenciaFaltante(def: ChecklistItemDef, evidencia: Evidencia[]): string | undefined {

@@ -18,14 +18,6 @@ const origenEvidencia = {
   'chat-general': 'chat general',
   'chat-item': 'chat del ítem',
   manual: 'manual',
-  'marcado-manual': 'marcado manual',
-} as const
-
-const borderResultado = {
-  ok: 'border-ok',
-  warn: 'border-warn',
-  pending: 'border-danger',
-  na: 'border-muted',
 } as const
 
 export default function ChecklistItemDetalle() {
@@ -112,12 +104,7 @@ export default function ChecklistItemDetalle() {
               )}
               <ul className="flex flex-col gap-2.5 mb-3">
                 {state.evidencia.map((e) => (
-                  <li
-                    key={e.id}
-                    className={`text-[12.5px] text-ink border-l-2 ${
-                      e.resultado ? borderResultado[e.resultado] : 'border-brand-soft'
-                    } pl-3`}
-                  >
+                  <li key={e.id} className="text-[12.5px] text-ink border-l-2 border-brand-soft pl-3">
                     <span className="text-muted font-mono text-[10.5px]">{e.hora}</span>{' '}
                     <span className="text-[10px] uppercase tracking-wide text-brand/70 font-semibold">
                       {origenEvidencia[e.origen]}
