@@ -64,6 +64,14 @@ export function ChecklistProvider({ children }: { children: ReactNode }) {
       setPorProyecto((prev) => {
         const base = ensureProyecto(proyectoId, prev)
         const proyectoState = base[proyectoId]
+        const prevItem = proyectoState.itemsState[itemId]
+        const def = checklistDef.find((d) => d.id === itemId)
+
+        // No puede quedar en verde por marcado manual si al ítem le falta la evidencia
+        // fotográfica que exige el checklist — se queda en amarillo hasta que se adjunte.
+        const tieneFoto = prevItem.evidencia.some((e) => e.tipo === 'foto')
+        const statusFinal: ChecklistStatus = status === 'ok' && def?.requiereFoto && !tieneFoto ? 'warn' : status
+
         return {
           ...base,
           [proyectoId]: {
@@ -71,10 +79,10 @@ export function ChecklistProvider({ children }: { children: ReactNode }) {
             itemsState: {
               ...proyectoState.itemsState,
               [itemId]: {
-                ...proyectoState.itemsState[itemId],
-                status,
+                ...prevItem,
+                status: statusFinal,
                 origen: 'manual',
-                justificacionNoAplica: status === 'na' ? justificacion : undefined,
+                justificacionNoAplica: statusFinal === 'na' ? justificacion : undefined,
               },
             },
           },

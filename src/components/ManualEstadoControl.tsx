@@ -6,9 +6,10 @@ type Props = {
   permiteNoAplica?: boolean
   onMarcar: (status: ChecklistStatus, justificacion?: string) => void
   size?: 'sm' | 'md'
+  hint?: string
 }
 
-export default function ManualEstadoControl({ status, permiteNoAplica, onMarcar, size = 'sm' }: Props) {
+export default function ManualEstadoControl({ status, permiteNoAplica, onMarcar, size = 'sm', hint }: Props) {
   const [showNaInput, setShowNaInput] = useState(false)
   const [justificacion, setJustificacion] = useState('')
   const pad = size === 'sm' ? 'px-2.5 py-1 text-[11px]' : 'px-3.5 py-1.5 text-[12.5px]'
@@ -41,6 +42,7 @@ export default function ManualEstadoControl({ status, permiteNoAplica, onMarcar,
           </button>
         )}
       </div>
+      {hint && status !== 'ok' && status !== 'na' && <p className="text-[11px] text-warn mt-1.5">{hint}</p>}
       {showNaInput && (
         <div className="mt-2 flex items-center gap-2">
           <input

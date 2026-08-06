@@ -60,7 +60,17 @@ export default function ChecklistDesktopRow({ def, state, proyectoId, onMarcar }
           )}
 
           <div className="mt-2 flex items-center gap-3 flex-wrap">
-            <ManualEstadoControl status={state.status} permiteNoAplica={def.permiteNoAplica} onMarcar={onMarcar} size="sm" />
+            <ManualEstadoControl
+              status={state.status}
+              permiteNoAplica={def.permiteNoAplica}
+              onMarcar={onMarcar}
+              size="sm"
+              hint={
+                def.requiereFoto && !state.evidencia.some((e) => e.tipo === 'foto')
+                  ? 'Requiere foto para quedar en verde.'
+                  : undefined
+              }
+            />
             <Link to={itemHref} className="text-[11px] text-brand/80 hover:underline">
               {state.evidencia.length > 0
                 ? `${state.evidencia.length} evidencia${state.evidencia.length > 1 ? 's' : ''}`

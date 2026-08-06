@@ -82,6 +82,11 @@ export default function ChecklistItemDetalle() {
                 permiteNoAplica={def.permiteNoAplica}
                 onMarcar={(status, justificacion) => marcarManual(def.id, status, justificacion)}
                 size="md"
+                hint={
+                  def.requiereFoto && !state.evidencia.some((e) => e.tipo === 'foto')
+                    ? 'Requiere foto para quedar en verde.'
+                    : undefined
+                }
               />
               {state.status === 'na' && state.justificacionNoAplica && (
                 <p className="text-[12px] text-muted mt-2 italic">No aplica: {state.justificacionNoAplica}</p>
