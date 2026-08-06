@@ -402,12 +402,37 @@ function setEstado(id: string, patch: Partial<ItemState>) {
 }
 
 // Estado de partida para la demo — mezcla realista de verde/amarillo/rojo/no aplica.
-setEstado('atravieso-muro-sello', { status: 'ok', origen: 'chat' })
-setEstado('distancia-edificaciones-1m', { status: 'ok', origen: 'manual' })
-setEstado('distancia-agua-potable-50cm', { status: 'ok', origen: 'manual' })
-setEstado('leyenda-gas-flecha', { status: 'ok', origen: 'manual' })
-setEstado('ventilacion-inf-sup', { status: 'ok', origen: 'manual' })
-setEstado('medidor-marcado', { status: 'ok', origen: 'manual' })
+// Todo ítem en verde lleva al menos una evidencia — un ítem no puede quedar cumplido sin ella.
+setEstado('atravieso-muro-sello', {
+  status: 'ok',
+  origen: 'chat',
+  evidencia: [ev('e-ams-1', 'texto', 'chat-item', 'Revisé todos los puntos de atravieso, todos con sello anular correcto.', '13:35')],
+})
+setEstado('distancia-edificaciones-1m', {
+  status: 'ok',
+  origen: 'manual',
+  evidencia: [ev('e-de1m-1', 'texto', 'manual', 'La matriz pasa a más de 1 m de la edificación en todo su trazado.', '13:20')],
+})
+setEstado('distancia-agua-potable-50cm', {
+  status: 'ok',
+  origen: 'manual',
+  evidencia: [ev('e-dap-1', 'texto', 'manual', 'Cumple la separación de 50 cm respecto de la red de agua potable.', '13:21')],
+})
+setEstado('leyenda-gas-flecha', {
+  status: 'ok',
+  origen: 'manual',
+  evidencia: [ev('e-lgf-1', 'texto', 'manual', 'Señalética de gas natural con flecha de flujo presente en el recinto.', '13:58')],
+})
+setEstado('ventilacion-inf-sup', {
+  status: 'ok',
+  origen: 'manual',
+  evidencia: [ev('e-vis-1', 'texto', 'manual', 'Ventilación inferior y superior instalada según lo definido en el proyecto.', '14:02')],
+})
+setEstado('medidor-marcado', {
+  status: 'ok',
+  origen: 'manual',
+  evidencia: [ev('e-mm-1', 'texto', 'manual', 'Cada medidor tiene el número de departamento correspondiente marcado.', '14:03')],
+})
 
 setEstado('matriz-vista-registrable', {
   status: 'ok',
@@ -504,6 +529,18 @@ setEstado('conducto-sombrerete', {
 export function matchItemsByKeyword(texto: string): ChecklistItemDef[] {
   const lower = texto.toLowerCase()
   return checklistDef.filter((def) => def.keywords.some((k) => lower.includes(k)))
+}
+
+// Un ítem solo puede quedar en verde si ya tiene la evidencia que exige — foto
+// específicamente cuando el checklist la requiere, o cualquier evidencia cargada
+// en los demás casos. El botón "Cumple" por sí solo nunca alcanza.
+export function tieneEvidenciaSuficiente(def: ChecklistItemDef, evidencia: Evidencia[]): boolean {
+  return def.requiereFoto ? evidencia.some((e) => e.tipo === 'foto') : evidencia.length > 0
+}
+
+export function hintEvidenciaFaltante(def: ChecklistItemDef, evidencia: Evidencia[]): string | undefined {
+  if (tieneEvidenciaSuficiente(def, evidencia)) return undefined
+  return def.requiereFoto ? 'Requiere foto para quedar en verde.' : 'Requiere evidencia cargada para quedar en verde.'
 }
 
 export function estadoInicialParaProyecto(proyectoId: string): Record<string, ItemState> {

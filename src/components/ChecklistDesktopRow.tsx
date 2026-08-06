@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom'
 import ManualEstadoControl from './ManualEstadoControl'
-import type { ChecklistItemDef, ChecklistStatus, ItemState } from '../data/checklistMatrizInterior'
+import { hintEvidenciaFaltante, type ChecklistItemDef, type ChecklistStatus, type ItemState } from '../data/checklistMatrizInterior'
 
 const dotClass: Record<ChecklistStatus, string> = {
   ok: 'bg-ok shadow-[0_0_0_4px_rgba(34,197,94,0.18)]',
@@ -65,11 +65,7 @@ export default function ChecklistDesktopRow({ def, state, proyectoId, onMarcar }
               permiteNoAplica={def.permiteNoAplica}
               onMarcar={onMarcar}
               size="sm"
-              hint={
-                def.requiereFoto && !state.evidencia.some((e) => e.tipo === 'foto')
-                  ? 'Requiere foto para quedar en verde.'
-                  : undefined
-              }
+              hint={hintEvidenciaFaltante(def, state.evidencia)}
             />
             <Link to={itemHref} className="text-[11px] text-brand/80 hover:underline">
               {state.evidencia.length > 0

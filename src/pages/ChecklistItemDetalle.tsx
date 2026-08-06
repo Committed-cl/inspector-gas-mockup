@@ -1,5 +1,5 @@
 import { Link, useParams } from 'react-router-dom'
-import { checklistDef } from '../data/checklistMatrizInterior'
+import { checklistDef, hintEvidenciaFaltante } from '../data/checklistMatrizInterior'
 import { useProyectoChecklist } from '../state/ChecklistContext'
 import { proyectos } from '../data/mock'
 import ChatPanel from '../components/ChatPanel'
@@ -83,11 +83,7 @@ export default function ChecklistItemDetalle() {
                 permiteNoAplica={def.permiteNoAplica}
                 onMarcar={(status, justificacion) => marcarManual(def.id, status, justificacion)}
                 size="md"
-                hint={
-                  def.requiereFoto && !state.evidencia.some((e) => e.tipo === 'foto')
-                    ? 'Requiere foto para quedar en verde.'
-                    : undefined
-                }
+                hint={hintEvidenciaFaltante(def, state.evidencia)}
               />
               {state.status === 'na' && state.justificacionNoAplica && (
                 <p className="text-[12px] text-muted mt-2 italic">No aplica: {state.justificacionNoAplica}</p>

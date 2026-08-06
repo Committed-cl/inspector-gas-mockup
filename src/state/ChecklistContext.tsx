@@ -5,6 +5,7 @@ import {
   chatGeneralInicialParaProyecto,
   estadoInicialParaProyecto,
   matchItemsByKeyword,
+  tieneEvidenciaSuficiente,
   inspector,
   type ChatMessage,
   type ChecklistStatus,
@@ -69,9 +70,9 @@ export function ChecklistProvider({ children }: { children: ReactNode }) {
         const def = checklistDef.find((d) => d.id === itemId)
 
         // No puede quedar en verde por marcado manual si al ítem le falta la evidencia
-        // fotográfica que exige el checklist — se queda en amarillo hasta que se adjunte.
-        const tieneFoto = prevItem.evidencia.some((e) => e.tipo === 'foto')
-        const statusFinal: ChecklistStatus = status === 'ok' && def?.requiereFoto && !tieneFoto ? 'warn' : status
+        // que exige el checklist — se queda en amarillo hasta que se cargue.
+        const statusFinal: ChecklistStatus =
+          status === 'ok' && def && !tieneEvidenciaSuficiente(def, prevItem.evidencia) ? 'warn' : status
 
         return {
           ...base,
