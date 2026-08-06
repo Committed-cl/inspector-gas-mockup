@@ -2,18 +2,20 @@ import { useState } from 'react'
 import type { EvidenciaTipo } from '../data/checklistMatrizInterior'
 
 type Props = {
+  tiposPermitidos: EvidenciaTipo[]
   onAgregar: (tipo: EvidenciaTipo, texto: string) => void
 }
 
-const opciones: { tipo: EvidenciaTipo; label: string }[] = [
+const opcionesTodas: { tipo: EvidenciaTipo; label: string }[] = [
   { tipo: 'foto', label: '📷 Foto' },
   { tipo: 'audio', label: '🎙 Audio' },
   { tipo: 'texto', label: '📝 Nota' },
 ]
 
-export default function AgregarEvidenciaForm({ onAgregar }: Props) {
+export default function AgregarEvidenciaForm({ tiposPermitidos, onAgregar }: Props) {
+  const opciones = opcionesTodas.filter((o) => tiposPermitidos.includes(o.tipo))
   const [open, setOpen] = useState(false)
-  const [tipo, setTipo] = useState<EvidenciaTipo>('foto')
+  const [tipo, setTipo] = useState<EvidenciaTipo>(opciones[0]?.tipo ?? 'foto')
   const [texto, setTexto] = useState('')
 
   if (!open) {
@@ -33,19 +35,25 @@ export default function AgregarEvidenciaForm({ onAgregar }: Props) {
 
   return (
     <div className="flex flex-col gap-2">
-      <div className="inline-flex rounded-lg border border-hairline overflow-hidden self-start">
-        {opciones.map((o, i) => (
-          <button
-            key={o.tipo}
-            onClick={() => setTipo(o.tipo)}
-            className={`px-2.5 py-1 text-[11px] font-medium transition-colors ${i > 0 ? 'border-l border-hairline' : ''} ${
-              tipo === o.tipo ? 'bg-brand text-white' : 'text-ink hover:bg-brand/5'
-            }`}
-          >
-            {o.label}
-          </button>
-        ))}
-      </div>
+      {opciones.length > 1 ? (
+        <div className="inline-flex rounded-lg border border-hairline overflow-hidden self-start">
+          {opciones.map((o, i) => (
+            <button
+              key={o.tipo}
+              onClick={() => setTipo(o.tipo)}
+              className={`px-2.5 py-1 text-[11px] font-medium transition-colors ${i > 0 ? 'border-l border-hairline' : ''} ${
+                tipo === o.tipo ? 'bg-brand text-white' : 'text-ink hover:bg-brand/5'
+              }`}
+            >
+              {o.label}
+            </button>
+          ))}
+        </div>
+      ) : (
+        <p className="text-[11px] text-muted">
+          Este ítem solo acepta {opciones[0]?.label.toLowerCase() ?? 'evidencia'} como evidencia.
+        </p>
+      )}
       <div className="flex items-center gap-2">
         <input
           value={texto}

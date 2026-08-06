@@ -120,7 +120,10 @@ export default function ChecklistItemDetalle() {
                   </li>
                 ))}
               </ul>
-              <AgregarEvidenciaForm onAgregar={(tipo, texto) => agregarEvidencia(def.id, tipo, texto)} />
+              <AgregarEvidenciaForm
+                tiposPermitidos={def.requiereFoto ? ['foto'] : ['foto', 'audio', 'texto']}
+                onAgregar={(tipo, texto) => agregarEvidencia(def.id, tipo, texto)}
+              />
             </section>
           </div>
         </main>
