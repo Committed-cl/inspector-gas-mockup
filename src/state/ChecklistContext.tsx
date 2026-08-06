@@ -63,6 +63,7 @@ export function ChecklistProvider({ children }: { children: ReactNode }) {
 
   const marcarManual = useCallback(
     (proyectoId: string, itemId: string, status: ChecklistStatus, justificacion?: string) => {
+      const hora = horaAhora()
       setPorProyecto((prev) => {
         const base = ensureProyecto(proyectoId, prev)
         const proyectoState = base[proyectoId]
@@ -73,6 +74,27 @@ export function ChecklistProvider({ children }: { children: ReactNode }) {
         // que exige el checklist — se queda en amarillo hasta que se cargue.
         const statusFinal: ChecklistStatus =
           status === 'ok' && def && !tieneEvidenciaSuficiente(def, prevItem.evidencia) ? 'warn' : status
+
+        // El marcado manual aparece en la lista de evidencias como el estado actual
+        // del marcado — no como historial. Un clic nuevo reemplaza al anterior, no
+        // se acumulan entradas por cada vez que se tocó Cumple/No cumple.
+        const textoEvidencia =
+          statusFinal === 'na'
+            ? `Marcado manualmente como no aplica${justificacion ? `: ${justificacion}` : '.'}`
+            : statusFinal === 'ok'
+              ? 'Marcado manualmente como cumplido.'
+              : statusFinal === 'warn'
+                ? 'Marcado como cumplido, pero falta evidencia para confirmarlo.'
+                : 'Marcado manualmente como no cumple.'
+
+        const marcaManual = {
+          id: nextId('ev'),
+          tipo: 'texto' as const,
+          origen: 'marcado-manual' as const,
+          texto: textoEvidencia,
+          hora,
+          resultado: statusFinal,
+        }
 
         return {
           ...base,
@@ -85,6 +107,7 @@ export function ChecklistProvider({ children }: { children: ReactNode }) {
                 status: statusFinal,
                 origen: 'manual',
                 justificacionNoAplica: statusFinal === 'na' ? justificacion : undefined,
+                evidencia: [...prevItem.evidencia.filter((e) => e.origen !== 'marcado-manual'), marcaManual],
               },
             },
           },
