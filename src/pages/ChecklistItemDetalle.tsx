@@ -107,9 +107,6 @@ export default function ChecklistItemDetalle() {
               <p className="text-[11px] uppercase tracking-wide text-brand/70 font-semibold mb-2">
                 Evidencia ({state.evidencia.length})
               </p>
-              {state.evidencia.length === 0 && (
-                <p className="text-[12.5px] text-muted italic mb-3">Sin evidencia registrada todavía.</p>
-              )}
               <ul className="flex flex-col gap-2.5 mb-3">
                 {state.evidencia.map((e) => (
                   <li
@@ -128,6 +125,11 @@ export default function ChecklistItemDetalle() {
                     </p>
                   </li>
                 ))}
+                {!state.evidencia.some((e) => e.origen === 'marcado-manual') && (
+                  <li className="text-[12.5px] text-muted italic border-l-2 border-hairline pl-3">
+                    Marcado manual (pendiente)
+                  </li>
+                )}
               </ul>
               <AgregarEvidenciaForm
                 tiposPermitidos={def.requiereFoto ? ['foto'] : ['foto', 'audio', 'texto']}

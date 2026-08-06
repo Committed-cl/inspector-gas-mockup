@@ -103,6 +103,12 @@ export default function ChecklistDesktopRow({ def, state, proyectoId, onMarcar }
                   <span>{evidenciaPendienteLabel(def)} (pendiente)</span>
                 </div>
               )}
+              {!state.evidencia.some((e) => e.origen === 'marcado-manual') && (
+                <div className="flex items-center gap-1.5 text-[11px] text-muted">
+                  <span className="h-2 w-2 rounded-full bg-hairline border border-muted/30 shrink-0" aria-hidden />
+                  <span>Marcado manual (pendiente)</span>
+                </div>
+              )}
               <Link to={itemHref} className="text-[11px] text-brand/80 hover:underline self-start mt-0.5">
                 abrir ítem →
               </Link>
