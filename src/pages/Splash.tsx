@@ -30,6 +30,15 @@ export default function Splash() {
           </svg>
         </Link>
 
+        <div>
+          <Link
+            to="/checklist"
+            className="mt-4 inline-flex items-center gap-2 text-white/80 hover:text-white text-[13px] underline underline-offset-4 decoration-white/30"
+          >
+            Nuevo · versión desktop (checklist + chat) →
+          </Link>
+        </div>
+
         <p className="mt-12 text-[11px] text-white/50 font-mono">
           Committed · 2026 · Coordinación Ricardo Silva — Rodrigo Martínez
         </p>

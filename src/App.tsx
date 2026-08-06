@@ -9,6 +9,9 @@ import VisitaRevisar from './pages/VisitaRevisar'
 import VisitaEnviado from './pages/VisitaEnviado'
 import AdminEtapas from './pages/AdminEtapas'
 import AdminItemDetalle from './pages/AdminItemDetalle'
+import ChecklistCompleto from './pages/ChecklistCompleto'
+import ChecklistItemDetalle from './pages/ChecklistItemDetalle'
+import { ChecklistLayout } from './state/ChecklistContext'
 
 export default function App() {
   return (
@@ -23,6 +26,10 @@ export default function App() {
       <Route path="/visita/enviado" element={<VisitaEnviado />} />
       <Route path="/admin/etapas" element={<AdminEtapas />} />
       <Route path="/admin/items/:id" element={<AdminItemDetalle />} />
+      <Route element={<ChecklistLayout />}>
+        <Route path="/checklist" element={<ChecklistCompleto />} />
+        <Route path="/checklist/:itemId" element={<ChecklistItemDetalle />} />
+      </Route>
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   )
