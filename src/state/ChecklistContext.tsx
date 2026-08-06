@@ -63,6 +63,7 @@ export function ChecklistProvider({ children }: { children: ReactNode }) {
 
   const marcarManual = useCallback(
     (proyectoId: string, itemId: string, status: ChecklistStatus, justificacion?: string) => {
+      const hora = horaAhora()
       setPorProyecto((prev) => {
         const base = ensureProyecto(proyectoId, prev)
         const proyectoState = base[proyectoId]
@@ -73,6 +74,26 @@ export function ChecklistProvider({ children }: { children: ReactNode }) {
         // que exige el checklist — se queda en amarillo hasta que se cargue.
         const statusFinal: ChecklistStatus =
           status === 'ok' && def && !tieneEvidenciaSuficiente(def, prevItem.evidencia) ? 'warn' : status
+
+        // El marcado manual es una evidencia más — queda en la misma lista, con su
+        // propio resultado, en vez de vivir aparte del resto de la evidencia.
+        const textoEvidencia =
+          statusFinal === 'na'
+            ? `Marcado manualmente como no aplica${justificacion ? `: ${justificacion}` : '.'}`
+            : statusFinal === 'ok'
+              ? 'Marcado manualmente como cumplido.'
+              : statusFinal === 'warn'
+                ? 'Intentó marcar como cumplido, pero falta evidencia para confirmarlo.'
+                : 'Marcado manualmente como no cumple.'
+
+        const nuevaEvidencia = {
+          id: nextId('ev'),
+          tipo: 'texto' as const,
+          origen: 'marcado-manual' as const,
+          texto: textoEvidencia,
+          hora,
+          resultado: statusFinal,
+        }
 
         return {
           ...base,
@@ -85,6 +106,7 @@ export function ChecklistProvider({ children }: { children: ReactNode }) {
                 status: statusFinal,
                 origen: 'manual',
                 justificacionNoAplica: statusFinal === 'na' ? justificacion : undefined,
+                evidencia: [...prevItem.evidencia, nuevaEvidencia],
               },
             },
           },

@@ -30,6 +30,13 @@ const badgeClass: Record<ChecklistStatus, string> = {
   na: 'text-muted bg-muted/10',
 }
 
+const dotResultado: Record<ChecklistStatus, string> = {
+  ok: 'bg-ok',
+  warn: 'bg-warn',
+  pending: 'bg-danger',
+  na: 'bg-muted',
+}
+
 type Props = {
   def: ChecklistItemDef
   state: ItemState
@@ -80,7 +87,10 @@ export default function ChecklistDesktopRow({ def, state, proyectoId, onMarcar }
             <div className="mt-2 flex flex-col gap-1">
               {state.evidencia.map((e) => (
                 <div key={e.id} className="flex items-center gap-1.5 text-[11px] text-ink">
-                  <span className="h-2 w-2 rounded-full bg-ok shrink-0" aria-hidden />
+                  <span
+                    className={`h-2 w-2 rounded-full shrink-0 ${e.resultado ? dotResultado[e.resultado] : 'bg-ok'}`}
+                    aria-hidden
+                  />
                   <span className="truncate">
                     {e.tipo === 'foto' ? '📷 ' : e.tipo === 'audio' ? '🎙 ' : ''}
                     {e.texto}
