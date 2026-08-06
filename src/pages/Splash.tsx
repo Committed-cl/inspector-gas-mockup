@@ -16,15 +16,15 @@ export default function Splash() {
           Inspector <span className="text-accent">Gas</span>
         </h1>
         <p className="mt-5 text-[15px] text-white/80 leading-relaxed">
-          Inspecciones de obra con voz e IA. Sin papeles, sin improvisaciones. El inspector habla, el sistema
-          interpreta y bloquea el envío mientras queden ítems sin cubrir.
+          El checklist real de puesta en servicio, completado a mano o conversando con un chat con IA — por foto,
+          audio o texto. El chat entiende a qué ítem corresponde cada evidencia.
         </p>
 
         <Link
-          to="/login"
+          to="/checklist"
           className="mt-10 inline-flex items-center gap-2 bg-accent hover:bg-accent-dark transition-colors text-white font-semibold px-6 py-3 rounded-full shadow-lg"
         >
-          Iniciar demo
+          Iniciar demo · versión desktop
           <svg viewBox="0 0 24 24" fill="currentColor" className="h-4 w-4">
             <path d="M5 12a1 1 0 0 1 1-1h10.586L13.3 7.71a1 1 0 1 1 1.4-1.42l5 5a1 1 0 0 1 0 1.42l-5 5a1 1 0 1 1-1.4-1.42L16.586 13H6a1 1 0 0 1-1-1Z" />
           </svg>
@@ -32,10 +32,10 @@ export default function Splash() {
 
         <div>
           <Link
-            to="/checklist"
-            className="mt-4 inline-flex items-center gap-2 text-white/80 hover:text-white text-[13px] underline underline-offset-4 decoration-white/30"
+            to="/login"
+            className="mt-4 inline-flex items-center gap-2 text-white/70 hover:text-white text-[13px] underline underline-offset-4 decoration-white/30"
           >
-            Nuevo · versión desktop (checklist + chat) →
+            Ver flujo mobile original (voz, 2026-04-17) →
           </Link>
         </div>
 
