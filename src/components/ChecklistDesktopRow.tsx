@@ -75,7 +75,7 @@ export default function ChecklistDesktopRow({ def, state, proyectoId, onMarcar }
               {state.evidencia.length > 0
                 ? `${state.evidencia.length} evidencia${state.evidencia.length > 1 ? 's' : ''}`
                 : 'Sin evidencia'}{' '}
-              · abrir chat del ítem →
+              · abrir ítem →
             </Link>
           </div>
         </div>

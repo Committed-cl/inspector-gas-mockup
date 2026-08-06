@@ -4,6 +4,7 @@ import { useProyectoChecklist } from '../state/ChecklistContext'
 import { proyectos } from '../data/mock'
 import ChatPanel from '../components/ChatPanel'
 import ManualEstadoControl from '../components/ManualEstadoControl'
+import AgregarEvidenciaForm from '../components/AgregarEvidenciaForm'
 
 const statusLabel = { ok: 'Cumple', warn: 'Parcial', pending: 'Pendiente', na: 'No aplica' } as const
 const statusColor = {
@@ -22,7 +23,7 @@ const origenEvidencia = {
 export default function ChecklistItemDetalle() {
   const { proyectoId = '', itemId } = useParams()
   const proyecto = proyectos.find((p) => p.id === proyectoId)
-  const { itemsState, marcarManual, enviarMensajeItem } = useProyectoChecklist(proyectoId)
+  const { itemsState, marcarManual, agregarEvidencia, enviarMensajeItem } = useProyectoChecklist(proyectoId)
   const def = checklistDef.find((d) => d.id === itemId)
 
   if (!proyecto || !def) {
@@ -103,9 +104,9 @@ export default function ChecklistItemDetalle() {
                 Evidencia ({state.evidencia.length})
               </p>
               {state.evidencia.length === 0 && (
-                <p className="text-[12.5px] text-muted italic">Sin evidencia registrada todavía.</p>
+                <p className="text-[12.5px] text-muted italic mb-3">Sin evidencia registrada todavía.</p>
               )}
-              <ul className="flex flex-col gap-2.5">
+              <ul className="flex flex-col gap-2.5 mb-3">
                 {state.evidencia.map((e) => (
                   <li key={e.id} className="text-[12.5px] text-ink border-l-2 border-brand-soft pl-3">
                     <span className="text-muted font-mono text-[10.5px]">{e.hora}</span>{' '}
@@ -119,6 +120,7 @@ export default function ChecklistItemDetalle() {
                   </li>
                 ))}
               </ul>
+              <AgregarEvidenciaForm onAgregar={(tipo, texto) => agregarEvidencia(def.id, tipo, texto)} />
             </section>
           </div>
         </main>

@@ -45,6 +45,7 @@ function ensureProyecto(
 type ChecklistContextValue = {
   getProyectoState: (proyectoId: string) => ProyectoChecklistState
   marcarManual: (proyectoId: string, itemId: string, status: ChecklistStatus, justificacion?: string) => void
+  agregarEvidencia: (proyectoId: string, itemId: string, tipo: EvidenciaTipo, texto: string) => void
   enviarMensajeGeneral: (proyectoId: string, texto: string, tipo?: EvidenciaTipo) => void
   enviarMensajeItem: (proyectoId: string, itemId: string, texto: string, tipo?: EvidenciaTipo) => void
 }
@@ -91,6 +92,29 @@ export function ChecklistProvider({ children }: { children: ReactNode }) {
     },
     [],
   )
+
+  const agregarEvidencia = useCallback((proyectoId: string, itemId: string, tipo: EvidenciaTipo, texto: string) => {
+    if (!texto.trim()) return
+    const hora = horaAhora()
+    setPorProyecto((prev) => {
+      const base = ensureProyecto(proyectoId, prev)
+      const proyectoState = base[proyectoId]
+      const prevItem = proyectoState.itemsState[itemId]
+      return {
+        ...base,
+        [proyectoId]: {
+          ...proyectoState,
+          itemsState: {
+            ...proyectoState.itemsState,
+            [itemId]: {
+              ...prevItem,
+              evidencia: [...prevItem.evidencia, { id: nextId('ev'), tipo, origen: 'manual', texto, hora }],
+            },
+          },
+        },
+      }
+    })
+  }, [])
 
   const enviarMensajeGeneral = useCallback((proyectoId: string, texto: string, tipo: EvidenciaTipo = 'texto') => {
     if (!texto.trim()) return
@@ -197,8 +221,8 @@ export function ChecklistProvider({ children }: { children: ReactNode }) {
   )
 
   const value = useMemo(
-    () => ({ getProyectoState, marcarManual, enviarMensajeGeneral, enviarMensajeItem }),
-    [getProyectoState, marcarManual, enviarMensajeGeneral, enviarMensajeItem],
+    () => ({ getProyectoState, marcarManual, agregarEvidencia, enviarMensajeGeneral, enviarMensajeItem }),
+    [getProyectoState, marcarManual, agregarEvidencia, enviarMensajeGeneral, enviarMensajeItem],
   )
 
   return <ChecklistContext.Provider value={value}>{children}</ChecklistContext.Provider>
@@ -211,13 +235,15 @@ export function useChecklist() {
 }
 
 export function useProyectoChecklist(proyectoId: string) {
-  const { getProyectoState, marcarManual, enviarMensajeGeneral, enviarMensajeItem } = useChecklist()
+  const { getProyectoState, marcarManual, agregarEvidencia, enviarMensajeGeneral, enviarMensajeItem } = useChecklist()
   const { itemsState, chatGeneral } = getProyectoState(proyectoId)
   return {
     itemsState,
     chatGeneral,
     marcarManual: (itemId: string, status: ChecklistStatus, justificacion?: string) =>
       marcarManual(proyectoId, itemId, status, justificacion),
+    agregarEvidencia: (itemId: string, tipo: EvidenciaTipo, texto: string) =>
+      agregarEvidencia(proyectoId, itemId, tipo, texto),
     enviarMensajeGeneral: (texto: string, tipo?: EvidenciaTipo) => enviarMensajeGeneral(proyectoId, texto, tipo),
     enviarMensajeItem: (itemId: string, texto: string, tipo?: EvidenciaTipo) =>
       enviarMensajeItem(proyectoId, itemId, texto, tipo),
