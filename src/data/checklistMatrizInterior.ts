@@ -543,6 +543,12 @@ export function hintEvidenciaFaltante(def: ChecklistItemDef, evidencia: Evidenci
   return def.requiereFoto ? 'Requiere foto para quedar en verde.' : 'Requiere evidencia cargada para quedar en verde.'
 }
 
+// Nombre de la evidencia que le falta al ítem para considerarse cubierto — usado
+// para pintar el placeholder gris en la lista de evidencias del checklist.
+export function evidenciaPendienteLabel(def: ChecklistItemDef): string {
+  return def.requiereFoto ? 'Foto de respaldo' : 'Evidencia de respaldo'
+}
+
 export function estadoInicialParaProyecto(proyectoId: string): Record<string, ItemState> {
   return proyectoId === proyectoConDemoId ? estadoInicialLosTresAntonios : estadoVacioChecklist()
 }

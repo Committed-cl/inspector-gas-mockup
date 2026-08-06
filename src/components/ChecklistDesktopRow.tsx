@@ -1,6 +1,13 @@
 import { Link } from 'react-router-dom'
 import ManualEstadoControl from './ManualEstadoControl'
-import { hintEvidenciaFaltante, type ChecklistItemDef, type ChecklistStatus, type ItemState } from '../data/checklistMatrizInterior'
+import {
+  evidenciaPendienteLabel,
+  hintEvidenciaFaltante,
+  tieneEvidenciaSuficiente,
+  type ChecklistItemDef,
+  type ChecklistStatus,
+  type ItemState,
+} from '../data/checklistMatrizInterior'
 
 const dotClass: Record<ChecklistStatus, string> = {
   ok: 'bg-ok shadow-[0_0_0_4px_rgba(34,197,94,0.18)]',
@@ -67,13 +74,30 @@ export default function ChecklistDesktopRow({ def, state, proyectoId, onMarcar }
               size="sm"
               hint={hintEvidenciaFaltante(def, state.evidencia)}
             />
-            <Link to={itemHref} className="text-[11px] text-brand/80 hover:underline">
-              {state.evidencia.length > 0
-                ? `${state.evidencia.length} evidencia${state.evidencia.length > 1 ? 's' : ''}`
-                : 'Sin evidencia'}{' '}
-              · abrir ítem →
-            </Link>
           </div>
+
+          {state.status !== 'na' && (
+            <div className="mt-2 flex flex-col gap-1">
+              {state.evidencia.map((e) => (
+                <div key={e.id} className="flex items-center gap-1.5 text-[11px] text-ink">
+                  <span className="h-2 w-2 rounded-full bg-ok shrink-0" aria-hidden />
+                  <span className="truncate">
+                    {e.tipo === 'foto' ? '📷 ' : e.tipo === 'audio' ? '🎙 ' : ''}
+                    {e.texto}
+                  </span>
+                </div>
+              ))}
+              {!tieneEvidenciaSuficiente(def, state.evidencia) && (
+                <div className="flex items-center gap-1.5 text-[11px] text-muted">
+                  <span className="h-2 w-2 rounded-full bg-hairline border border-muted/30 shrink-0" aria-hidden />
+                  <span>{evidenciaPendienteLabel(def)} (pendiente)</span>
+                </div>
+              )}
+              <Link to={itemHref} className="text-[11px] text-brand/80 hover:underline self-start mt-0.5">
+                abrir ítem →
+              </Link>
+            </div>
+          )}
         </div>
       </div>
     </div>
