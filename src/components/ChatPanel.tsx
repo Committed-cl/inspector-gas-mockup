@@ -1,26 +1,26 @@
 import { useState } from 'react'
 import TranscriptBubble from './TranscriptBubble'
-import type { ChatMessage, EvidenciaTipo } from '../data/checklistMatrizInterior'
+import type { ChatMessage, EvidenceType } from '../data/checklistMatrizInterior'
 
 type Props = {
   title: string
   subtitle?: string
   messages: ChatMessage[]
   placeholder: string
-  onSend: (texto: string, tipo?: EvidenciaTipo) => void
+  onSend: (text: string, type?: EvidenceType) => void
   micHint: string
   attachHint: string
 }
 
 export default function ChatPanel({ title, subtitle, messages, placeholder, onSend, micHint, attachHint }: Props) {
   const [draft, setDraft] = useState('')
-  const [pendingTipo, setPendingTipo] = useState<EvidenciaTipo>('texto')
+  const [pendingType, setPendingType] = useState<EvidenceType>('text')
 
   function submit() {
     if (!draft.trim()) return
-    onSend(draft, pendingTipo)
+    onSend(draft, pendingType)
     setDraft('')
-    setPendingTipo('texto')
+    setPendingType('text')
   }
 
   return (
@@ -37,7 +37,7 @@ export default function ChatPanel({ title, subtitle, messages, placeholder, onSe
           <TranscriptBubble
             key={m.id}
             role={m.role}
-            text={m.tipo === 'foto' ? `📷 ${m.texto}` : m.tipo === 'audio' ? `🎙 ${m.texto}` : m.texto}
+            text={m.type === 'photo' ? `📷 ${m.text}` : m.type === 'audio' ? `🎙 ${m.text}` : m.text}
           />
         ))}
       </div>
@@ -46,7 +46,7 @@ export default function ChatPanel({ title, subtitle, messages, placeholder, onSe
           <button
             onClick={() => {
               setDraft(attachHint)
-              setPendingTipo('foto')
+              setPendingType('photo')
             }}
             className="shrink-0 h-9 w-9 grid place-items-center rounded-lg border border-hairline text-muted hover:bg-brand-soft hover:text-brand transition-colors"
             title="Adjuntar foto"
@@ -57,7 +57,7 @@ export default function ChatPanel({ title, subtitle, messages, placeholder, onSe
           <button
             onClick={() => {
               setDraft(micHint)
-              setPendingTipo('audio')
+              setPendingType('audio')
             }}
             className="shrink-0 h-9 w-9 grid place-items-center rounded-lg border border-hairline text-muted hover:bg-brand-soft hover:text-brand transition-colors"
             title="Dictar por voz"
@@ -69,7 +69,7 @@ export default function ChatPanel({ title, subtitle, messages, placeholder, onSe
             value={draft}
             onChange={(e) => {
               setDraft(e.target.value)
-              if (pendingTipo !== 'texto') setPendingTipo('texto')
+              if (pendingType !== 'text') setPendingType('text')
             }}
             onKeyDown={(e) => {
               if (e.key === 'Enter') submit()

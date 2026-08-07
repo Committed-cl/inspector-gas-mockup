@@ -57,7 +57,7 @@ export default function VisitaNueva() {
           {step >= 2 && (
             <div className="animate-pop">
               <TranscriptBubble
-                role="ia"
+                role="ai"
                 text="Perfecto, Rodrigo. Cargo el checklist de Etapa 1 para Los Tres Antonios."
               />
             </div>

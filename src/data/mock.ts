@@ -8,17 +8,17 @@ export type ChecklistItem = {
   declared?: string
 }
 
-export type Proyecto = {
+export type Project = {
   id: string
-  nombre: string
-  direccion: string
-  constructora: string
-  instaladora: string
-  pisos: number
-  etapaNumero: number
-  etapaNombre: string
-  ultimaVisita: string
-  visitasPrevias: { fecha: string; numero: number; descripcion: string; itemsOk: number; itemsTotal: number }[]
+  name: string
+  address: string
+  builder: string
+  installer: string
+  floors: number
+  stageNumber: number
+  stageName: string
+  lastVisit: string
+  previousVisits: { date: string; number: number; description: string; itemsDone: number; totalItems: number }[]
 }
 
 export const inspector = {
@@ -27,46 +27,46 @@ export const inspector = {
   rol: 'Inspector Metrogas',
 }
 
-export const proyectos: Proyecto[] = [
+export const projects: Project[] = [
   {
     id: 'los-tres-antonios',
-    nombre: 'Los Tres Antonios',
-    direccion: 'Av. Las Condes 5432, Puente Alto',
-    constructora: 'Constructora Andes',
-    instaladora: 'GasTec Chile',
-    pisos: 12,
-    etapaNumero: 1,
-    etapaNombre: 'Tercera losa del piso 3',
-    ultimaVisita: 'hace 2 días',
-    visitasPrevias: [
-      { fecha: '2026-04-10', numero: 3, descripcion: 'Piso 2 — Red de media presión parcial', itemsOk: 6, itemsTotal: 6 },
-      { fecha: '2026-03-28', numero: 2, descripcion: 'Primera losa — Fundaciones completas', itemsOk: 5, itemsTotal: 5 },
-      { fecha: '2026-03-12', numero: 1, descripcion: 'Fundaciones — Apertura de obra', itemsOk: 4, itemsTotal: 4 },
+    name: 'Los Tres Antonios',
+    address: 'Av. Las Condes 5432, Puente Alto',
+    builder: 'Constructora Andes',
+    installer: 'GasTec Chile',
+    floors: 12,
+    stageNumber: 1,
+    stageName: 'Tercera losa del piso 3',
+    lastVisit: 'hace 2 días',
+    previousVisits: [
+      { date: '2026-04-10', number: 3, description: 'Piso 2 — Red de media presión parcial', itemsDone: 6, totalItems: 6 },
+      { date: '2026-03-28', number: 2, description: 'Primera losa — Fundaciones completas', itemsDone: 5, totalItems: 5 },
+      { date: '2026-03-12', number: 1, description: 'Fundaciones — Apertura de obra', itemsDone: 4, totalItems: 4 },
     ],
   },
   {
     id: 'altos-nunoa',
-    nombre: 'Condominio Altos de Ñuñoa',
-    direccion: 'José Domingo Cañas 2210, Ñuñoa',
-    constructora: 'Inmobiliaria Norte',
-    instaladora: 'Instaladora Centro',
-    pisos: 8,
-    etapaNumero: 2,
-    etapaNombre: 'Red de media presión',
-    ultimaVisita: 'hace 1 semana',
-    visitasPrevias: [],
+    name: 'Condominio Altos de Ñuñoa',
+    address: 'José Domingo Cañas 2210, Ñuñoa',
+    builder: 'Inmobiliaria Norte',
+    installer: 'Instaladora Centro',
+    floors: 8,
+    stageNumber: 2,
+    stageName: 'Red de media presión',
+    lastVisit: 'hace 1 semana',
+    previousVisits: [],
   },
   {
     id: 'nueva-providencia',
-    nombre: 'Edificio Nueva Providencia',
-    direccion: 'Av. Providencia 1845, Providencia',
-    constructora: 'Armas',
-    instaladora: 'GasTec Chile',
-    pisos: 18,
-    etapaNumero: 4,
-    etapaNombre: 'Pruebas de hermeticidad',
-    ultimaVisita: 'hace 3 semanas',
-    visitasPrevias: [],
+    name: 'Edificio Nueva Providencia',
+    address: 'Av. Providencia 1845, Providencia',
+    builder: 'Armas',
+    installer: 'GasTec Chile',
+    floors: 18,
+    stageNumber: 4,
+    stageName: 'Pruebas de hermeticidad',
+    lastVisit: 'hace 3 semanas',
+    previousVisits: [],
   },
 ]
 

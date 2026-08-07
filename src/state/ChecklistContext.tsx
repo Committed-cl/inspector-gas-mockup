@@ -2,16 +2,16 @@ import { createContext, useCallback, useContext, useMemo, useState, type ReactNo
 import { Outlet } from 'react-router-dom'
 import {
   checklistDef,
-  chatGeneralInicialParaProyecto,
-  estadoInicialParaProyecto,
+  initialGeneralChatForProject,
+  initialStateForProject,
   matchItemsByKeyword,
-  siguienteRequisitoPendiente,
-  tieneEvidenciaSuficiente,
+  nextPendingRequirement,
+  hasSufficientEvidence,
   inspector,
   type ChatMessage,
   type ChecklistStatus,
-  type Evidencia,
-  type EvidenciaTipo,
+  type Evidence,
+  type EvidenceType,
   type ItemState,
 } from '../data/checklistMatrizInterior'
 
@@ -21,102 +21,102 @@ function nextId(prefix: string) {
   return `${prefix}-${seq}`
 }
 
-function horaAhora() {
+function currentTime() {
   return new Date().toLocaleTimeString('es-CL', { hour: '2-digit', minute: '2-digit', hour12: false })
 }
 
-type ProyectoChecklistState = {
+type ProjectChecklistState = {
   itemsState: Record<string, ItemState>
-  chatGeneral: ChatMessage[]
+  generalChat: ChatMessage[]
 }
 
-function estadoInicialProyecto(proyectoId: string): ProyectoChecklistState {
+function initialProjectState(projectId: string): ProjectChecklistState {
   return {
-    itemsState: estadoInicialParaProyecto(proyectoId),
-    chatGeneral: chatGeneralInicialParaProyecto(proyectoId),
+    itemsState: initialStateForProject(projectId),
+    generalChat: initialGeneralChatForProject(projectId),
   }
 }
 
-function ensureProyecto(
-  proyectoId: string,
-  porProyecto: Record<string, ProyectoChecklistState>,
-): Record<string, ProyectoChecklistState> {
-  if (porProyecto[proyectoId]) return porProyecto
-  return { ...porProyecto, [proyectoId]: estadoInicialProyecto(proyectoId) }
+function ensureProject(
+  projectId: string,
+  byProject: Record<string, ProjectChecklistState>,
+): Record<string, ProjectChecklistState> {
+  if (byProject[projectId]) return byProject
+  return { ...byProject, [projectId]: initialProjectState(projectId) }
 }
 
 type ChecklistContextValue = {
-  getProyectoState: (proyectoId: string) => ProyectoChecklistState
-  marcarManual: (proyectoId: string, itemId: string, status: ChecklistStatus, justificacion?: string) => void
-  agregarEvidencia: (
-    proyectoId: string,
+  getProjectState: (projectId: string) => ProjectChecklistState
+  markManually: (projectId: string, itemId: string, status: ChecklistStatus, reason?: string) => void
+  addEvidence: (
+    projectId: string,
     itemId: string,
-    requisitoIndex: number,
-    tipo: EvidenciaTipo,
-    texto: string,
+    requirementIndex: number,
+    type: EvidenceType,
+    text: string,
     previewUrl?: string,
   ) => void
-  enviarMensajeGeneral: (proyectoId: string, texto: string, tipo?: EvidenciaTipo) => void
-  enviarMensajeItem: (proyectoId: string, itemId: string, texto: string, tipo?: EvidenciaTipo) => void
+  sendGeneralMessage: (projectId: string, text: string, type?: EvidenceType) => void
+  sendItemMessage: (projectId: string, itemId: string, text: string, type?: EvidenceType) => void
 }
 
 const ChecklistContext = createContext<ChecklistContextValue | null>(null)
 
 export function ChecklistProvider({ children }: { children: ReactNode }) {
-  const [porProyecto, setPorProyecto] = useState<Record<string, ProyectoChecklistState>>({})
+  const [byProject, setByProject] = useState<Record<string, ProjectChecklistState>>({})
 
-  const getProyectoState = useCallback(
-    (proyectoId: string) => porProyecto[proyectoId] ?? estadoInicialProyecto(proyectoId),
-    [porProyecto],
+  const getProjectState = useCallback(
+    (projectId: string) => byProject[projectId] ?? initialProjectState(projectId),
+    [byProject],
   )
 
-  const marcarManual = useCallback(
-    (proyectoId: string, itemId: string, status: ChecklistStatus, justificacion?: string) => {
-      const hora = horaAhora()
-      setPorProyecto((prev) => {
-        const base = ensureProyecto(proyectoId, prev)
-        const proyectoState = base[proyectoId]
-        const prevItem = proyectoState.itemsState[itemId]
+  const markManually = useCallback(
+    (projectId: string, itemId: string, status: ChecklistStatus, reason?: string) => {
+      const time = currentTime()
+      setByProject((prev) => {
+        const base = ensureProject(projectId, prev)
+        const projectState = base[projectId]
+        const prevItem = projectState.itemsState[itemId]
         const def = checklistDef.find((d) => d.id === itemId)
 
-        // No puede quedar en verde por marcado manual si al ítem le falta la evidencia
-        // que exige el checklist — se queda en amarillo hasta que se cargue.
-        const statusFinal: ChecklistStatus =
-          status === 'ok' && def && !tieneEvidenciaSuficiente(def, prevItem.evidencia) ? 'warn' : status
+        // A manual mark can't reach green if the item is missing evidence the
+        // checklist requires — it stays amber until that evidence is loaded.
+        const finalStatus: ChecklistStatus =
+          status === 'ok' && def && !hasSufficientEvidence(def, prevItem.evidence) ? 'warn' : status
 
-        // El marcado manual aparece en la lista de evidencias como el estado actual
-        // del marcado — no como historial. Un clic nuevo reemplaza al anterior, no
-        // se acumulan entradas por cada vez que se tocó Cumple/No cumple.
-        const textoEvidencia =
-          statusFinal === 'na'
-            ? `Marcado manualmente como no aplica${justificacion ? `: ${justificacion}` : '.'}`
-            : statusFinal === 'ok'
+        // The manual mark shows up in the evidence list as the current state of
+        // the mark — not as history. A new click replaces the previous one;
+        // entries don't pile up every time Cumple/No cumple gets touched.
+        const evidenceText =
+          finalStatus === 'na'
+            ? `Marcado manualmente como no aplica${reason ? `: ${reason}` : '.'}`
+            : finalStatus === 'ok'
               ? 'Marcado manualmente como cumplido.'
-              : statusFinal === 'warn'
+              : finalStatus === 'warn'
                 ? 'Marcado como cumplido, pero falta evidencia para confirmarlo.'
                 : 'Marcado manualmente como no cumple.'
 
-        const marcaManual: Evidencia = {
+        const manualMark: Evidence = {
           id: nextId('ev'),
-          tipo: 'texto',
-          origen: 'marcado-manual',
-          texto: textoEvidencia,
-          hora,
-          resultado: statusFinal,
+          type: 'text',
+          source: 'manual-mark',
+          text: evidenceText,
+          time,
+          result: finalStatus,
         }
 
         return {
           ...base,
-          [proyectoId]: {
-            ...proyectoState,
+          [projectId]: {
+            ...projectState,
             itemsState: {
-              ...proyectoState.itemsState,
+              ...projectState.itemsState,
               [itemId]: {
                 ...prevItem,
-                status: statusFinal,
-                origen: 'manual',
-                justificacionNoAplica: statusFinal === 'na' ? justificacion : undefined,
-                evidencia: [...prevItem.evidencia.filter((e) => e.origen !== 'marcado-manual'), marcaManual],
+                status: finalStatus,
+                source: 'manual',
+                notApplicableReason: finalStatus === 'na' ? reason : undefined,
+                evidence: [...prevItem.evidence.filter((e) => e.source !== 'manual-mark'), manualMark],
               },
             },
           },
@@ -126,26 +126,27 @@ export function ChecklistProvider({ children }: { children: ReactNode }) {
     [],
   )
 
-  const agregarEvidencia = useCallback(
-    (proyectoId: string, itemId: string, requisitoIndex: number, tipo: EvidenciaTipo, texto: string, previewUrl?: string) => {
-      if (!texto.trim()) return
-      const hora = horaAhora()
-      setPorProyecto((prev) => {
-        const base = ensureProyecto(proyectoId, prev)
-        const proyectoState = base[proyectoId]
-        const prevItem = proyectoState.itemsState[itemId]
-        const nuevaEvidencia: Evidencia = { id: nextId('ev'), tipo, origen: 'manual', texto, hora, requisitoIndex, previewUrl }
-        // Con al menos una evidencia cargada el ítem ya no puede seguir en rojo —
-        // pasa a amarillo aunque falten más campos. Sigue necesitando Cumple para
-        // llegar a verde, y no se toca si ya estaba en verde, amarillo o no aplica.
-        const statusFinal = prevItem.status === 'pending' ? 'warn' : prevItem.status
+  const addEvidence = useCallback(
+    (projectId: string, itemId: string, requirementIndex: number, type: EvidenceType, text: string, previewUrl?: string) => {
+      if (!text.trim()) return
+      const time = currentTime()
+      setByProject((prev) => {
+        const base = ensureProject(projectId, prev)
+        const projectState = base[projectId]
+        const prevItem = projectState.itemsState[itemId]
+        const newEvidence: Evidence = { id: nextId('ev'), type, source: 'manual', text, time, requirementIndex, previewUrl }
+        // With at least one piece of evidence loaded, the item can no longer stay
+        // red — it moves to amber even if more fields are still missing. It
+        // still needs Cumple to reach green, and is left alone if it was already
+        // green, amber, or not-applicable.
+        const finalStatus = prevItem.status === 'pending' ? 'warn' : prevItem.status
         return {
           ...base,
-          [proyectoId]: {
-            ...proyectoState,
+          [projectId]: {
+            ...projectState,
             itemsState: {
-              ...proyectoState.itemsState,
-              [itemId]: { ...prevItem, status: statusFinal, evidencia: [...prevItem.evidencia, nuevaEvidencia] },
+              ...projectState.itemsState,
+              [itemId]: { ...prevItem, status: finalStatus, evidence: [...prevItem.evidence, newEvidence] },
             },
           },
         }
@@ -154,98 +155,97 @@ export function ChecklistProvider({ children }: { children: ReactNode }) {
     [],
   )
 
-  const enviarMensajeGeneral = useCallback((proyectoId: string, texto: string, tipo: EvidenciaTipo = 'texto') => {
-    if (!texto.trim()) return
-    const hora = horaAhora()
-    const inspectorMsg: ChatMessage = { id: nextId('gm'), role: 'inspector', texto, tipo, hora }
-    const matched = matchItemsByKeyword(texto)
+  const sendGeneralMessage = useCallback((projectId: string, text: string, type: EvidenceType = 'text') => {
+    if (!text.trim()) return
+    const time = currentTime()
+    const inspectorMsg: ChatMessage = { id: nextId('gm'), role: 'inspector', text, type, time }
+    const matched = matchItemsByKeyword(text)
 
-    setPorProyecto((prev) => {
-      const base = ensureProyecto(proyectoId, prev)
-      const proyectoState = base[proyectoId]
+    setByProject((prev) => {
+      const base = ensureProject(projectId, prev)
+      const projectState = base[projectId]
 
       if (matched.length === 0) {
-        const iaMsg: ChatMessage = {
+        const aiMsg: ChatMessage = {
           id: nextId('gm'),
-          role: 'ia',
-          texto:
-            'No logro identificar a qué ítem del checklist corresponde esto. ¿Me puedes decir a cuál te refieres, o contármelo dentro del chat de ese ítem?',
-          hora,
+          role: 'ai',
+          text: 'No logro identificar a qué ítem del checklist corresponde esto. ¿Me puedes decir a cuál te refieres, o contármelo dentro del chat de ese ítem?',
+          time,
         }
         return {
           ...base,
-          [proyectoId]: { ...proyectoState, chatGeneral: [...proyectoState.chatGeneral, inspectorMsg, iaMsg] },
+          [projectId]: { ...projectState, generalChat: [...projectState.generalChat, inspectorMsg, aiMsg] },
         }
       }
 
-      const nextItemsState = { ...proyectoState.itemsState }
-      const actualizados: string[] = []
+      const nextItemsState = { ...projectState.itemsState }
+      const updated: string[] = []
       for (const def of matched) {
         const prevItem = nextItemsState[def.id]
         if (prevItem.status === 'na') continue
-        const requisitoIndex = siguienteRequisitoPendiente(def, prevItem.evidencia, tipo)
-        const nuevaEvidencia: Evidencia = { id: nextId('ev'), tipo, origen: 'chat-general', texto, hora, requisitoIndex }
-        const evidencia = [...prevItem.evidencia, nuevaEvidencia]
-        const suficiente = tieneEvidenciaSuficiente(def, evidencia)
-        nextItemsState[def.id] = { ...prevItem, status: suficiente ? 'ok' : 'warn', origen: 'chat', evidencia }
-        if (suficiente) actualizados.push(def.titulo)
+        const requirementIndex = nextPendingRequirement(def, prevItem.evidence, type)
+        const newEvidence: Evidence = { id: nextId('ev'), type, source: 'general-chat', text, time, requirementIndex }
+        const evidence = [...prevItem.evidence, newEvidence]
+        const sufficient = hasSufficientEvidence(def, evidence)
+        nextItemsState[def.id] = { ...prevItem, status: sufficient ? 'ok' : 'warn', source: 'chat', evidence }
+        if (sufficient) updated.push(def.title)
       }
 
-      const titulos = actualizados.map((t) => `"${t}"`).join(' y ')
-      const iaTexto =
-        actualizados.length > 0
-          ? `Marqué ${titulos} como cumplido${actualizados.length > 1 ? 's' : ''} con tu ${
-              tipo === 'foto' ? 'mensaje y la foto adjunta' : tipo === 'audio' ? 'declaración por voz' : 'mensaje'
+      const titles = updated.map((t) => `"${t}"`).join(' y ')
+      const aiText =
+        updated.length > 0
+          ? `Marqué ${titles} como cumplido${updated.length > 1 ? 's' : ''} con tu ${
+              type === 'photo' ? 'mensaje y la foto adjunta' : type === 'audio' ? 'declaración por voz' : 'mensaje'
             }.`
-          : `Anoté esto en ${matched.length > 1 ? 'los ítems correspondientes' : `"${matched[0].titulo}"`}, pero todavía falta evidencia para darlos por cumplidos.`
-      const iaMsg: ChatMessage = { id: nextId('gm'), role: 'ia', texto: iaTexto, hora }
+          : `Anoté esto en ${matched.length > 1 ? 'los ítems correspondientes' : `"${matched[0].title}"`}, pero todavía falta evidencia para darlos por cumplidos.`
+      const aiMsg: ChatMessage = { id: nextId('gm'), role: 'ai', text: aiText, time }
 
       return {
         ...base,
-        [proyectoId]: {
+        [projectId]: {
           itemsState: nextItemsState,
-          chatGeneral: [...proyectoState.chatGeneral, inspectorMsg, iaMsg],
+          generalChat: [...projectState.generalChat, inspectorMsg, aiMsg],
         },
       }
     })
   }, [])
 
-  const enviarMensajeItem = useCallback(
-    (proyectoId: string, itemId: string, texto: string, tipo: EvidenciaTipo = 'texto') => {
-      if (!texto.trim()) return
+  const sendItemMessage = useCallback(
+    (projectId: string, itemId: string, text: string, type: EvidenceType = 'text') => {
+      if (!text.trim()) return
       const def = checklistDef.find((d) => d.id === itemId)
       if (!def) return
-      const hora = horaAhora()
-      const inspectorMsg: ChatMessage = { id: nextId('im'), role: 'inspector', texto, tipo, hora }
+      const time = currentTime()
+      const inspectorMsg: ChatMessage = { id: nextId('im'), role: 'inspector', text, type, time }
 
-      setPorProyecto((prev) => {
-        const base = ensureProyecto(proyectoId, prev)
-        const proyectoState = base[proyectoId]
-        const prevItem = proyectoState.itemsState[itemId]
-        const requisitoIndex = siguienteRequisitoPendiente(def, prevItem.evidencia, tipo)
-        const nuevaEvidencia: Evidencia = { id: nextId('ev'), tipo, origen: 'chat-item', texto, hora, requisitoIndex }
-        const evidencia = [...prevItem.evidencia, nuevaEvidencia]
-        const suficiente = tieneEvidenciaSuficiente(def, evidencia)
+      setByProject((prev) => {
+        const base = ensureProject(projectId, prev)
+        const projectState = base[projectId]
+        const prevItem = projectState.itemsState[itemId]
+        const requirementIndex = nextPendingRequirement(def, prevItem.evidence, type)
+        const newEvidence: Evidence = { id: nextId('ev'), type, source: 'item-chat', text, time, requirementIndex }
+        const evidence = [...prevItem.evidence, newEvidence]
+        const sufficient = hasSufficientEvidence(def, evidence)
 
-        const iaTexto = suficiente
-          ? `Marqué "${def.titulo}" como cumplido con ${tipo === 'foto' ? 'la foto adjunta' : 'tu declaración'}.`
-          : `Todavía falta evidencia para dar "${def.titulo}" por cumplido — ${def.criterioNormativo}. ¿Puedes contarme o adjuntar lo que falta?`
+        const aiText = sufficient
+          ? `Marqué "${def.title}" como cumplido con ${type === 'photo' ? 'la foto adjunta' : 'tu declaración'}.`
+          : `Todavía falta evidencia para dar "${def.title}" por cumplido — ${def.regulatoryCriteria}. ¿Puedes contarme o adjuntar lo que falta?`
 
-        const iaMsg: ChatMessage = { id: nextId('im'), role: 'ia', texto: iaTexto, hora }
+        const aiMsg: ChatMessage = { id: nextId('im'), role: 'ai', text: aiText, time }
 
         const nextItem: ItemState = {
           ...prevItem,
-          status: prevItem.status === 'na' ? prevItem.status : suficiente ? 'ok' : 'warn',
-          origen: 'chat',
-          evidencia,
-          chat: [...prevItem.chat, inspectorMsg, iaMsg],
+          status: prevItem.status === 'na' ? prevItem.status : sufficient ? 'ok' : 'warn',
+          source: 'chat',
+          evidence,
+          chat: [...prevItem.chat, inspectorMsg, aiMsg],
         }
 
         return {
           ...base,
-          [proyectoId]: {
-            ...proyectoState,
-            itemsState: { ...proyectoState.itemsState, [itemId]: nextItem },
+          [projectId]: {
+            ...projectState,
+            itemsState: { ...projectState.itemsState, [itemId]: nextItem },
           },
         }
       })
@@ -254,8 +254,8 @@ export function ChecklistProvider({ children }: { children: ReactNode }) {
   )
 
   const value = useMemo(
-    () => ({ getProyectoState, marcarManual, agregarEvidencia, enviarMensajeGeneral, enviarMensajeItem }),
-    [getProyectoState, marcarManual, agregarEvidencia, enviarMensajeGeneral, enviarMensajeItem],
+    () => ({ getProjectState, markManually, addEvidence, sendGeneralMessage, sendItemMessage }),
+    [getProjectState, markManually, addEvidence, sendGeneralMessage, sendItemMessage],
   )
 
   return <ChecklistContext.Provider value={value}>{children}</ChecklistContext.Provider>
@@ -267,23 +267,22 @@ export function useChecklist() {
   return ctx
 }
 
-export function useProyectoChecklist(proyectoId: string) {
-  const { getProyectoState, marcarManual, agregarEvidencia, enviarMensajeGeneral, enviarMensajeItem } = useChecklist()
-  const { itemsState, chatGeneral } = getProyectoState(proyectoId)
+export function useProjectChecklist(projectId: string) {
+  const { getProjectState, markManually, addEvidence, sendGeneralMessage, sendItemMessage } = useChecklist()
+  const { itemsState, generalChat } = getProjectState(projectId)
   return {
     itemsState,
-    chatGeneral,
-    marcarManual: (itemId: string, status: ChecklistStatus, justificacion?: string) =>
-      marcarManual(proyectoId, itemId, status, justificacion),
-    agregarEvidencia: (itemId: string, requisitoIndex: number, tipo: EvidenciaTipo, texto: string, previewUrl?: string) =>
-      agregarEvidencia(proyectoId, itemId, requisitoIndex, tipo, texto, previewUrl),
-    enviarMensajeGeneral: (texto: string, tipo?: EvidenciaTipo) => enviarMensajeGeneral(proyectoId, texto, tipo),
-    enviarMensajeItem: (itemId: string, texto: string, tipo?: EvidenciaTipo) =>
-      enviarMensajeItem(proyectoId, itemId, texto, tipo),
+    generalChat,
+    markManually: (itemId: string, status: ChecklistStatus, reason?: string) =>
+      markManually(projectId, itemId, status, reason),
+    addEvidence: (itemId: string, requirementIndex: number, type: EvidenceType, text: string, previewUrl?: string) =>
+      addEvidence(projectId, itemId, requirementIndex, type, text, previewUrl),
+    sendGeneralMessage: (text: string, type?: EvidenceType) => sendGeneralMessage(projectId, text, type),
+    sendItemMessage: (itemId: string, text: string, type?: EvidenceType) => sendItemMessage(projectId, itemId, text, type),
   }
 }
 
-export const inspectorActual = inspector
+export const currentInspector = inspector
 
 export function ChecklistLayout() {
   return (

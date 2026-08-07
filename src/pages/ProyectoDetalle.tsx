@@ -1,11 +1,11 @@
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import PhoneFrame from '../components/PhoneFrame'
-import { proyectos } from '../data/mock'
+import { projects } from '../data/mock'
 
 export default function ProyectoDetalle() {
   const { id } = useParams()
   const nav = useNavigate()
-  const proyecto = proyectos.find((p) => p.id === id) ?? proyectos[0]
+  const project = projects.find((p) => p.id === id) ?? projects[0]
 
   return (
     <PhoneFrame
@@ -17,8 +17,8 @@ export default function ProyectoDetalle() {
             </svg>
             Volver
           </button>
-          <p className="font-bold text-ink text-[18px] leading-tight">{proyecto.nombre}</p>
-          <p className="text-[12px] text-muted mt-1">{proyecto.direccion}</p>
+          <p className="font-bold text-ink text-[18px] leading-tight">{project.name}</p>
+          <p className="text-[12px] text-muted mt-1">{project.address}</p>
         </div>
       }
       footer={
@@ -38,17 +38,17 @@ export default function ProyectoDetalle() {
     >
       <div className="px-5 py-4 flex flex-col gap-5">
         <div className="grid grid-cols-2 gap-2 text-[12px]">
-          <Meta label="Constructora" value={proyecto.constructora} />
-          <Meta label="Instaladora" value={proyecto.instaladora} />
-          <Meta label="Pisos" value={`${proyecto.pisos}`} />
-          <Meta label="Etapa vigente" value={`${proyecto.etapaNumero} — ${proyecto.etapaNombre}`} />
+          <Meta label="Constructora" value={project.builder} />
+          <Meta label="Instaladora" value={project.installer} />
+          <Meta label="Pisos" value={`${project.floors}`} />
+          <Meta label="Etapa vigente" value={`${project.stageNumber} — ${project.stageName}`} />
         </div>
 
         <div>
           <p className="text-[12px] font-semibold uppercase tracking-wide text-muted mb-2">Avance por etapa</p>
           <div className="flex items-center gap-1.5">
             {[1, 2, 3, 4, 5].map((n) => {
-              const state = n < proyecto.etapaNumero ? 'done' : n === proyecto.etapaNumero ? 'current' : 'upcoming'
+              const state = n < project.stageNumber ? 'done' : n === project.stageNumber ? 'current' : 'upcoming'
               return (
                 <div
                   key={n}
@@ -72,22 +72,22 @@ export default function ProyectoDetalle() {
         <div>
           <p className="text-[12px] font-semibold uppercase tracking-wide text-muted mb-2">Visitas realizadas</p>
           <div className="flex flex-col gap-2">
-            {proyecto.visitasPrevias.length === 0 && (
+            {project.previousVisits.length === 0 && (
               <p className="text-[12px] text-muted italic">Aún no hay visitas registradas en este proyecto.</p>
             )}
-            {proyecto.visitasPrevias.map((v) => (
-              <div key={v.fecha} className="bg-white rounded-lg border border-hairline p-3">
+            {project.previousVisits.map((v) => (
+              <div key={v.date} className="bg-white rounded-lg border border-hairline p-3">
                 <div className="flex items-start justify-between">
                   <div>
-                    <p className="text-[13px] font-medium text-ink">Visita N°{v.numero}</p>
-                    <p className="text-[11.5px] text-muted mt-0.5">{v.descripcion}</p>
+                    <p className="text-[13px] font-medium text-ink">Visita N°{v.number}</p>
+                    <p className="text-[11.5px] text-muted mt-0.5">{v.description}</p>
                   </div>
-                  <span className="text-[10.5px] text-muted font-mono">{v.fecha}</span>
+                  <span className="text-[10.5px] text-muted font-mono">{v.date}</span>
                 </div>
                 <div className="mt-2 flex items-center gap-2">
                   <span className="inline-flex items-center gap-1 text-[11px] text-ok font-medium">
                     <span className="h-1.5 w-1.5 rounded-full bg-ok" />
-                    {v.itemsOk}/{v.itemsTotal} ítems
+                    {v.itemsDone}/{v.totalItems} ítems
                   </span>
                   <span className="text-[11px] text-muted">· Reporte enviado</span>
                 </div>

@@ -1,8 +1,8 @@
 import { Link } from 'react-router-dom'
-import ManualEstadoControl from './ManualEstadoControl'
+import StatusControl from './StatusControl'
 import {
-  estadoEvidenciasRequeridas,
-  hintEvidenciaFaltante,
+  requiredEvidenceState,
+  missingEvidenceHint,
   type ChecklistItemDef,
   type ChecklistStatus,
   type ItemState,
@@ -29,7 +29,7 @@ const badgeClass: Record<ChecklistStatus, string> = {
   na: 'text-muted bg-muted/10',
 }
 
-const dotResultado: Record<ChecklistStatus, string> = {
+const resultDotClass: Record<ChecklistStatus, string> = {
   ok: 'bg-ok',
   warn: 'bg-warn',
   pending: 'bg-danger',
@@ -39,13 +39,13 @@ const dotResultado: Record<ChecklistStatus, string> = {
 type Props = {
   def: ChecklistItemDef
   state: ItemState
-  proyectoId: string
-  onMarcar: (status: ChecklistStatus, justificacion?: string) => void
+  projectId: string
+  onMark: (status: ChecklistStatus, reason?: string) => void
 }
 
-export default function ChecklistDesktopRow({ def, state, proyectoId, onMarcar }: Props) {
-  const itemHref = `/checklist/${proyectoId}/${def.id}`
-  const marcadoManual = state.evidencia.find((e) => e.origen === 'marcado-manual')
+export default function ChecklistDesktopRow({ def, state, projectId, onMark }: Props) {
+  const itemHref = `/checklist/${projectId}/${def.id}`
+  const manualMark = state.evidence.find((e) => e.source === 'manual-mark')
   return (
     <div className="rounded-xl border border-hairline bg-white px-4 py-3 hover:shadow-sm transition-shadow">
       <div className="flex items-start gap-3">
@@ -56,59 +56,59 @@ export default function ChecklistDesktopRow({ def, state, proyectoId, onMarcar }
               to={itemHref}
               className="text-[13.5px] font-semibold text-ink leading-tight hover:text-brand hover:underline underline-offset-2"
             >
-              {def.titulo}
+              {def.title}
             </Link>
             <span className={`shrink-0 text-[10.5px] font-medium px-1.5 py-0.5 rounded-md ${badgeClass[state.status]}`}>
               {badgeText[state.status]}
             </span>
           </div>
 
-          {state.origen && (
+          {state.source && (
             <p className="text-[10.5px] text-muted mt-0.5">
-              {state.origen === 'manual' ? 'Conclusión' : 'Confirmado con evidencia de chat'}
+              {state.source === 'manual' ? 'Conclusión' : 'Confirmado con evidencia de chat'}
             </p>
           )}
 
-          {state.status === 'na' && state.justificacionNoAplica && (
-            <p className="text-[11.5px] text-muted mt-1 italic">No aplica: {state.justificacionNoAplica}</p>
+          {state.status === 'na' && state.notApplicableReason && (
+            <p className="text-[11.5px] text-muted mt-1 italic">No aplica: {state.notApplicableReason}</p>
           )}
 
           <div className="mt-2 flex items-center gap-3 flex-wrap">
-            <ManualEstadoControl
+            <StatusControl
               status={state.status}
-              permiteNoAplica={def.permiteNoAplica}
-              onMarcar={onMarcar}
+              allowsNotApplicable={def.allowsNotApplicable}
+              onMark={onMark}
               size="sm"
-              hint={hintEvidenciaFaltante(def, state.evidencia)}
+              hint={missingEvidenceHint(def, state.evidence)}
             />
           </div>
 
           {state.status !== 'na' && (
             <div className="mt-2 flex flex-col gap-1">
-              {estadoEvidenciasRequeridas(def, state.evidencia).map((req, i) => (
+              {requiredEvidenceState(def, state.evidence).map((req, i) => (
                 <div key={i} className="flex items-center gap-1.5 text-[11px]">
                   <span
                     className={`h-2 w-2 rounded-full shrink-0 ${
-                      req.cumplido ? 'bg-ok' : 'bg-hairline border border-muted/30'
+                      req.fulfilled ? 'bg-ok' : 'bg-hairline border border-muted/30'
                     }`}
                     aria-hidden
                   />
-                  <span className={`truncate ${req.cumplido ? 'text-ink' : 'text-muted'}`}>
-                    {req.tipo === 'foto' ? '📷 ' : ''}
+                  <span className={`truncate ${req.fulfilled ? 'text-ink' : 'text-muted'}`}>
+                    {req.type === 'photo' ? '📷 ' : ''}
                     {req.label}
-                    {req.cumplido && req.evidencia ? `: ${req.evidencia.texto}` : ' (pendiente)'}
+                    {req.fulfilled && req.evidence ? `: ${req.evidence.text}` : ' (pendiente)'}
                   </span>
                 </div>
               ))}
-              {marcadoManual ? (
+              {manualMark ? (
                 <div className="flex items-center gap-1.5 text-[11px]">
                   <span
                     className={`h-2 w-2 rounded-full shrink-0 ${
-                      marcadoManual.resultado ? dotResultado[marcadoManual.resultado] : 'bg-ok'
+                      manualMark.result ? resultDotClass[manualMark.result] : 'bg-ok'
                     }`}
                     aria-hidden
                   />
-                  <span className="truncate text-ink">Conclusión: {marcadoManual.texto}</span>
+                  <span className="truncate text-ink">Conclusión: {manualMark.text}</span>
                 </div>
               ) : (
                 <div className="flex items-center gap-1.5 text-[11px] text-muted">

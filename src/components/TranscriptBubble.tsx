@@ -1,5 +1,5 @@
 type Props = {
-  role: 'inspector' | 'ia'
+  role: 'inspector' | 'ai'
   text: string
 }
 

@@ -57,7 +57,7 @@ export default function VisitaEnCurso() {
               text="Hablé con el jefe de obra. El capataz andaba sin gorro de seguridad. Le pedí al instalador las llaves de la camioneta y se negó — la miré por la ventana y estaba desordenada."
             />
             <TranscriptBubble
-              role="ia"
+              role="ai"
               text="Marqué 'Orden camioneta' en amarillo — necesito que confirmes si es riesgo. Aún quedan 3 ítems pendientes: extintor, matriz de riesgo y capacitación de maestros."
             />
           </div>

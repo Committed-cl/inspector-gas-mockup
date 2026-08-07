@@ -39,7 +39,7 @@ export default function VisitaRevisar() {
       footer={
         <div className="bg-white border-t border-hairline p-4 flex flex-col gap-2">
           <TranscriptBubble
-            role="ia"
+            role="ai"
             text="Reporte listo. ¿Lo envío a Metrogas, Constructora Andes y GasTec Chile?"
           />
           <button

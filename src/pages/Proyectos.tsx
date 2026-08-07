@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom'
 import PhoneFrame from '../components/PhoneFrame'
-import { inspector, proyectos } from '../data/mock'
+import { inspector, projects } from '../data/mock'
 
 export default function Proyectos() {
   return (
@@ -32,8 +32,8 @@ export default function Proyectos() {
       }
     >
       <div className="px-5 py-4 flex flex-col gap-3">
-        <p className="text-[12px] font-semibold uppercase tracking-wide text-muted">Proyectos asignados · {proyectos.length}</p>
-        {proyectos.map((p) => (
+        <p className="text-[12px] font-semibold uppercase tracking-wide text-muted">Proyectos asignados · {projects.length}</p>
+        {projects.map((p) => (
           <Link
             key={p.id}
             to={`/proyectos/${p.id}`}
@@ -41,9 +41,9 @@ export default function Proyectos() {
           >
             <div className="flex items-start justify-between gap-3">
               <div className="min-w-0">
-                <p className="font-semibold text-ink text-[15px] leading-tight">{p.nombre}</p>
+                <p className="font-semibold text-ink text-[15px] leading-tight">{p.name}</p>
                 <p className="text-[12px] text-muted mt-0.5 truncate">
-                  {p.constructora} · {p.instaladora}
+                  {p.builder} · {p.installer}
                 </p>
               </div>
               <svg viewBox="0 0 24 24" fill="currentColor" className="h-4 w-4 text-muted shrink-0 mt-1">
@@ -53,9 +53,9 @@ export default function Proyectos() {
             <div className="mt-3 flex items-center justify-between">
               <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-brand-soft text-brand text-[11px] font-medium">
                 <span className="h-1.5 w-1.5 rounded-full bg-brand" />
-                Etapa {p.etapaNumero} · {p.etapaNombre}
+                Etapa {p.stageNumber} · {p.stageName}
               </span>
-              <span className="text-[11px] text-muted">Última visita: {p.ultimaVisita}</span>
+              <span className="text-[11px] text-muted">Última visita: {p.lastVisit}</span>
             </div>
           </Link>
         ))}
