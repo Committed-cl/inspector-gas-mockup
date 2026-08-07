@@ -14,6 +14,12 @@ export type ChatMessage = {
   text: string
   type?: EvidenceType
   time: string
+  // Present on an "ai" message that couldn't confidently match an item —
+  // clickable suggestions so the inspector doesn't have to type the item
+  // name. Cleared once one of them is picked.
+  options?: { itemId: string; title: string }[]
+  // The evidence (text + type) waiting to be filed once an option is picked.
+  pendingEvidence?: { text: string; type: EvidenceType }
 }
 
 export type Evidence = {
@@ -606,6 +612,50 @@ setState('conducto-sombrerete', {
 export function matchItemsByKeyword(text: string): ChecklistItemDef[] {
   const lower = text.toLowerCase()
   return checklistDef.filter((def) => def.keywords.some((k) => lower.includes(k)))
+}
+
+const STOPWORDS = new Set([
+  'el', 'la', 'los', 'las', 'de', 'del', 'en', 'y', 'a', 'que', 'se', 'con', 'por', 'un', 'una',
+  'al', 'lo', 'su', 'sus', 'esta', 'esta', 'fue', 'ya', 'no', 'si', 'muy', 'mas', 'para', 'foto',
+])
+
+function tokenize(text: string): string[] {
+  return text
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-z0-9\s]/g, ' ')
+    .split(/\s+/)
+    .filter((w) => w.length > 2 && !STOPWORDS.has(w))
+}
+
+// Used when a keyword match fails outright. First tries a loose lexical
+// overlap against each item's title/section/keywords; if that also comes up
+// empty, falls back to the items still open — the ones with partial evidence
+// already logged (amber) are more likely candidates than untouched ones.
+export function suggestItemsForText(
+  text: string,
+  itemsState: Record<string, ItemState>,
+  limit = 4,
+): ChecklistItemDef[] {
+  const tokens = tokenize(text)
+  const scored = checklistDef
+    .map((def) => {
+      const haystack = tokenize([def.title, def.section, ...def.keywords].join(' '))
+      const score = tokens.filter((t) => haystack.some((h) => h.includes(t) || t.includes(h))).length
+      return { def, score }
+    })
+    .filter((s) => s.score > 0)
+    .sort((a, b) => b.score - a.score)
+
+  if (scored.length > 0) return scored.slice(0, limit).map((s) => s.def)
+
+  const open = checklistDef.filter((def) => !['ok', 'na'].includes(itemsState[def.id].status))
+  const byRelevance = [...open].sort((a, b) => {
+    const rank = (id: string) => (itemsState[id].status === 'warn' ? 0 : 1)
+    return rank(a.id) - rank(b.id)
+  })
+  return byRelevance.slice(0, limit)
 }
 
 export function itemRequiresPhoto(def: ChecklistItemDef): boolean {

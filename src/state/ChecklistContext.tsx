@@ -5,6 +5,7 @@ import {
   initialGeneralChatForProject,
   initialStateForProject,
   matchItemsByKeyword,
+  suggestItemsForText,
   nextPendingRequirement,
   hasSufficientEvidence,
   inspector,
@@ -58,6 +59,7 @@ type ChecklistContextValue = {
   ) => void
   sendGeneralMessage: (projectId: string, text: string, type?: EvidenceType) => void
   sendItemMessage: (projectId: string, itemId: string, text: string, type?: EvidenceType) => void
+  resolveGeneralMessage: (projectId: string, messageId: string, itemId: string) => void
 }
 
 const ChecklistContext = createContext<ChecklistContextValue | null>(null)
@@ -166,11 +168,17 @@ export function ChecklistProvider({ children }: { children: ReactNode }) {
       const projectState = base[projectId]
 
       if (matched.length === 0) {
+        const suggestions = suggestItemsForText(text, projectState.itemsState)
         const aiMsg: ChatMessage = {
           id: nextId('gm'),
           role: 'ai',
-          text: 'No logro identificar a qué ítem del checklist corresponde esto. ¿Me puedes decir a cuál te refieres, o contármelo dentro del chat de ese ítem?',
+          text:
+            suggestions.length > 0
+              ? 'No estoy seguro a qué ítem corresponde esto. ¿Es alguno de estos?'
+              : 'No logro identificar a qué ítem del checklist corresponde esto. ¿Me puedes decir a cuál te refieres, o contármelo dentro del chat de ese ítem?',
           time,
+          options: suggestions.length > 0 ? suggestions.map((d) => ({ itemId: d.id, title: d.title })) : undefined,
+          pendingEvidence: suggestions.length > 0 ? { text, type } : undefined,
         }
         return {
           ...base,
@@ -253,9 +261,62 @@ export function ChecklistProvider({ children }: { children: ReactNode }) {
     [],
   )
 
+  const resolveGeneralMessage = useCallback((projectId: string, messageId: string, itemId: string) => {
+    const time = currentTime()
+    setByProject((prev) => {
+      const base = ensureProject(projectId, prev)
+      const projectState = base[projectId]
+      const target = projectState.generalChat.find((m) => m.id === messageId)
+      const def = checklistDef.find((d) => d.id === itemId)
+      if (!target || !target.pendingEvidence || !def) return base
+
+      const { text, type } = target.pendingEvidence
+      const prevItem = projectState.itemsState[itemId]
+      const requirementIndex = nextPendingRequirement(def, prevItem.evidence, type)
+      const newEvidence: Evidence = { id: nextId('ev'), type, source: 'general-chat', text, time, requirementIndex }
+      const evidence = [...prevItem.evidence, newEvidence]
+      const sufficient = hasSufficientEvidence(def, evidence)
+      const nextItem: ItemState = {
+        ...prevItem,
+        status: prevItem.status === 'na' ? prevItem.status : sufficient ? 'ok' : 'warn',
+        source: 'chat',
+        evidence,
+      }
+
+      const confirmMsg: ChatMessage = {
+        id: nextId('gm'),
+        role: 'ai',
+        text: sufficient
+          ? `Marqué "${def.title}" como cumplido con tu mensaje.`
+          : `Anoté esto en "${def.title}", pero todavía falta evidencia para darlo por cumplido.`,
+        time,
+      }
+
+      return {
+        ...base,
+        [projectId]: {
+          itemsState: { ...projectState.itemsState, [itemId]: nextItem },
+          generalChat: [
+            ...projectState.generalChat.map((m) =>
+              m.id === messageId ? { ...m, options: undefined, pendingEvidence: undefined } : m,
+            ),
+            confirmMsg,
+          ],
+        },
+      }
+    })
+  }, [])
+
   const value = useMemo(
-    () => ({ getProjectState, markManually, addEvidence, sendGeneralMessage, sendItemMessage }),
-    [getProjectState, markManually, addEvidence, sendGeneralMessage, sendItemMessage],
+    () => ({
+      getProjectState,
+      markManually,
+      addEvidence,
+      sendGeneralMessage,
+      sendItemMessage,
+      resolveGeneralMessage,
+    }),
+    [getProjectState, markManually, addEvidence, sendGeneralMessage, sendItemMessage, resolveGeneralMessage],
   )
 
   return <ChecklistContext.Provider value={value}>{children}</ChecklistContext.Provider>
@@ -268,7 +329,8 @@ export function useChecklist() {
 }
 
 export function useProjectChecklist(projectId: string) {
-  const { getProjectState, markManually, addEvidence, sendGeneralMessage, sendItemMessage } = useChecklist()
+  const { getProjectState, markManually, addEvidence, sendGeneralMessage, sendItemMessage, resolveGeneralMessage } =
+    useChecklist()
   const { itemsState, generalChat } = getProjectState(projectId)
   return {
     itemsState,
@@ -279,6 +341,7 @@ export function useProjectChecklist(projectId: string) {
       addEvidence(projectId, itemId, requirementIndex, type, text, previewUrl),
     sendGeneralMessage: (text: string, type?: EvidenceType) => sendGeneralMessage(projectId, text, type),
     sendItemMessage: (itemId: string, text: string, type?: EvidenceType) => sendItemMessage(projectId, itemId, text, type),
+    resolveGeneralMessage: (messageId: string, itemId: string) => resolveGeneralMessage(projectId, messageId, itemId),
   }
 }
 

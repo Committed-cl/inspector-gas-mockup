@@ -10,9 +10,19 @@ type Props = {
   onSend: (text: string, type?: EvidenceType) => void
   micHint: string
   attachHint: string
+  onSelectOption?: (messageId: string, itemId: string) => void
 }
 
-export default function ChatPanel({ title, subtitle, messages, placeholder, onSend, micHint, attachHint }: Props) {
+export default function ChatPanel({
+  title,
+  subtitle,
+  messages,
+  placeholder,
+  onSend,
+  micHint,
+  attachHint,
+  onSelectOption,
+}: Props) {
   const [draft, setDraft] = useState('')
   const [pendingType, setPendingType] = useState<EvidenceType>('text')
 
@@ -38,6 +48,8 @@ export default function ChatPanel({ title, subtitle, messages, placeholder, onSe
             key={m.id}
             role={m.role}
             text={m.type === 'photo' ? `📷 ${m.text}` : m.type === 'audio' ? `🎙 ${m.text}` : m.text}
+            options={m.options}
+            onSelectOption={onSelectOption ? (itemId) => onSelectOption(m.id, itemId) : undefined}
           />
         ))}
       </div>

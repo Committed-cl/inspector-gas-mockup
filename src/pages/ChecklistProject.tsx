@@ -11,7 +11,8 @@ const statusSortOrder: Record<ChecklistStatus, number> = { pending: 0, warn: 1, 
 export default function ChecklistProject() {
   const { projectId = '' } = useParams()
   const project = projects.find((p) => p.id === projectId)
-  const { itemsState, markManually, generalChat, sendGeneralMessage } = useProjectChecklist(projectId)
+  const { itemsState, markManually, generalChat, sendGeneralMessage, resolveGeneralMessage } =
+    useProjectChecklist(projectId)
   const [expandedOverride, setExpandedOverride] = useState<Record<string, boolean>>({})
 
   if (!project) {
@@ -131,6 +132,7 @@ export default function ChecklistProject() {
             onSend={sendGeneralMessage}
             micHint="Revisé el manifold, está pintado, y el bastón de la red interior tiene marcado el número de cada departamento."
             attachHint="Aquí tienes una foto."
+            onSelectOption={resolveGeneralMessage}
           />
         </aside>
       </div>
