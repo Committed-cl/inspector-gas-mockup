@@ -27,6 +27,12 @@ export type Evidencia = {
   // rojo/gris) en vez de siempre verde. Esta entrada se reemplaza en cada clic,
   // no se acumula como historial.
   resultado?: ChecklistStatus
+  // A qué campo de evidenciasRequeridas (por índice) corresponde esta entrada.
+  // Ausente en las entradas de marcado manual, que no cubren ningún campo.
+  requisitoIndex?: number
+  // Miniatura del archivo adjuntado (object URL), solo para evidencia tipo "foto"
+  // cargada mediante selector de archivo real.
+  previewUrl?: string
 }
 
 export type ItemState = {
@@ -37,13 +43,18 @@ export type ItemState = {
   chat: ChatMessage[]
 }
 
+// Cada ítem exige uno o más campos de evidencia concretos, no una sola casilla
+// genérica — "foto" exige específicamente una foto; "declaracion" se satisface
+// con cualquier evidencia (texto, audio o foto).
+export type RequisitoEvidencia = { label: string; tipo: 'foto' | 'declaracion' }
+
 export type ChecklistItemDef = {
   id: string
   seccion: string
   titulo: string
   queValidaApp: string
   criterioNormativo: string
-  requiereFoto?: boolean
+  evidenciasRequeridas: RequisitoEvidencia[]
   permiteNoAplica?: boolean
   keywords: string[]
 }
@@ -80,7 +91,11 @@ export const checklistDef: ChecklistItemDef[] = [
       'Que se haya hecho la prueba de hermeticidad. Requiere foto del formulario firmado y validar tiempo y presión — no puede quedar pendiente, es previo a la dada de gas definitivo.',
     criterioNormativo:
       'DS N°66/2007, Art. 78.3.5 — presión mínima 1,5× la de servicio, caída de presión ≤1 kPa, duración = volumen (m³) × 214 (mín. 15 min).',
-    requiereFoto: true,
+    evidenciasRequeridas: [
+      { label: 'Foto del formulario firmado', tipo: 'foto' },
+      { label: 'Tiempo de la prueba', tipo: 'declaracion' },
+      { label: 'Presión registrada', tipo: 'declaracion' },
+    ],
     keywords: ['hermeticidad matriz', 'prueba de hermeticidad'],
   },
   {
@@ -89,6 +104,7 @@ export const checklistDef: ChecklistItemDef[] = [
     titulo: 'Prueba Hermeticidad Interior',
     queValidaApp: 'El supervisor declara si la red interior quedó hermética tras la prueba realizada.',
     criterioNormativo: 'DS N°66/2007, Art. 78.3.5 — mismo procedimiento que la matriz, aplicado a la red interior.',
+    evidenciasRequeridas: [{ label: 'Declaración de hermeticidad de la red interior', tipo: 'declaracion' }],
     keywords: ['hermeticidad interior', 'red interior hermética'],
   },
   {
@@ -97,7 +113,7 @@ export const checklistDef: ChecklistItemDef[] = [
     titulo: 'Prueba de Limpieza',
     queValidaApp: 'Validar que se realizó y que existe formulario firmado por quien la hizo. Requiere foto del formulario.',
     criterioNormativo: 'DS N°66/2007, Art. 103.1.1 — barridos con aire comprimido hasta comprobar ausencia de óxidos y partículas.',
-    requiereFoto: true,
+    evidenciasRequeridas: [{ label: 'Foto del formulario firmado', tipo: 'foto' }],
     keywords: ['prueba de limpieza', 'limpieza interior', 'barrido'],
   },
   {
@@ -107,7 +123,11 @@ export const checklistDef: ChecklistItemDef[] = [
     queValidaApp: 'Prueba de resistencia mecánica: tiempo aplicado, presión usada, cumple/no cumple. Foto del documento firmado.',
     criterioNormativo:
       'Sin norma específica de ensayo de campo — DS N°66/2007 Art. 102.2.3 solo exige certificación de fábrica de la tubería.',
-    requiereFoto: true,
+    evidenciasRequeridas: [
+      { label: 'Foto del documento firmado', tipo: 'foto' },
+      { label: 'Tiempo aplicado', tipo: 'declaracion' },
+      { label: 'Presión usada', tipo: 'declaracion' },
+    ],
     keywords: ['resistencia matriz', 'prueba de resistencia'],
   },
   {
@@ -116,6 +136,7 @@ export const checklistDef: ChecklistItemDef[] = [
     titulo: 'Atravieso muro externo: sello anular entre tubería de gas y camisa de protección',
     queValidaApp: 'Revisar todos los puntos donde la matriz atraviesa la línea de edificación desde el exterior.',
     criterioNormativo: 'DS N°66/2007, Art. 46.2.5 y 46.2.6 — espacio anular sellado contra ingreso de gas/agua y corrosión.',
+    evidenciasRequeridas: [{ label: 'Confirmación de revisión en todos los puntos de atravieso', tipo: 'declaracion' }],
     keywords: ['sello anular', 'atravieso muro', 'camisa de protección'],
   },
 
@@ -127,7 +148,7 @@ export const checklistDef: ChecklistItemDef[] = [
     queValidaApp:
       'Aplica a tránsito peatonal o sin tránsito. Requiere foto obligatoria — el ítem no se da por cumplido sin foto cargada.',
     criterioNormativo: 'DS N°66/2007, Art. 46.2.2.c — cubierta mínima 60 cm sobre la tubería enterrada.',
-    requiereFoto: true,
+    evidenciasRequeridas: [{ label: 'Foto de la profundidad medida', tipo: 'foto' }],
     keywords: ['profundidad', '61 cm', 'clave de la tubería'],
   },
   {
@@ -136,7 +157,7 @@ export const checklistDef: ChecklistItemDef[] = [
     titulo: 'En jardines y tránsito vehicular, profundidad a la clave de la tubería de 80 cm',
     queValidaApp: 'Aplica a jardines o tránsito vehicular. Misma exigencia de foto obligatoria.',
     criterioNormativo: 'DS N°66/2007, Art. 46.2.2.c — bajo calles con circulación vehicular, cubierta mínima 80 cm.',
-    requiereFoto: true,
+    evidenciasRequeridas: [{ label: 'Foto de la profundidad medida', tipo: 'foto' }],
     permiteNoAplica: true,
     keywords: ['80 cm', 'jardines', 'tránsito vehicular'],
   },
@@ -146,6 +167,7 @@ export const checklistDef: ChecklistItemDef[] = [
     titulo: 'Distancia a edificaciones: 1 m',
     queValidaApp: 'Si la matriz va a menos de 1 m del muro/perímetro del edificio, declarar qué medidas de mitigación se aplicaron.',
     criterioNormativo: 'Sin norma específica encontrada para esta distancia en el trazado de la matriz.',
+    evidenciasRequeridas: [{ label: 'Declaración de distancia o medidas de mitigación', tipo: 'declaracion' }],
     keywords: ['distancia a edificaciones', '1 metro'],
   },
   {
@@ -154,6 +176,7 @@ export const checklistDef: ChecklistItemDef[] = [
     titulo: 'Distancia a redes de agua potable 50 cm',
     queValidaApp: 'Solo registrar cumple / no cumple / no sabe.',
     criterioNormativo: 'DS N°66/2007, Art. 46.2.1.c.1 — separación mínima 50 cm en cruces con tuberías de otros servicios.',
+    evidenciasRequeridas: [{ label: 'Declaración de cumplimiento', tipo: 'declaracion' }],
     keywords: ['agua potable', '50 cm'],
   },
   {
@@ -162,6 +185,7 @@ export const checklistDef: ChecklistItemDef[] = [
     titulo: 'Distancia de 15 cm a cualquier otra estructura o servicio subterráneo (telecomunicaciones, cámaras, postes, etc.)',
     queValidaApp: 'Solo registrar cumple / no cumple / no sabe.',
     criterioNormativo: 'DS N°66/2007, Art. 46.2.1.a — exige "espacio libre suficiente" sin cuantificar 15 cm.',
+    evidenciasRequeridas: [{ label: 'Declaración de cumplimiento', tipo: 'declaracion' }],
     keywords: ['15 cm', 'telecomunicaciones', 'cámaras subterráneas', 'postes'],
   },
   {
@@ -170,6 +194,7 @@ export const checklistDef: ChecklistItemDef[] = [
     titulo: 'Distancia de 50 cm con cruces de líneas eléctricas soterradas',
     queValidaApp: 'Solo registrar cumple / no cumple / no sabe.',
     criterioNormativo: 'DS N°66/2007, Art. 78.3.2.a.2 — ≥50 cm de conductores aislados enterrados >400 V.',
+    evidenciasRequeridas: [{ label: 'Declaración de cumplimiento', tipo: 'declaracion' }],
     keywords: ['líneas eléctricas soterradas', 'cruces eléctricos'],
   },
   {
@@ -178,6 +203,7 @@ export const checklistDef: ChecklistItemDef[] = [
     titulo: 'Distancia de 50 cm a cruce de conductores eléctricos',
     queValidaApp: 'Solo registrar cumple / no cumple / no sabe.',
     criterioNormativo: 'DS N°66/2007, Art. 46.2.1.c.1 y Art. 78.3.2.a — 30 a 60 cm según aislación y voltaje.',
+    evidenciasRequeridas: [{ label: 'Declaración de cumplimiento', tipo: 'declaracion' }],
     keywords: ['cruce de conductores', 'conductores eléctricos'],
   },
   {
@@ -186,6 +212,7 @@ export const checklistDef: ChecklistItemDef[] = [
     titulo: 'Distancia de 30 cm a conductores eléctricos paralelos',
     queValidaApp: 'Solo registrar cumple / no cumple / no sabe.',
     criterioNormativo: 'DS N°66/2007, Art. 78.3.2.a.2 — ≥30 cm de conductores aislados enterrados entre 25–400 V.',
+    evidenciasRequeridas: [{ label: 'Declaración de cumplimiento', tipo: 'declaracion' }],
     keywords: ['conductores paralelos', '30 cm'],
   },
 
@@ -196,6 +223,7 @@ export const checklistDef: ChecklistItemDef[] = [
     titulo: 'Matriz a la vista y/o registrable en toda su longitud',
     queValidaApp: 'Cumple o no cumple. Las partes que no van a la vista deben ser registrables.',
     criterioNormativo: 'DS N°66/2007, Art. 78.3.3.b — tuberías exteriores visibles y accesibles en toda su extensión.',
+    evidenciasRequeridas: [{ label: 'Declaración de que la matriz está a la vista o es registrable', tipo: 'declaracion' }],
     keywords: ['a la vista', 'registrable en toda'],
   },
   {
@@ -204,6 +232,7 @@ export const checklistDef: ChecklistItemDef[] = [
     titulo: 'Matriz Pintada',
     queValidaApp: 'Cumple o no cumple estar pintada de amarillo.',
     criterioNormativo: 'DS N°66/2007, Art. 78.3.3.e.1.ii — dos capas de pintura (primer epóxico + esmalte epóxico), color amarillo.',
+    evidenciasRequeridas: [{ label: 'Declaración o foto de la pintura amarilla', tipo: 'declaracion' }],
     keywords: ['pintada', 'pintura amarilla'],
   },
   {
@@ -212,6 +241,7 @@ export const checklistDef: ChecklistItemDef[] = [
     titulo: 'Instalación Protección contra Daño Mecánico',
     queValidaApp: 'En zonas de tránsito, la matriz a la vista debe tener protección hasta 1,8 m de altura.',
     criterioNormativo: 'DS N°66/2007, Art. 78.3.3.b.1 — defensas/barandas/barreras si hay riesgo de golpe de vehículos o maquinaria.',
+    evidenciasRequeridas: [{ label: 'Declaración de protección instalada donde corresponde', tipo: 'declaracion' }],
     keywords: ['daño mecánico', 'protección mecánica'],
   },
   {
@@ -221,6 +251,7 @@ export const checklistDef: ChecklistItemDef[] = [
     queValidaApp:
       'La matriz de cobre sobre soporte metálico debe llevar aislación (PVC o similar). Preguntar explícitamente si se revisaron TODOS los soportes.',
     criterioNormativo: 'DS N°66/2007, Art. 78.3.3.b.2.vii y Art. 47 — aislación de soportes/estructuras metálicas.',
+    evidenciasRequeridas: [{ label: 'Confirmación de que se revisaron todos los soportes', tipo: 'declaracion' }],
     keywords: ['soportes', 'aislación'],
   },
   {
@@ -229,6 +260,7 @@ export const checklistDef: ChecklistItemDef[] = [
     titulo: 'Llave de Corte General h:1,8 m',
     queValidaApp: 'Cumple o no cumple. Admite "No aplica" cuando el proyecto no la requiere o está en el módulo.',
     criterioNormativo: 'DS N°66/2007, Art. 52.4 — válvula de corte con accesibilidad Grado 1 (Art. 10.2.1).',
+    evidenciasRequeridas: [{ label: 'Declaración de cumplimiento', tipo: 'declaracion' }],
     permiteNoAplica: true,
     keywords: ['llave de corte', 'corte general'],
   },
@@ -238,6 +270,7 @@ export const checklistDef: ChecklistItemDef[] = [
     titulo: 'Distancia a líneas y conductores eléctricos',
     queValidaApp: 'Validar medidas de mitigación cuando no se cumple la distancia, en cruces o en tramos paralelos.',
     criterioNormativo: 'DS N°66/2007, Art. 78.3.2.b — 15 cm a 5 m según aislación y voltaje del conductor.',
+    evidenciasRequeridas: [{ label: 'Declaración de distancia o medidas de mitigación', tipo: 'declaracion' }],
     keywords: ['líneas eléctricas', 'conductores eléctricos'],
   },
 
@@ -248,7 +281,7 @@ export const checklistDef: ChecklistItemDef[] = [
     titulo: 'Cinta de advertencia en matriz enterrada',
     queValidaApp: 'Cumple/no cumple + foto. Si no hay tramo soterrado, declarar "no aplica".',
     criterioNormativo: 'DS N°66/2007, Art. 46.2.2.d — cinta amarilla con leyenda "GAS", a ≥25 cm sobre la tubería enterrada.',
-    requiereFoto: true,
+    evidenciasRequeridas: [{ label: 'Foto de la cinta instalada', tipo: 'foto' }],
     permiteNoAplica: true,
     keywords: ['cinta de advertencia', 'cinta amarilla'],
   },
@@ -258,6 +291,7 @@ export const checklistDef: ChecklistItemDef[] = [
     titulo: 'Llaves de Sectorización con Señalética',
     queValidaApp: 'Declarar explícitamente si están todas, si falta alguna, o si no existen llaves de sectorización.',
     criterioNormativo: 'DS N°66/2007, Art. 52.3.1 — válvulas de sistemas múltiples identificadas con placa permanente.',
+    evidenciasRequeridas: [{ label: 'Declaración de estado de las llaves de sectorización', tipo: 'declaracion' }],
     keywords: ['llaves de sectorización', 'sectorización'],
   },
   {
@@ -266,6 +300,7 @@ export const checklistDef: ChecklistItemDef[] = [
     titulo: 'Leyenda Gas Natural y Flecha Flujo (1 por recinto subterráneo)',
     queValidaApp: 'Cumple/no cumple. Al menos una señalética en toda la matriz.',
     criterioNormativo: 'DS N°66/2007, Art. 60.2.b — señalizar el tipo de gas en gabinetes/nichos/conductos técnicos.',
+    evidenciasRequeridas: [{ label: 'Declaración o foto de la señalética', tipo: 'declaracion' }],
     keywords: ['leyenda gas natural', 'flecha de flujo'],
   },
 
@@ -276,6 +311,7 @@ export const checklistDef: ChecklistItemDef[] = [
     titulo: 'Exclusivo, Incombustible, Registrable en toda su extensión, señalética en puerta del recinto',
     queValidaApp: 'Si existe vigón o zócalo falso, confirmar que cumple estas características. Admite "No aplica".',
     criterioNormativo: 'DS N°66/2007, Art. 59.2.1.a, 59.2.3.a y 59.2.4.a — uso exclusivo, no combustible, resistencia al fuego F60/F90/F120.',
+    evidenciasRequeridas: [{ label: 'Declaración de cumplimiento de las características exigidas', tipo: 'declaracion' }],
     permiteNoAplica: true,
     keywords: ['vigón', 'zócalo falso'],
   },
@@ -287,6 +323,7 @@ export const checklistDef: ChecklistItemDef[] = [
     titulo: 'Manifold Pintado',
     queValidaApp: 'Cumple o no cumple.',
     criterioNormativo: 'Sin norma específica encontrada para el pintado del manifold.',
+    evidenciasRequeridas: [{ label: 'Declaración de cumplimiento', tipo: 'declaracion' }],
     keywords: ['manifold'],
   },
   {
@@ -295,6 +332,7 @@ export const checklistDef: ChecklistItemDef[] = [
     titulo: 'Ventilación Inferior y superior (según proyecto)',
     queValidaApp: 'Cumple o no cumple — debe tener instalado el sistema de ventilación definido en el proyecto.',
     criterioNormativo: 'DS N°66/2007, Art. 59.2.2 y Tablas XIV/XV — ventilación directa superior e inferior.',
+    evidenciasRequeridas: [{ label: 'Declaración de ventilación instalada', tipo: 'declaracion' }],
     keywords: ['ventilación inferior', 'ventilación superior'],
   },
   {
@@ -303,6 +341,7 @@ export const checklistDef: ChecklistItemDef[] = [
     titulo: 'Medidor Marcado',
     queValidaApp: 'Cumple o no cumple — debe indicar el número de depto./local al que abastece.',
     criterioNormativo: 'DS N°66/2007, Art. 60.1 — medidores identificados con el número municipal correspondiente.',
+    evidenciasRequeridas: [{ label: 'Declaración o foto de la marcación del medidor', tipo: 'declaracion' }],
     keywords: ['medidor marcado'],
   },
   {
@@ -311,6 +350,7 @@ export const checklistDef: ChecklistItemDef[] = [
     titulo: 'Protección Rejilla caída medidor (solo si aplica)',
     queValidaApp: 'Cumple / no cumple / no aplica. Requerida si la apertura en la losa supera el tamaño que exige rejilla.',
     criterioNormativo: 'DS N°66/2007, Art. 59.2.4.b — reja desmontable que soporte ≥200 kgf si la superficie libre supera 400 cm².',
+    evidenciasRequeridas: [{ label: 'Declaración de cumplimiento', tipo: 'declaracion' }],
     permiteNoAplica: true,
     keywords: ['rejilla', 'caída medidor'],
   },
@@ -320,6 +360,7 @@ export const checklistDef: ChecklistItemDef[] = [
     titulo: 'Bastón Red Interior marcado con número de cada departamento',
     queValidaApp: 'El bastón (salida del medidor a la red interior) debe estar marcado con el número de local/depto.',
     criterioNormativo: 'DS N°66/2007, Art. 60.1 — misma exigencia de rotulación que el medidor.',
+    evidenciasRequeridas: [{ label: 'Declaración o foto de la marcación del bastón', tipo: 'declaracion' }],
     keywords: ['bastón'],
   },
   {
@@ -328,6 +369,7 @@ export const checklistDef: ChecklistItemDef[] = [
     titulo: 'Burlete goma y brazo Hidráulico (cierre forzado)',
     queValidaApp: 'Cumple o no cumple.',
     criterioNormativo: 'DS N°66/2007, Art. 59.2.1.b — puerta batiente con burlete y cierre forzado (brazo mecánico o hidráulico) + cerradura.',
+    evidenciasRequeridas: [{ label: 'Declaración de cumplimiento', tipo: 'declaracion' }],
     keywords: ['burlete', 'brazo hidráulico', 'cierre forzado'],
   },
 
@@ -338,6 +380,7 @@ export const checklistDef: ChecklistItemDef[] = [
     titulo: 'Certificado TC3',
     queValidaApp: 'Lo tiene o no lo tiene (otorgado por la SEC). Cubre además Certificado de Materiales, calificación de soldadores y plano as-built.',
     criterioNormativo: 'Certificado SEC — no se solicitan como ítems individuales aparte del TC3.',
+    evidenciasRequeridas: [{ label: 'Certificado TC3', tipo: 'declaracion' }],
     keywords: ['tc3', 'certificado tc3'],
   },
 
@@ -348,6 +391,7 @@ export const checklistDef: ChecklistItemDef[] = [
     titulo: 'Vertical, continuo y sin quiebres',
     queValidaApp: 'Cumple o no cumple.',
     criterioNormativo: 'DS N°66/2007, Art. 59.2.4.a — vertical, rectilíneo, resistencia al fuego F60/F90/F120 según NCh935/1.',
+    evidenciasRequeridas: [{ label: 'Declaración de cumplimiento', tipo: 'declaracion' }],
     permiteNoAplica: true,
     keywords: ['conducto técnico', 'sin quiebres'],
   },
@@ -357,6 +401,7 @@ export const checklistDef: ChecklistItemDef[] = [
     titulo: 'Ventilación (tiro) 100 cm² mínimo',
     queValidaApp: 'Cumple / no cumple / no aplica (si no hay conducto técnico). Ventilación inferior por donde se toma el aire.',
     criterioNormativo: 'DS N°66/2007, Art. 59.2.4.b — superficie libre mínima 100 cm² al atravesar la losa de cada piso.',
+    evidenciasRequeridas: [{ label: 'Declaración de cumplimiento', tipo: 'declaracion' }],
     permiteNoAplica: true,
     keywords: ['tiro', '100 cm2', 'ventilación inferior conducto'],
   },
@@ -366,13 +411,21 @@ export const checklistDef: ChecklistItemDef[] = [
     titulo: 'Ventilación Sombrerete Aspirador Estacionario',
     queValidaApp: 'Cumple / no cumple / no aplica (si no hay conducto técnico). Debe salir "a los cuatro vientos".',
     criterioNormativo: 'DS N°66/2007, Art. 59.2.4.c — sombrerete tipo aspirador estacionario, protegido de lluvia/insectos/pájaros.',
+    evidenciasRequeridas: [{ label: 'Declaración de cumplimiento', tipo: 'declaracion' }],
     permiteNoAplica: true,
     keywords: ['sombrerete', 'aspirador estacionario'],
   },
 ]
 
-function ev(id: string, tipo: EvidenciaTipo, origen: Evidencia['origen'], texto: string, hora: string): Evidencia {
-  return { id, tipo, origen, texto, hora }
+function ev(
+  id: string,
+  tipo: EvidenciaTipo,
+  origen: Evidencia['origen'],
+  texto: string,
+  hora: string,
+  requisitoIndex = 0,
+): Evidencia {
+  return { id, tipo, origen, texto, hora, requisitoIndex }
 }
 
 function msg(id: string, role: ChatRole, texto: string, hora: string, tipo?: EvidenciaTipo): ChatMessage {
@@ -453,7 +506,10 @@ setEstado('matriz-pintada', {
 setEstado('prueba-hermeticidad-matriz', {
   status: 'warn',
   origen: 'chat',
-  evidencia: [ev('e-phm-1', 'texto', 'chat-item', 'Se hizo la prueba de hermeticidad, quedó conforme.', '13:40')],
+  evidencia: [
+    ev('e-phm-1', 'texto', 'chat-item', 'La prueba duró 25 minutos.', '13:40', 1),
+    ev('e-phm-2', 'texto', 'chat-item', 'Se probó a 180 kPa, dentro del rango exigido.', '13:40', 2),
+  ],
   chat: [
     msg('phm-1', 'inspector', 'Se hizo la prueba de hermeticidad, quedó conforme.', '13:40'),
     msg(
@@ -536,25 +592,57 @@ export function matchItemsByKeyword(texto: string): ChecklistItemDef[] {
   return checklistDef.filter((def) => def.keywords.some((k) => lower.includes(k)))
 }
 
-// Un ítem solo puede quedar en verde si ya tiene la evidencia que exige — foto
-// específicamente cuando el checklist la requiere, o cualquier evidencia cargada
-// en los demás casos. El botón "Cumple" por sí solo nunca alcanza.
-// El registro del propio marcado manual (origen "marcado-manual") no cuenta como
-// esa evidencia — si contara, un clic bastaría para justificarse a sí mismo.
+export function itemRequiereFoto(def: ChecklistItemDef): boolean {
+  return def.evidenciasRequeridas.some((r) => r.tipo === 'foto')
+}
+
+export type EstadoRequisito = RequisitoEvidencia & { cumplido: boolean; evidencia?: Evidencia }
+
+// Cada campo requerido tiene su propio espacio para cargar evidencia — se
+// identifica por su posición en evidenciasRequeridas (requisitoIndex). Un
+// campo de tipo "foto" solo se da por cubierto si la evidencia asociada es
+// efectivamente una foto — un texto en ese índice no lo satisface. El registro
+// del propio marcado manual (origen "marcado-manual") nunca cubre un campo, o
+// un clic bastaría para justificarse a sí mismo.
+export function estadoEvidenciasRequeridas(def: ChecklistItemDef, evidencia: Evidencia[]): EstadoRequisito[] {
+  return def.evidenciasRequeridas.map((req, i) => {
+    const asociada = evidencia.find(
+      (e) => e.origen !== 'marcado-manual' && e.requisitoIndex === i && (req.tipo !== 'foto' || e.tipo === 'foto'),
+    )
+    return { ...req, cumplido: !!asociada, evidencia: asociada }
+  })
+}
+
+// Para evidencia que llega por chat (sin que el inspector elija a qué campo
+// corresponde): una foto puede cubrir un campo de foto o, a falta de ese,
+// cualquier campo de declaración pendiente. Texto o audio solo puede cubrir un
+// campo de declaración — nunca uno que exige foto específicamente.
+export function siguienteRequisitoPendiente(
+  def: ChecklistItemDef,
+  evidenciaExistente: Evidencia[],
+  tipoPreferido: EvidenciaTipo,
+): number | undefined {
+  const estados = estadoEvidenciasRequeridas(def, evidenciaExistente)
+  if (tipoPreferido === 'foto') {
+    const fotoPendiente = estados.findIndex((r) => !r.cumplido && r.tipo === 'foto')
+    if (fotoPendiente !== -1) return fotoPendiente
+    const cualquiera = estados.findIndex((r) => !r.cumplido)
+    return cualquiera !== -1 ? cualquiera : undefined
+  }
+  const declaracionPendiente = estados.findIndex((r) => !r.cumplido && r.tipo === 'declaracion')
+  return declaracionPendiente !== -1 ? declaracionPendiente : undefined
+}
+
+// Un ítem solo puede quedar en verde si TODOS sus campos de evidencia requeridos
+// están cubiertos. El botón "Cumple" por sí solo nunca alcanza.
 export function tieneEvidenciaSuficiente(def: ChecklistItemDef, evidencia: Evidencia[]): boolean {
-  const evidenciaReal = evidencia.filter((e) => e.origen !== 'marcado-manual')
-  return def.requiereFoto ? evidenciaReal.some((e) => e.tipo === 'foto') : evidenciaReal.length > 0
+  return estadoEvidenciasRequeridas(def, evidencia).every((r) => r.cumplido)
 }
 
 export function hintEvidenciaFaltante(def: ChecklistItemDef, evidencia: Evidencia[]): string | undefined {
-  if (tieneEvidenciaSuficiente(def, evidencia)) return undefined
-  return def.requiereFoto ? 'Requiere foto para quedar en verde.' : 'Requiere evidencia cargada para quedar en verde.'
-}
-
-// Nombre de la evidencia que le falta al ítem para considerarse cubierto — usado
-// para pintar el placeholder gris en la lista de evidencias del checklist.
-export function evidenciaPendienteLabel(def: ChecklistItemDef): string {
-  return def.requiereFoto ? 'Foto de respaldo' : 'Evidencia de respaldo'
+  const faltantes = estadoEvidenciasRequeridas(def, evidencia).filter((r) => !r.cumplido)
+  if (faltantes.length === 0) return undefined
+  return `Falta ${faltantes.map((r) => r.label.toLowerCase()).join(', ')} para quedar en verde.`
 }
 
 export function estadoInicialParaProyecto(proyectoId: string): Record<string, ItemState> {

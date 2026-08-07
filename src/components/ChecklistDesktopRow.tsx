@@ -1,9 +1,8 @@
 import { Link } from 'react-router-dom'
 import ManualEstadoControl from './ManualEstadoControl'
 import {
-  evidenciaPendienteLabel,
+  estadoEvidenciasRequeridas,
   hintEvidenciaFaltante,
-  tieneEvidenciaSuficiente,
   type ChecklistItemDef,
   type ChecklistStatus,
   type ItemState,
@@ -28,13 +27,6 @@ const badgeClass: Record<ChecklistStatus, string> = {
   warn: 'text-warn bg-warn/10',
   pending: 'text-danger bg-danger/10',
   na: 'text-muted bg-muted/10',
-}
-
-const dotResultado: Record<ChecklistStatus, string> = {
-  ok: 'bg-ok',
-  warn: 'bg-warn',
-  pending: 'bg-danger',
-  na: 'bg-muted',
 }
 
 type Props = {
@@ -85,24 +77,21 @@ export default function ChecklistDesktopRow({ def, state, proyectoId, onMarcar }
 
           {state.status !== 'na' && (
             <div className="mt-2 flex flex-col gap-1">
-              {state.evidencia.map((e) => (
-                <div key={e.id} className="flex items-center gap-1.5 text-[11px] text-ink">
+              {estadoEvidenciasRequeridas(def, state.evidencia).map((req, i) => (
+                <div key={i} className="flex items-center gap-1.5 text-[11px]">
                   <span
-                    className={`h-2 w-2 rounded-full shrink-0 ${e.resultado ? dotResultado[e.resultado] : 'bg-ok'}`}
+                    className={`h-2 w-2 rounded-full shrink-0 ${
+                      req.cumplido ? 'bg-ok' : 'bg-hairline border border-muted/30'
+                    }`}
                     aria-hidden
                   />
-                  <span className="truncate">
-                    {e.tipo === 'foto' ? '📷 ' : e.tipo === 'audio' ? '🎙 ' : ''}
-                    {e.texto}
+                  <span className={`truncate ${req.cumplido ? 'text-ink' : 'text-muted'}`}>
+                    {req.tipo === 'foto' ? '📷 ' : ''}
+                    {req.label}
+                    {req.cumplido && req.evidencia ? `: ${req.evidencia.texto}` : ' (pendiente)'}
                   </span>
                 </div>
               ))}
-              {!tieneEvidenciaSuficiente(def, state.evidencia) && (
-                <div className="flex items-center gap-1.5 text-[11px] text-muted">
-                  <span className="h-2 w-2 rounded-full bg-hairline border border-muted/30 shrink-0" aria-hidden />
-                  <span>{evidenciaPendienteLabel(def)} (pendiente)</span>
-                </div>
-              )}
               {!state.evidencia.some((e) => e.origen === 'marcado-manual') && (
                 <div className="flex items-center gap-1.5 text-[11px] text-muted">
                   <span className="h-2 w-2 rounded-full bg-hairline border border-muted/30 shrink-0" aria-hidden />

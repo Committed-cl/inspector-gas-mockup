@@ -5,10 +5,12 @@ import {
   chatGeneralInicialParaProyecto,
   estadoInicialParaProyecto,
   matchItemsByKeyword,
+  siguienteRequisitoPendiente,
   tieneEvidenciaSuficiente,
   inspector,
   type ChatMessage,
   type ChecklistStatus,
+  type Evidencia,
   type EvidenciaTipo,
   type ItemState,
 } from '../data/checklistMatrizInterior'
@@ -46,7 +48,14 @@ function ensureProyecto(
 type ChecklistContextValue = {
   getProyectoState: (proyectoId: string) => ProyectoChecklistState
   marcarManual: (proyectoId: string, itemId: string, status: ChecklistStatus, justificacion?: string) => void
-  agregarEvidencia: (proyectoId: string, itemId: string, tipo: EvidenciaTipo, texto: string) => void
+  agregarEvidencia: (
+    proyectoId: string,
+    itemId: string,
+    requisitoIndex: number,
+    tipo: EvidenciaTipo,
+    texto: string,
+    previewUrl?: string,
+  ) => void
   enviarMensajeGeneral: (proyectoId: string, texto: string, tipo?: EvidenciaTipo) => void
   enviarMensajeItem: (proyectoId: string, itemId: string, texto: string, tipo?: EvidenciaTipo) => void
 }
@@ -87,10 +96,10 @@ export function ChecklistProvider({ children }: { children: ReactNode }) {
                 ? 'Marcado como cumplido, pero falta evidencia para confirmarlo.'
                 : 'Marcado manualmente como no cumple.'
 
-        const marcaManual = {
+        const marcaManual: Evidencia = {
           id: nextId('ev'),
-          tipo: 'texto' as const,
-          origen: 'marcado-manual' as const,
+          tipo: 'texto',
+          origen: 'marcado-manual',
           texto: textoEvidencia,
           hora,
           resultado: statusFinal,
@@ -117,28 +126,29 @@ export function ChecklistProvider({ children }: { children: ReactNode }) {
     [],
   )
 
-  const agregarEvidencia = useCallback((proyectoId: string, itemId: string, tipo: EvidenciaTipo, texto: string) => {
-    if (!texto.trim()) return
-    const hora = horaAhora()
-    setPorProyecto((prev) => {
-      const base = ensureProyecto(proyectoId, prev)
-      const proyectoState = base[proyectoId]
-      const prevItem = proyectoState.itemsState[itemId]
-      return {
-        ...base,
-        [proyectoId]: {
-          ...proyectoState,
-          itemsState: {
-            ...proyectoState.itemsState,
-            [itemId]: {
-              ...prevItem,
-              evidencia: [...prevItem.evidencia, { id: nextId('ev'), tipo, origen: 'manual', texto, hora }],
+  const agregarEvidencia = useCallback(
+    (proyectoId: string, itemId: string, requisitoIndex: number, tipo: EvidenciaTipo, texto: string, previewUrl?: string) => {
+      if (!texto.trim()) return
+      const hora = horaAhora()
+      setPorProyecto((prev) => {
+        const base = ensureProyecto(proyectoId, prev)
+        const proyectoState = base[proyectoId]
+        const prevItem = proyectoState.itemsState[itemId]
+        const nuevaEvidencia: Evidencia = { id: nextId('ev'), tipo, origen: 'manual', texto, hora, requisitoIndex, previewUrl }
+        return {
+          ...base,
+          [proyectoId]: {
+            ...proyectoState,
+            itemsState: {
+              ...proyectoState.itemsState,
+              [itemId]: { ...prevItem, evidencia: [...prevItem.evidencia, nuevaEvidencia] },
             },
           },
-        },
-      }
-    })
-  }, [])
+        }
+      })
+    },
+    [],
+  )
 
   const enviarMensajeGeneral = useCallback((proyectoId: string, texto: string, tipo: EvidenciaTipo = 'texto') => {
     if (!texto.trim()) return
@@ -165,26 +175,26 @@ export function ChecklistProvider({ children }: { children: ReactNode }) {
       }
 
       const nextItemsState = { ...proyectoState.itemsState }
+      const actualizados: string[] = []
       for (const def of matched) {
         const prevItem = nextItemsState[def.id]
         if (prevItem.status === 'na') continue
-        nextItemsState[def.id] = {
-          ...prevItem,
-          status: 'ok',
-          origen: 'chat',
-          evidencia: [...prevItem.evidencia, { id: nextId('ev'), tipo, origen: 'chat-general', texto, hora }],
-        }
+        const requisitoIndex = siguienteRequisitoPendiente(def, prevItem.evidencia, tipo)
+        const nuevaEvidencia: Evidencia = { id: nextId('ev'), tipo, origen: 'chat-general', texto, hora, requisitoIndex }
+        const evidencia = [...prevItem.evidencia, nuevaEvidencia]
+        const suficiente = tieneEvidenciaSuficiente(def, evidencia)
+        nextItemsState[def.id] = { ...prevItem, status: suficiente ? 'ok' : 'warn', origen: 'chat', evidencia }
+        if (suficiente) actualizados.push(def.titulo)
       }
 
-      const titulos = matched.map((d) => `"${d.titulo}"`).join(' y ')
-      const iaMsg: ChatMessage = {
-        id: nextId('gm'),
-        role: 'ia',
-        texto: `Marqué ${titulos} como cumplido${matched.length > 1 ? 's' : ''} con tu ${
-          tipo === 'foto' ? 'mensaje y la foto adjunta' : tipo === 'audio' ? 'declaración por voz' : 'mensaje'
-        }.`,
-        hora,
-      }
+      const titulos = actualizados.map((t) => `"${t}"`).join(' y ')
+      const iaTexto =
+        actualizados.length > 0
+          ? `Marqué ${titulos} como cumplido${actualizados.length > 1 ? 's' : ''} con tu ${
+              tipo === 'foto' ? 'mensaje y la foto adjunta' : tipo === 'audio' ? 'declaración por voz' : 'mensaje'
+            }.`
+          : `Anoté esto en ${matched.length > 1 ? 'los ítems correspondientes' : `"${matched[0].titulo}"`}, pero todavía falta evidencia para darlos por cumplidos.`
+      const iaMsg: ChatMessage = { id: nextId('gm'), role: 'ia', texto: iaTexto, hora }
 
       return {
         ...base,
@@ -208,25 +218,20 @@ export function ChecklistProvider({ children }: { children: ReactNode }) {
         const base = ensureProyecto(proyectoId, prev)
         const proyectoState = base[proyectoId]
         const prevItem = proyectoState.itemsState[itemId]
-        const evidencia = [...prevItem.evidencia, { id: nextId('ev'), tipo, origen: 'chat-item' as const, texto, hora }]
-        const tieneFoto = tipo === 'foto' || evidencia.some((e) => e.tipo === 'foto')
+        const requisitoIndex = siguienteRequisitoPendiente(def, prevItem.evidencia, tipo)
+        const nuevaEvidencia: Evidencia = { id: nextId('ev'), tipo, origen: 'chat-item', texto, hora, requisitoIndex }
+        const evidencia = [...prevItem.evidencia, nuevaEvidencia]
+        const suficiente = tieneEvidenciaSuficiente(def, evidencia)
 
-        let iaTexto: string
-        let status: ChecklistStatus
-
-        if (def.requiereFoto && !tieneFoto) {
-          status = 'warn'
-          iaTexto = `Para dar este ítem por cumplido necesito una foto que respalde tu declaración — ${def.criterioNormativo}. ¿Puedes subir una foto?`
-        } else {
-          status = 'ok'
-          iaTexto = `Marqué "${def.titulo}" como cumplido con ${tipo === 'foto' ? 'la foto adjunta' : 'tu declaración'}.`
-        }
+        const iaTexto = suficiente
+          ? `Marqué "${def.titulo}" como cumplido con ${tipo === 'foto' ? 'la foto adjunta' : 'tu declaración'}.`
+          : `Todavía falta evidencia para dar "${def.titulo}" por cumplido — ${def.criterioNormativo}. ¿Puedes contarme o adjuntar lo que falta?`
 
         const iaMsg: ChatMessage = { id: nextId('im'), role: 'ia', texto: iaTexto, hora }
 
         const nextItem: ItemState = {
           ...prevItem,
-          status: prevItem.status === 'na' ? prevItem.status : status,
+          status: prevItem.status === 'na' ? prevItem.status : suficiente ? 'ok' : 'warn',
           origen: 'chat',
           evidencia,
           chat: [...prevItem.chat, inspectorMsg, iaMsg],
@@ -266,8 +271,8 @@ export function useProyectoChecklist(proyectoId: string) {
     chatGeneral,
     marcarManual: (itemId: string, status: ChecklistStatus, justificacion?: string) =>
       marcarManual(proyectoId, itemId, status, justificacion),
-    agregarEvidencia: (itemId: string, tipo: EvidenciaTipo, texto: string) =>
-      agregarEvidencia(proyectoId, itemId, tipo, texto),
+    agregarEvidencia: (itemId: string, requisitoIndex: number, tipo: EvidenciaTipo, texto: string, previewUrl?: string) =>
+      agregarEvidencia(proyectoId, itemId, requisitoIndex, tipo, texto, previewUrl),
     enviarMensajeGeneral: (texto: string, tipo?: EvidenciaTipo) => enviarMensajeGeneral(proyectoId, texto, tipo),
     enviarMensajeItem: (itemId: string, texto: string, tipo?: EvidenciaTipo) =>
       enviarMensajeItem(proyectoId, itemId, texto, tipo),

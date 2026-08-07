@@ -1,10 +1,10 @@
 import { Link, useParams } from 'react-router-dom'
-import { checklistDef, hintEvidenciaFaltante } from '../data/checklistMatrizInterior'
+import { checklistDef, estadoEvidenciasRequeridas, hintEvidenciaFaltante } from '../data/checklistMatrizInterior'
 import { useProyectoChecklist } from '../state/ChecklistContext'
 import { proyectos } from '../data/mock'
 import ChatPanel from '../components/ChatPanel'
 import ManualEstadoControl from '../components/ManualEstadoControl'
-import AgregarEvidenciaForm from '../components/AgregarEvidenciaForm'
+import CampoEvidencia from '../components/CampoEvidencia'
 
 const statusLabel = { ok: 'Cumple', warn: 'Parcial', pending: 'Pendiente', na: 'No aplica' } as const
 const statusColor = {
@@ -12,13 +12,6 @@ const statusColor = {
   warn: 'text-warn bg-warn/10',
   pending: 'text-danger bg-danger/10',
   na: 'text-muted bg-muted/10',
-} as const
-
-const origenEvidencia = {
-  'chat-general': 'chat general',
-  'chat-item': 'chat del ítem',
-  manual: 'manual',
-  'marcado-manual': 'marcado manual',
 } as const
 
 const borderResultado = {
@@ -48,6 +41,8 @@ export default function ChecklistItemDetalle() {
   }
 
   const state = itemsState[def.id]
+  const requisitos = estadoEvidenciasRequeridas(def, state.evidencia)
+  const marcadoManual = state.evidencia.find((e) => e.origen === 'marcado-manual')
 
   return (
     <div className="h-screen flex flex-col bg-base overflow-hidden">
@@ -105,36 +100,29 @@ export default function ChecklistItemDetalle() {
 
             <section className="bg-white border border-hairline rounded-xl p-4">
               <p className="text-[11px] uppercase tracking-wide text-brand/70 font-semibold mb-2">
-                Evidencia ({state.evidencia.length})
+                Evidencia requerida ({requisitos.filter((r) => r.cumplido).length}/{requisitos.length})
               </p>
-              <ul className="flex flex-col gap-2.5 mb-3">
-                {state.evidencia.map((e) => (
-                  <li
-                    key={e.id}
-                    className={`text-[12.5px] text-ink border-l-2 ${
-                      e.resultado ? borderResultado[e.resultado] : 'border-brand-soft'
-                    } pl-3`}
-                  >
-                    <span className="text-muted font-mono text-[10.5px]">{e.hora}</span>{' '}
-                    <span className="text-[10px] uppercase tracking-wide text-brand/70 font-semibold">
-                      {origenEvidencia[e.origen]}
-                    </span>
-                    <p className="mt-0.5 leading-snug">
-                      {e.tipo === 'foto' ? '📷 ' : e.tipo === 'audio' ? '🎙 ' : ''}
-                      {e.texto}
-                    </p>
-                  </li>
+              <div className="flex flex-col gap-3">
+                {requisitos.map((req, i) => (
+                  <CampoEvidencia
+                    key={i}
+                    requisito={req}
+                    onAgregar={(texto, previewUrl) =>
+                      agregarEvidencia(def.id, i, req.tipo === 'foto' ? 'foto' : 'texto', texto, previewUrl)
+                    }
+                  />
                 ))}
-                {!state.evidencia.some((e) => e.origen === 'marcado-manual') && (
-                  <li className="text-[12.5px] text-muted italic border-l-2 border-hairline pl-3">
-                    Marcado manual (pendiente)
-                  </li>
-                )}
-              </ul>
-              <AgregarEvidenciaForm
-                tiposPermitidos={def.requiereFoto ? ['foto'] : ['foto', 'audio', 'texto']}
-                onAgregar={(tipo, texto) => agregarEvidencia(def.id, tipo, texto)}
-              />
+                <div className={`border-l-2 ${marcadoManual && marcadoManual.resultado ? borderResultado[marcadoManual.resultado] : 'border-hairline'} pl-3`}>
+                  <p className="text-[12.5px] font-medium text-ink">Marcado manual</p>
+                  {marcadoManual ? (
+                    <p className="mt-0.5 text-[12.5px] text-muted leading-snug">
+                      <span className="font-mono text-[10.5px]">{marcadoManual.hora}</span> — {marcadoManual.texto}
+                    </p>
+                  ) : (
+                    <p className="mt-0.5 text-[12.5px] text-muted italic">Pendiente — usa los botones Cumple/No cumple arriba.</p>
+                  )}
+                </div>
+              </div>
             </section>
           </div>
         </main>
