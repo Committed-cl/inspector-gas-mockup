@@ -1,14 +1,18 @@
+import { useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
-import { checklistDef, SECTIONS, formName } from '../data/checklistMatrizInterior'
+import { checklistDef, SECTIONS, formName, type ChecklistStatus } from '../data/checklistMatrizInterior'
 import { useProjectChecklist, currentInspector } from '../state/ChecklistContext'
 import { projects } from '../data/mock'
 import ChecklistDesktopRow from '../components/ChecklistDesktopRow'
 import ChatPanel from '../components/ChatPanel'
 
+const statusSortOrder: Record<ChecklistStatus, number> = { pending: 0, warn: 1, ok: 2, na: 2 }
+
 export default function ChecklistProject() {
   const { projectId = '' } = useParams()
   const project = projects.find((p) => p.id === projectId)
   const { itemsState, markManually, generalChat, sendGeneralMessage } = useProjectChecklist(projectId)
+  const [expandedOverride, setExpandedOverride] = useState<Record<string, boolean>>({})
 
   if (!project) {
     return (
@@ -65,20 +69,53 @@ export default function ChecklistProject() {
             {SECTIONS.map((section) => {
               const items = checklistDef.filter((d) => d.section === section)
               if (items.length === 0) return null
+
+              const sectionComplete = items.every((d) => ['ok', 'na'].includes(itemsState[d.id].status))
+              const expanded = expandedOverride[section] ?? !sectionComplete
+              const sortedItems = [...items].sort(
+                (a, b) => statusSortOrder[itemsState[a.id].status] - statusSortOrder[itemsState[b.id].status],
+              )
+              const doneCount = items.filter((d) => ['ok', 'na'].includes(itemsState[d.id].status)).length
+
               return (
                 <section key={section}>
-                  <h2 className="text-[12px] uppercase tracking-wide text-brand font-semibold mb-3">{section}</h2>
-                  <div className="flex flex-col gap-2">
-                    {items.map((def) => (
-                      <ChecklistDesktopRow
-                        key={def.id}
-                        def={def}
-                        state={itemsState[def.id]}
-                        projectId={projectId}
-                        onMark={(status, reason) => markManually(def.id, status, reason)}
-                      />
-                    ))}
-                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setExpandedOverride((prev) => ({ ...prev, [section]: !expanded }))}
+                    className="w-full flex items-center justify-between gap-2 mb-3 group"
+                  >
+                    <span className="flex items-center gap-2">
+                      <svg
+                        viewBox="0 0 24 24"
+                        fill="currentColor"
+                        className={`h-3.5 w-3.5 text-brand transition-transform ${expanded ? 'rotate-90' : ''}`}
+                      >
+                        <path d="M9.3 6.3a1 1 0 0 1 1.4 0l5 5a1 1 0 0 1 0 1.4l-5 5a1 1 0 1 1-1.4-1.4L13.58 12 9.3 7.7a1 1 0 0 1 0-1.4Z" />
+                      </svg>
+                      <h2 className="text-[12px] uppercase tracking-wide text-brand font-semibold">{section}</h2>
+                      {sectionComplete && (
+                        <span className="text-[10px] font-medium text-ok bg-ok/10 px-1.5 py-0.5 rounded-md">
+                          completa
+                        </span>
+                      )}
+                    </span>
+                    <span className="text-[11px] text-muted group-hover:text-brand">
+                      {doneCount}/{items.length}
+                    </span>
+                  </button>
+                  {expanded && (
+                    <div className="flex flex-col gap-2">
+                      {sortedItems.map((def) => (
+                        <ChecklistDesktopRow
+                          key={def.id}
+                          def={def}
+                          state={itemsState[def.id]}
+                          projectId={projectId}
+                          onMark={(status, reason) => markManually(def.id, status, reason)}
+                        />
+                      ))}
+                    </div>
+                  )}
                 </section>
               )
             })}
