@@ -5,7 +5,7 @@ const origenEvidencia = {
   'chat-general': 'chat general',
   'chat-item': 'chat del ítem',
   manual: 'manual',
-  'marcado-manual': 'marcado manual',
+  'marcado-manual': 'conclusión',
 } as const
 
 type Props = {

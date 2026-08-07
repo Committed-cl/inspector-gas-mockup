@@ -57,7 +57,7 @@ export default function ChecklistDesktopRow({ def, state, proyectoId, onMarcar }
 
           {state.origen && (
             <p className="text-[10.5px] text-muted mt-0.5">
-              {state.origen === 'manual' ? 'Marcado manual' : 'Confirmado con evidencia de chat'}
+              {state.origen === 'manual' ? 'Conclusión' : 'Confirmado con evidencia de chat'}
             </p>
           )}
 
@@ -95,7 +95,7 @@ export default function ChecklistDesktopRow({ def, state, proyectoId, onMarcar }
               {!state.evidencia.some((e) => e.origen === 'marcado-manual') && (
                 <div className="flex items-center gap-1.5 text-[11px] text-muted">
                   <span className="h-2 w-2 rounded-full bg-hairline border border-muted/30 shrink-0" aria-hidden />
-                  <span>Marcado manual (pendiente)</span>
+                  <span>Conclusión (pendiente)</span>
                 </div>
               )}
               <Link to={itemHref} className="text-[11px] text-brand/80 hover:underline self-start mt-0.5">

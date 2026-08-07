@@ -80,7 +80,7 @@ export default function ChecklistItemDetalle() {
             </section>
 
             <section className="bg-white border border-hairline rounded-xl p-4">
-              <p className="text-[11px] uppercase tracking-wide text-brand/70 font-semibold mb-2.5">Marcado manual</p>
+              <p className="text-[11px] uppercase tracking-wide text-brand/70 font-semibold mb-2.5">Conclusión</p>
               <ManualEstadoControl
                 status={state.status}
                 permiteNoAplica={def.permiteNoAplica}
@@ -93,7 +93,7 @@ export default function ChecklistItemDetalle() {
               )}
               {state.origen && (
                 <p className="text-[11px] text-muted mt-2">
-                  Origen actual: {state.origen === 'manual' ? 'marcado manual' : 'confirmado con evidencia de chat'}
+                  Origen actual: {state.origen === 'manual' ? 'conclusión' : 'confirmado con evidencia de chat'}
                 </p>
               )}
             </section>
@@ -113,7 +113,7 @@ export default function ChecklistItemDetalle() {
                   />
                 ))}
                 <div className={`border-l-2 ${marcadoManual && marcadoManual.resultado ? borderResultado[marcadoManual.resultado] : 'border-hairline'} pl-3`}>
-                  <p className="text-[12.5px] font-medium text-ink">Marcado manual</p>
+                  <p className="text-[12.5px] font-medium text-ink">Conclusión</p>
                   {marcadoManual ? (
                     <p className="mt-0.5 text-[12.5px] text-muted leading-snug">
                       <span className="font-mono text-[10.5px]">{marcadoManual.hora}</span> — {marcadoManual.texto}
