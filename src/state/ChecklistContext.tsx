@@ -135,13 +135,17 @@ export function ChecklistProvider({ children }: { children: ReactNode }) {
         const proyectoState = base[proyectoId]
         const prevItem = proyectoState.itemsState[itemId]
         const nuevaEvidencia: Evidencia = { id: nextId('ev'), tipo, origen: 'manual', texto, hora, requisitoIndex, previewUrl }
+        // Con al menos una evidencia cargada el ítem ya no puede seguir en rojo —
+        // pasa a amarillo aunque falten más campos. Sigue necesitando Cumple para
+        // llegar a verde, y no se toca si ya estaba en verde, amarillo o no aplica.
+        const statusFinal = prevItem.status === 'pending' ? 'warn' : prevItem.status
         return {
           ...base,
           [proyectoId]: {
             ...proyectoState,
             itemsState: {
               ...proyectoState.itemsState,
-              [itemId]: { ...prevItem, evidencia: [...prevItem.evidencia, nuevaEvidencia] },
+              [itemId]: { ...prevItem, status: statusFinal, evidencia: [...prevItem.evidencia, nuevaEvidencia] },
             },
           },
         }
