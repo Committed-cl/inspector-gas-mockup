@@ -71,7 +71,13 @@ export default function ChecklistItemDetalle() {
           <div className="max-w-xl mx-auto flex flex-col gap-5">
             <section className="bg-white border border-hairline rounded-xl p-4">
               <p className="text-[11px] uppercase tracking-wide text-brand/70 font-semibold">Qué busca validar la app</p>
-              <p className="mt-1.5 text-[13.5px] text-ink leading-relaxed">{def.queValidaApp}</p>
+              <ul className="mt-1.5 flex flex-col gap-1 list-disc pl-4">
+                {def.queValidaApp.map((linea, i) => (
+                  <li key={i} className="text-[13.5px] text-ink leading-relaxed">
+                    {linea}
+                  </li>
+                ))}
+              </ul>
             </section>
 
             <section className="bg-white border border-hairline rounded-xl p-4">
