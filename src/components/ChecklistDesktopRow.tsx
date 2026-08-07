@@ -29,6 +29,13 @@ const badgeClass: Record<ChecklistStatus, string> = {
   na: 'text-muted bg-muted/10',
 }
 
+const dotResultado: Record<ChecklistStatus, string> = {
+  ok: 'bg-ok',
+  warn: 'bg-warn',
+  pending: 'bg-danger',
+  na: 'bg-muted',
+}
+
 type Props = {
   def: ChecklistItemDef
   state: ItemState
@@ -38,6 +45,7 @@ type Props = {
 
 export default function ChecklistDesktopRow({ def, state, proyectoId, onMarcar }: Props) {
   const itemHref = `/checklist/${proyectoId}/${def.id}`
+  const marcadoManual = state.evidencia.find((e) => e.origen === 'marcado-manual')
   return (
     <div className="rounded-xl border border-hairline bg-white px-4 py-3 hover:shadow-sm transition-shadow">
       <div className="flex items-start gap-3">
@@ -92,7 +100,17 @@ export default function ChecklistDesktopRow({ def, state, proyectoId, onMarcar }
                   </span>
                 </div>
               ))}
-              {!state.evidencia.some((e) => e.origen === 'marcado-manual') && (
+              {marcadoManual ? (
+                <div className="flex items-center gap-1.5 text-[11px]">
+                  <span
+                    className={`h-2 w-2 rounded-full shrink-0 ${
+                      marcadoManual.resultado ? dotResultado[marcadoManual.resultado] : 'bg-ok'
+                    }`}
+                    aria-hidden
+                  />
+                  <span className="truncate text-ink">Conclusión: {marcadoManual.texto}</span>
+                </div>
+              ) : (
                 <div className="flex items-center gap-1.5 text-[11px] text-muted">
                   <span className="h-2 w-2 rounded-full bg-hairline border border-muted/30 shrink-0" aria-hidden />
                   <span>Conclusión (pendiente)</span>
