@@ -2,6 +2,7 @@ import { Link, useNavigate, useParams } from 'react-router-dom'
 import { projects } from '../data/mock'
 import { formName } from '../data/checklistMatrizInterior'
 import { currentInspector, useProjectVisits } from '../state/ChecklistContext'
+import { formatDateCl } from '../utils/date'
 
 const statusLabel = { en_curso: 'En curso', aprobada: 'Aprobada', rechazada: 'Rechazada' } as const
 const statusColor = {
@@ -80,7 +81,7 @@ export default function ObraVisitas() {
                 to={`/checklist/${projectId}/${v.id}`}
                 className="flex items-center justify-between gap-4 bg-white border border-hairline rounded-xl px-5 py-4 hover:shadow-sm hover:border-brand/30 transition-all"
               >
-                <p className="text-[13.5px] font-medium text-ink">{v.date}</p>
+                <p className="text-[13.5px] font-medium text-ink">{formatDateCl(v.date)}</p>
                 <span className={`text-[11px] font-semibold px-2 py-1 rounded-md ${statusColor[v.status]}`}>
                   {statusLabel[v.status]}
                 </span>

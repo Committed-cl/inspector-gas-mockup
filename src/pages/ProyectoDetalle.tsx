@@ -1,6 +1,7 @@
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import PhoneFrame from '../components/PhoneFrame'
 import { projects } from '../data/mock'
+import { formatDateCl } from '../utils/date'
 
 export default function ProyectoDetalle() {
   const { id } = useParams()
@@ -82,7 +83,7 @@ export default function ProyectoDetalle() {
                     <p className="text-[13px] font-medium text-ink">Visita N°{v.number}</p>
                     <p className="text-[11.5px] text-muted mt-0.5">{v.description}</p>
                   </div>
-                  <span className="text-[10.5px] text-muted font-mono">{v.date}</span>
+                  <span className="text-[10.5px] text-muted font-mono">{formatDateCl(v.date)}</span>
                 </div>
                 <div className="mt-2 flex items-center gap-2">
                   <span className="inline-flex items-center gap-1 text-[11px] text-ok font-medium">

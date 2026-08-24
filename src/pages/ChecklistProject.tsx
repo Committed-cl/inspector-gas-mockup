@@ -5,6 +5,7 @@ import { useProjectChecklist, useProjectVisits, currentInspector } from '../stat
 import { projects } from '../data/mock'
 import ChecklistDesktopRow from '../components/ChecklistDesktopRow'
 import ChatPanel from '../components/ChatPanel'
+import { formatDateCl } from '../utils/date'
 
 const statusSortOrder: Record<ChecklistStatus, number> = { pending: 0, warn: 1, ok: 2, na: 2 }
 
@@ -52,7 +53,7 @@ export default function ChecklistProject() {
             </div>
             <h1 className="text-[19px] font-bold text-ink leading-tight">{project.name}</h1>
             <p className="text-[12.5px] text-muted mt-0.5 flex items-center gap-1.5">
-              {formName} · Visita {visit.date}
+              {formName} · Visita {formatDateCl(visit.date)}
               <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded-md ${visitStatusColor[visit.status]}`}>
                 {visitStatusLabel[visit.status]}
               </span>

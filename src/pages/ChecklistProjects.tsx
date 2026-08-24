@@ -2,6 +2,7 @@ import { Link } from 'react-router-dom'
 import { projects } from '../data/mock'
 import { formName } from '../data/checklistMatrizInterior'
 import { currentInspector, useChecklist } from '../state/ChecklistContext'
+import { formatDateCl } from '../utils/date'
 
 const visitStatusLabel = { en_curso: 'En curso', aprobada: 'Aprobada', rechazada: 'Rechazada' } as const
 const visitStatusColor = {
@@ -58,7 +59,7 @@ export default function ChecklistProjects() {
                     </span>
                     {lastVisit && (
                       <p className="mt-1.5 text-[11px] text-muted">
-                        Última visita: {lastVisit.date}{' '}
+                        Última visita: {formatDateCl(lastVisit.date)}{' '}
                         <span className={`ml-1 font-semibold px-1.5 py-0.5 rounded-md ${visitStatusColor[lastVisit.status]}`}>
                           {visitStatusLabel[lastVisit.status]}
                         </span>
