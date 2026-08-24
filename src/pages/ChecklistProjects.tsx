@@ -1,9 +1,17 @@
 import { Link } from 'react-router-dom'
 import { projects } from '../data/mock'
-import { completedForProject, formName } from '../data/checklistMatrizInterior'
-import { currentInspector } from '../state/ChecklistContext'
+import { formName } from '../data/checklistMatrizInterior'
+import { currentInspector, useChecklist } from '../state/ChecklistContext'
+
+const visitStatusLabel = { en_curso: 'En curso', aprobada: 'Aprobada', rechazada: 'Rechazada' } as const
+const visitStatusColor = {
+  en_curso: 'text-warn bg-warn/10',
+  aprobada: 'text-ok bg-ok/10',
+  rechazada: 'text-danger bg-danger/10',
+} as const
 
 export default function ChecklistProjects() {
+  const { getVisits } = useChecklist()
   return (
     <div className="min-h-screen bg-base">
       <header className="border-b border-hairline bg-white px-6 py-4">
@@ -28,7 +36,8 @@ export default function ChecklistProjects() {
       <main className="px-6 py-8">
         <div className="max-w-3xl mx-auto flex flex-col gap-3">
           {projects.map((p) => {
-            const { completed, total } = completedForProject(p.id)
+            const visits = getVisits(p.id)
+            const lastVisit = [...visits].sort((a, b) => b.date.localeCompare(a.date))[0]
             return (
               <Link
                 key={p.id}
@@ -45,12 +54,16 @@ export default function ChecklistProjects() {
                   </div>
                   <div className="text-right shrink-0">
                     <span className="text-[12px] font-semibold text-brand whitespace-nowrap">
-                      {completed}/{total} completados
+                      {visits.length} {visits.length === 1 ? 'visita' : 'visitas'}
                     </span>
-                    <div className="mt-1.5 w-32 h-1.5 bg-hairline rounded-full overflow-hidden ml-auto">
-                      <div className="h-full bg-ok transition-all" style={{ width: `${(completed / total) * 100}%` }} />
-                    </div>
-                    <p className="text-[11px] text-muted mt-1.5">Última visita: {p.lastVisit}</p>
+                    {lastVisit && (
+                      <p className="mt-1.5 text-[11px] text-muted">
+                        Última visita: {lastVisit.date}{' '}
+                        <span className={`ml-1 font-semibold px-1.5 py-0.5 rounded-md ${visitStatusColor[lastVisit.status]}`}>
+                          {visitStatusLabel[lastVisit.status]}
+                        </span>
+                      </p>
+                    )}
                   </div>
                 </div>
               </Link>

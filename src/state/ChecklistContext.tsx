@@ -2,8 +2,10 @@ import { createContext, useCallback, useContext, useMemo, useState, type ReactNo
 import { Outlet } from 'react-router-dom'
 import {
   checklistDef,
-  initialGeneralChatForProject,
-  initialStateForProject,
+  initialGeneralChatForVisit,
+  initialStateForVisit,
+  initialVisitsForProject,
+  completedForState,
   matchItemsByKeyword,
   suggestItemsForText,
   nextPendingRequirement,
@@ -14,6 +16,7 @@ import {
   type Evidence,
   type EvidenceType,
   type ItemState,
+  type Visit,
 } from '../data/checklistMatrizInterior'
 
 let seq = 0
@@ -26,58 +29,124 @@ function currentTime() {
   return new Date().toLocaleTimeString('es-CL', { hour: '2-digit', minute: '2-digit', hour12: false })
 }
 
+function today() {
+  return new Date().toISOString().slice(0, 10)
+}
+
 type ProjectChecklistState = {
   itemsState: Record<string, ItemState>
   generalChat: ChatMessage[]
 }
 
-function initialProjectState(projectId: string): ProjectChecklistState {
+// A visit's checklist state is independent of every other visit for the same
+// project — the key combines both so obra → visita → checklist stays 1:1:1.
+function visitKey(projectId: string, visitId: string) {
+  return `${projectId}::${visitId}`
+}
+
+function initialProjectState(projectId: string, visitId: string): ProjectChecklistState {
   return {
-    itemsState: initialStateForProject(projectId),
-    generalChat: initialGeneralChatForProject(projectId),
+    itemsState: initialStateForVisit(projectId, visitId),
+    generalChat: initialGeneralChatForVisit(projectId, visitId),
   }
 }
 
-function ensureProject(
+function ensureVisitState(
   projectId: string,
-  byProject: Record<string, ProjectChecklistState>,
+  visitId: string,
+  byVisit: Record<string, ProjectChecklistState>,
 ): Record<string, ProjectChecklistState> {
+  const key = visitKey(projectId, visitId)
+  if (byVisit[key]) return byVisit
+  return { ...byVisit, [key]: initialProjectState(projectId, visitId) }
+}
+
+function ensureVisits(projectId: string, byProject: Record<string, Visit[]>): Record<string, Visit[]> {
   if (byProject[projectId]) return byProject
-  return { ...byProject, [projectId]: initialProjectState(projectId) }
+  return { ...byProject, [projectId]: initialVisitsForProject(projectId) }
 }
 
 type ChecklistContextValue = {
-  getProjectState: (projectId: string) => ProjectChecklistState
-  markManually: (projectId: string, itemId: string, status: ChecklistStatus, reason?: string) => void
+  getProjectState: (projectId: string, visitId: string) => ProjectChecklistState
+  getVisits: (projectId: string) => Visit[]
+  createVisit: (projectId: string) => string
+  closeVisit: (projectId: string, visitId: string) => void
+  markManually: (projectId: string, visitId: string, itemId: string, status: ChecklistStatus, reason?: string) => void
   addEvidence: (
     projectId: string,
+    visitId: string,
     itemId: string,
     requirementIndex: number,
     type: EvidenceType,
     text: string,
     previewUrl?: string,
   ) => void
-  sendGeneralMessage: (projectId: string, text: string, type?: EvidenceType) => void
-  sendItemMessage: (projectId: string, itemId: string, text: string, type?: EvidenceType) => void
-  resolveGeneralMessage: (projectId: string, messageId: string, itemId: string) => void
+  sendGeneralMessage: (projectId: string, visitId: string, text: string, type?: EvidenceType) => void
+  sendItemMessage: (projectId: string, visitId: string, itemId: string, text: string, type?: EvidenceType) => void
+  resolveGeneralMessage: (projectId: string, visitId: string, messageId: string, itemId: string) => void
 }
 
 const ChecklistContext = createContext<ChecklistContextValue | null>(null)
 
 export function ChecklistProvider({ children }: { children: ReactNode }) {
-  const [byProject, setByProject] = useState<Record<string, ProjectChecklistState>>({})
+  const [byVisit, setByVisit] = useState<Record<string, ProjectChecklistState>>({})
+  const [visitsByProject, setVisitsByProject] = useState<Record<string, Visit[]>>({})
 
   const getProjectState = useCallback(
-    (projectId: string) => byProject[projectId] ?? initialProjectState(projectId),
-    [byProject],
+    (projectId: string, visitId: string) => byVisit[visitKey(projectId, visitId)] ?? initialProjectState(projectId, visitId),
+    [byVisit],
+  )
+
+  const getVisits = useCallback(
+    (projectId: string) => visitsByProject[projectId] ?? initialVisitsForProject(projectId),
+    [visitsByProject],
+  )
+
+  const createVisit = useCallback((projectId: string) => {
+    let newId = ''
+    setVisitsByProject((prev) => {
+      const base = ensureVisits(projectId, prev)
+      const visits = base[projectId]
+      const open = visits.find((v) => v.status === 'en_curso')
+      if (open) {
+        newId = open.id
+        return base
+      }
+      newId = nextId(`visita-${projectId}`)
+      const visit: Visit = { id: newId, date: today(), status: 'en_curso' }
+      return { ...base, [projectId]: [...visits, visit] }
+    })
+    return newId
+  }, [])
+
+  const closeVisit = useCallback(
+    (projectId: string, visitId: string) => {
+      setVisitsByProject((prevVisits) => {
+        const base = ensureVisits(projectId, prevVisits)
+        const visits = base[projectId]
+        const visit = visits.find((v) => v.id === visitId)
+        if (!visit || visit.status !== 'en_curso') return base
+
+        const state = byVisit[visitKey(projectId, visitId)] ?? initialProjectState(projectId, visitId)
+        const { completed, total } = completedForState(state.itemsState)
+        const status: Visit['status'] = completed === total ? 'aprobada' : 'rechazada'
+
+        return {
+          ...base,
+          [projectId]: visits.map((v) => (v.id === visitId ? { ...v, status } : v)),
+        }
+      })
+    },
+    [byVisit],
   )
 
   const markManually = useCallback(
-    (projectId: string, itemId: string, status: ChecklistStatus, reason?: string) => {
+    (projectId: string, visitId: string, itemId: string, status: ChecklistStatus, reason?: string) => {
       const time = currentTime()
-      setByProject((prev) => {
-        const base = ensureProject(projectId, prev)
-        const projectState = base[projectId]
+      setByVisit((prev) => {
+        const base = ensureVisitState(projectId, visitId, prev)
+        const key = visitKey(projectId, visitId)
+        const projectState = base[key]
         const prevItem = projectState.itemsState[itemId]
         const def = checklistDef.find((d) => d.id === itemId)
 
@@ -109,7 +178,7 @@ export function ChecklistProvider({ children }: { children: ReactNode }) {
 
         return {
           ...base,
-          [projectId]: {
+          [key]: {
             ...projectState,
             itemsState: {
               ...projectState.itemsState,
@@ -129,12 +198,21 @@ export function ChecklistProvider({ children }: { children: ReactNode }) {
   )
 
   const addEvidence = useCallback(
-    (projectId: string, itemId: string, requirementIndex: number, type: EvidenceType, text: string, previewUrl?: string) => {
+    (
+      projectId: string,
+      visitId: string,
+      itemId: string,
+      requirementIndex: number,
+      type: EvidenceType,
+      text: string,
+      previewUrl?: string,
+    ) => {
       if (!text.trim()) return
       const time = currentTime()
-      setByProject((prev) => {
-        const base = ensureProject(projectId, prev)
-        const projectState = base[projectId]
+      setByVisit((prev) => {
+        const base = ensureVisitState(projectId, visitId, prev)
+        const key = visitKey(projectId, visitId)
+        const projectState = base[key]
         const prevItem = projectState.itemsState[itemId]
         const newEvidence: Evidence = { id: nextId('ev'), type, source: 'manual', text, time, requirementIndex, previewUrl }
         // With at least one piece of evidence loaded, the item can no longer stay
@@ -144,7 +222,7 @@ export function ChecklistProvider({ children }: { children: ReactNode }) {
         const finalStatus = prevItem.status === 'pending' ? 'warn' : prevItem.status
         return {
           ...base,
-          [projectId]: {
+          [key]: {
             ...projectState,
             itemsState: {
               ...projectState.itemsState,
@@ -157,15 +235,16 @@ export function ChecklistProvider({ children }: { children: ReactNode }) {
     [],
   )
 
-  const sendGeneralMessage = useCallback((projectId: string, text: string, type: EvidenceType = 'text') => {
+  const sendGeneralMessage = useCallback((projectId: string, visitId: string, text: string, type: EvidenceType = 'text') => {
     if (!text.trim()) return
     const time = currentTime()
     const inspectorMsg: ChatMessage = { id: nextId('gm'), role: 'inspector', text, type, time }
     const matched = matchItemsByKeyword(text)
 
-    setByProject((prev) => {
-      const base = ensureProject(projectId, prev)
-      const projectState = base[projectId]
+    setByVisit((prev) => {
+      const base = ensureVisitState(projectId, visitId, prev)
+      const key = visitKey(projectId, visitId)
+      const projectState = base[key]
 
       if (matched.length === 0) {
         const suggestions = suggestItemsForText(text, projectState.itemsState)
@@ -182,7 +261,7 @@ export function ChecklistProvider({ children }: { children: ReactNode }) {
         }
         return {
           ...base,
-          [projectId]: { ...projectState, generalChat: [...projectState.generalChat, inspectorMsg, aiMsg] },
+          [key]: { ...projectState, generalChat: [...projectState.generalChat, inspectorMsg, aiMsg] },
         }
       }
 
@@ -210,7 +289,7 @@ export function ChecklistProvider({ children }: { children: ReactNode }) {
 
       return {
         ...base,
-        [projectId]: {
+        [key]: {
           itemsState: nextItemsState,
           generalChat: [...projectState.generalChat, inspectorMsg, aiMsg],
         },
@@ -219,16 +298,17 @@ export function ChecklistProvider({ children }: { children: ReactNode }) {
   }, [])
 
   const sendItemMessage = useCallback(
-    (projectId: string, itemId: string, text: string, type: EvidenceType = 'text') => {
+    (projectId: string, visitId: string, itemId: string, text: string, type: EvidenceType = 'text') => {
       if (!text.trim()) return
       const def = checklistDef.find((d) => d.id === itemId)
       if (!def) return
       const time = currentTime()
       const inspectorMsg: ChatMessage = { id: nextId('im'), role: 'inspector', text, type, time }
 
-      setByProject((prev) => {
-        const base = ensureProject(projectId, prev)
-        const projectState = base[projectId]
+      setByVisit((prev) => {
+        const base = ensureVisitState(projectId, visitId, prev)
+        const key = visitKey(projectId, visitId)
+        const projectState = base[key]
         const prevItem = projectState.itemsState[itemId]
         const requirementIndex = nextPendingRequirement(def, prevItem.evidence, type)
         const newEvidence: Evidence = { id: nextId('ev'), type, source: 'item-chat', text, time, requirementIndex }
@@ -251,7 +331,7 @@ export function ChecklistProvider({ children }: { children: ReactNode }) {
 
         return {
           ...base,
-          [projectId]: {
+          [key]: {
             ...projectState,
             itemsState: { ...projectState.itemsState, [itemId]: nextItem },
           },
@@ -261,11 +341,12 @@ export function ChecklistProvider({ children }: { children: ReactNode }) {
     [],
   )
 
-  const resolveGeneralMessage = useCallback((projectId: string, messageId: string, itemId: string) => {
+  const resolveGeneralMessage = useCallback((projectId: string, visitId: string, messageId: string, itemId: string) => {
     const time = currentTime()
-    setByProject((prev) => {
-      const base = ensureProject(projectId, prev)
-      const projectState = base[projectId]
+    setByVisit((prev) => {
+      const base = ensureVisitState(projectId, visitId, prev)
+      const key = visitKey(projectId, visitId)
+      const projectState = base[key]
       const target = projectState.generalChat.find((m) => m.id === messageId)
       const def = checklistDef.find((d) => d.id === itemId)
       if (!target || !target.pendingEvidence || !def) return base
@@ -294,7 +375,7 @@ export function ChecklistProvider({ children }: { children: ReactNode }) {
 
       return {
         ...base,
-        [projectId]: {
+        [key]: {
           itemsState: { ...projectState.itemsState, [itemId]: nextItem },
           generalChat: [
             ...projectState.generalChat.map((m) =>
@@ -310,13 +391,26 @@ export function ChecklistProvider({ children }: { children: ReactNode }) {
   const value = useMemo(
     () => ({
       getProjectState,
+      getVisits,
+      createVisit,
+      closeVisit,
       markManually,
       addEvidence,
       sendGeneralMessage,
       sendItemMessage,
       resolveGeneralMessage,
     }),
-    [getProjectState, markManually, addEvidence, sendGeneralMessage, sendItemMessage, resolveGeneralMessage],
+    [
+      getProjectState,
+      getVisits,
+      createVisit,
+      closeVisit,
+      markManually,
+      addEvidence,
+      sendGeneralMessage,
+      sendItemMessage,
+      resolveGeneralMessage,
+    ],
   )
 
   return <ChecklistContext.Provider value={value}>{children}</ChecklistContext.Provider>
@@ -328,20 +422,30 @@ export function useChecklist() {
   return ctx
 }
 
-export function useProjectChecklist(projectId: string) {
+export function useProjectVisits(projectId: string) {
+  const { getVisits, createVisit, closeVisit } = useChecklist()
+  return {
+    visits: getVisits(projectId),
+    createVisit: () => createVisit(projectId),
+    closeVisit: (visitId: string) => closeVisit(projectId, visitId),
+  }
+}
+
+export function useProjectChecklist(projectId: string, visitId: string) {
   const { getProjectState, markManually, addEvidence, sendGeneralMessage, sendItemMessage, resolveGeneralMessage } =
     useChecklist()
-  const { itemsState, generalChat } = getProjectState(projectId)
+  const { itemsState, generalChat } = getProjectState(projectId, visitId)
   return {
     itemsState,
     generalChat,
     markManually: (itemId: string, status: ChecklistStatus, reason?: string) =>
-      markManually(projectId, itemId, status, reason),
+      markManually(projectId, visitId, itemId, status, reason),
     addEvidence: (itemId: string, requirementIndex: number, type: EvidenceType, text: string, previewUrl?: string) =>
-      addEvidence(projectId, itemId, requirementIndex, type, text, previewUrl),
-    sendGeneralMessage: (text: string, type?: EvidenceType) => sendGeneralMessage(projectId, text, type),
-    sendItemMessage: (itemId: string, text: string, type?: EvidenceType) => sendItemMessage(projectId, itemId, text, type),
-    resolveGeneralMessage: (messageId: string, itemId: string) => resolveGeneralMessage(projectId, messageId, itemId),
+      addEvidence(projectId, visitId, itemId, requirementIndex, type, text, previewUrl),
+    sendGeneralMessage: (text: string, type?: EvidenceType) => sendGeneralMessage(projectId, visitId, text, type),
+    sendItemMessage: (itemId: string, text: string, type?: EvidenceType) =>
+      sendItemMessage(projectId, visitId, itemId, text, type),
+    resolveGeneralMessage: (messageId: string, itemId: string) => resolveGeneralMessage(projectId, visitId, messageId, itemId),
   }
 }
 

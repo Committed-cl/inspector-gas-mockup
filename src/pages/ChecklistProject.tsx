@@ -1,25 +1,35 @@
 import { useState } from 'react'
-import { Link, useParams } from 'react-router-dom'
+import { Link, useNavigate, useParams } from 'react-router-dom'
 import { checklistDef, SECTIONS, formName, type ChecklistStatus } from '../data/checklistMatrizInterior'
-import { useProjectChecklist, currentInspector } from '../state/ChecklistContext'
+import { useProjectChecklist, useProjectVisits, currentInspector } from '../state/ChecklistContext'
 import { projects } from '../data/mock'
 import ChecklistDesktopRow from '../components/ChecklistDesktopRow'
 import ChatPanel from '../components/ChatPanel'
 
 const statusSortOrder: Record<ChecklistStatus, number> = { pending: 0, warn: 1, ok: 2, na: 2 }
 
+const visitStatusLabel = { en_curso: 'En curso', aprobada: 'Aprobada', rechazada: 'Rechazada' } as const
+const visitStatusColor = {
+  en_curso: 'text-warn bg-warn/10',
+  aprobada: 'text-ok bg-ok/10',
+  rechazada: 'text-danger bg-danger/10',
+} as const
+
 export default function ChecklistProject() {
-  const { projectId = '' } = useParams()
+  const { projectId = '', visitId = '' } = useParams()
+  const nav = useNavigate()
   const project = projects.find((p) => p.id === projectId)
   const { itemsState, markManually, generalChat, sendGeneralMessage, resolveGeneralMessage } =
-    useProjectChecklist(projectId)
+    useProjectChecklist(projectId, visitId)
+  const { visits, closeVisit } = useProjectVisits(projectId)
+  const visit = visits.find((v) => v.id === visitId)
   const [expandedOverride, setExpandedOverride] = useState<Record<string, boolean>>({})
 
-  if (!project) {
+  if (!project || !visit) {
     return (
       <div className="min-h-screen grid place-items-center bg-base">
         <div className="text-center">
-          <p className="text-ink font-semibold">Proyecto no encontrado</p>
+          <p className="text-ink font-semibold">{!project ? 'Proyecto no encontrado' : 'Visita no encontrada'}</p>
           <Link to="/checklist" className="text-brand text-[13px] mt-2 inline-block">
             ← Volver al listado de proyectos
           </Link>
@@ -41,8 +51,11 @@ export default function ChecklistProject() {
               Nuevo · versión desktop
             </div>
             <h1 className="text-[19px] font-bold text-ink leading-tight">{project.name}</h1>
-            <p className="text-[12.5px] text-muted mt-0.5">
-              {formName} · Contratista {project.installer}
+            <p className="text-[12.5px] text-muted mt-0.5 flex items-center gap-1.5">
+              {formName} · Visita {visit.date}
+              <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded-md ${visitStatusColor[visit.status]}`}>
+                {visitStatusLabel[visit.status]}
+              </span>
             </p>
           </div>
           <div className="text-right">
@@ -57,10 +70,22 @@ export default function ChecklistProject() {
                 <div className="h-full bg-ok transition-all" style={{ width: `${(completed / total) * 100}%` }} />
               </div>
             </div>
+            {visit.status === 'en_curso' && (
+              <button
+                type="button"
+                onClick={() => {
+                  closeVisit(visitId)
+                  nav(`/checklist/${projectId}`)
+                }}
+                className="mt-2 text-[11.5px] font-semibold text-brand hover:underline"
+              >
+                Cerrar visita
+              </button>
+            )}
           </div>
         </div>
-        <Link to="/checklist" className="inline-flex items-center gap-1 text-[12px] text-brand mt-3">
-          ← Volver al listado de proyectos
+        <Link to={`/checklist/${projectId}`} className="inline-flex items-center gap-1 text-[12px] text-brand mt-3">
+          ← Volver al historial de visitas
         </Link>
       </header>
 
@@ -112,6 +137,7 @@ export default function ChecklistProject() {
                           def={def}
                           state={itemsState[def.id]}
                           projectId={projectId}
+                          visitId={visitId}
                           onMark={(status, reason) => markManually(def.id, status, reason)}
                         />
                       ))}

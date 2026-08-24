@@ -22,9 +22,9 @@ const resultBorderClass = {
 } as const
 
 export default function ChecklistItemPage() {
-  const { projectId = '', itemId } = useParams()
+  const { projectId = '', visitId = '', itemId } = useParams()
   const project = projects.find((p) => p.id === projectId)
-  const { itemsState, markManually, addEvidence, sendItemMessage } = useProjectChecklist(projectId)
+  const { itemsState, markManually, addEvidence, sendItemMessage } = useProjectChecklist(projectId, visitId)
   const def = checklistDef.find((d) => d.id === itemId)
 
   if (!project || !def) {
@@ -47,7 +47,7 @@ export default function ChecklistItemPage() {
   return (
     <div className="h-screen flex flex-col bg-base overflow-hidden">
       <header className="border-b border-hairline bg-white px-6 py-4">
-        <Link to={`/checklist/${projectId}`} className="inline-flex items-center gap-1 text-[12.5px] text-brand mb-2">
+        <Link to={`/checklist/${projectId}/${visitId}`} className="inline-flex items-center gap-1 text-[12.5px] text-brand mb-2">
           <svg viewBox="0 0 24 24" fill="currentColor" className="h-4 w-4">
             <path d="M14.7 6.3a1 1 0 0 0-1.4 0l-5 5a1 1 0 0 0 0 1.4l5 5a1 1 0 1 0 1.4-1.4L10.42 12l4.28-4.3a1 1 0 0 0 0-1.4Z" />
           </svg>

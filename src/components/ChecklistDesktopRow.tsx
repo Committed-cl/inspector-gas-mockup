@@ -40,11 +40,12 @@ type Props = {
   def: ChecklistItemDef
   state: ItemState
   projectId: string
+  visitId: string
   onMark: (status: ChecklistStatus, reason?: string) => void
 }
 
-export default function ChecklistDesktopRow({ def, state, projectId, onMark }: Props) {
-  const itemHref = `/checklist/${projectId}/${def.id}`
+export default function ChecklistDesktopRow({ def, state, projectId, visitId, onMark }: Props) {
+  const itemHref = `/checklist/${projectId}/${visitId}/${def.id}`
   const manualMark = state.evidence.find((e) => e.source === 'manual-mark')
   return (
     <div className="rounded-xl border border-hairline bg-white px-4 py-3 hover:shadow-sm transition-shadow">

@@ -87,6 +87,33 @@ export const formName = 'Formulario Puesta en Servicio Matriz Interior'
 // chat). Every other project starts with a blank checklist.
 export const demoProjectId = 'los-tres-antonios'
 
+// A project ("obra") can have several visits over time; each visit has its own
+// checklist. Only one visit per project should be "en_curso" at a time — past
+// visits are closed with a final verdict (aprobada / rechazada).
+export type VisitStatus = 'en_curso' | 'aprobada' | 'rechazada'
+
+export type Visit = {
+  id: string
+  date: string
+  status: VisitStatus
+}
+
+// The demo project's pre-loaded checklist progress lives on this visit — the
+// one currently "en_curso" for that project.
+export const demoVisitId = 'visita-3'
+
+const seedVisitsByProject: Record<string, Visit[]> = {
+  [demoProjectId]: [
+    { id: 'visita-1', date: '2026-03-12', status: 'aprobada' },
+    { id: 'visita-2', date: '2026-03-28', status: 'rechazada' },
+    { id: demoVisitId, date: '2026-08-24', status: 'en_curso' },
+  ],
+}
+
+export function initialVisitsForProject(projectId: string): Visit[] {
+  return seedVisitsByProject[projectId] ? [...seedVisitsByProject[projectId]] : []
+}
+
 export const checklistDef: ChecklistItemDef[] = [
   // Pruebas
   {
@@ -710,16 +737,15 @@ export function missingEvidenceHint(def: ChecklistItemDef, evidence: Evidence[])
   return `Falta ${missing.map((r) => r.label.toLowerCase()).join(', ')} para quedar en verde.`
 }
 
-export function initialStateForProject(projectId: string): Record<string, ItemState> {
-  return projectId === demoProjectId ? initialStateLosTresAntonios : emptyChecklistState()
+export function initialStateForVisit(projectId: string, visitId: string): Record<string, ItemState> {
+  return projectId === demoProjectId && visitId === demoVisitId ? initialStateLosTresAntonios : emptyChecklistState()
 }
 
-export function initialGeneralChatForProject(projectId: string): ChatMessage[] {
-  return projectId === demoProjectId ? initialGeneralChatLosTresAntonios : []
+export function initialGeneralChatForVisit(projectId: string, visitId: string): ChatMessage[] {
+  return projectId === demoProjectId && visitId === demoVisitId ? initialGeneralChatLosTresAntonios : []
 }
 
-export function completedForProject(projectId: string): { completed: number; total: number } {
-  const state = initialStateForProject(projectId)
+export function completedForState(state: Record<string, ItemState>): { completed: number; total: number } {
   const completed = checklistDef.filter((d) => ['ok', 'na'].includes(state[d.id].status)).length
   return { completed, total: checklistDef.length }
 }
