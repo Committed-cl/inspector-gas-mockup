@@ -8,17 +8,12 @@ export default function Splash() {
       <div className="absolute -bottom-32 -left-24 h-96 w-96 rounded-full bg-brand-soft/20 blur-3xl" />
 
       <div className="relative z-10 max-w-md text-center text-white">
-        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/10 border border-white/20 text-[11px] uppercase tracking-wider mb-8">
-          <span className="h-1.5 w-1.5 rounded-full bg-accent" />
-          Demo · Propuesta Metrogas
+        <div className="inline-flex items-center gap-2 mb-8">
+          <span className="h-2 w-2 rounded-full bg-accent" />
+          <p className="text-white font-bold text-xl tracking-wide uppercase">Gaspex</p>
         </div>
-        <h1 className="text-4xl sm:text-5xl font-bold leading-tight">
-          Inspector <span className="text-accent">Gas</span>
-        </h1>
-        <p className="mt-5 text-[15px] text-white/80 leading-relaxed">
-          El checklist real de puesta en servicio, completado a mano o conversando con un chat con IA — por foto,
-          audio o texto. El chat entiende a qué ítem corresponde cada evidencia.
-        </p>
+        <h1 className="text-4xl sm:text-5xl font-bold leading-tight">Inspector de obra</h1>
+        <p className="mt-5 text-[15px] text-white/80 leading-relaxed">Inspección con IA</p>
 
         <Link
           to="/checklist"
@@ -39,9 +34,7 @@ export default function Splash() {
           </Link>
         </div>
 
-        <p className="mt-12 text-[11px] text-white/50 font-mono">
-          Committed · 2026 · Coordinación Ricardo Silva — Rodrigo Martínez
-        </p>
+        <p className="mt-12 text-[11px] text-white/50 font-mono">2026 · Rodrigo Martínez</p>
       </div>
     </div>
   )
