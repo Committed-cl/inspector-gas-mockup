@@ -3,6 +3,7 @@ import { Outlet } from 'react-router-dom'
 import {
   checklistDef,
   initialGeneralChatForVisit,
+  initialObservationsForVisit,
   initialStateForVisit,
   initialVisitsForProject,
   completedForState,
@@ -36,6 +37,7 @@ function today() {
 type ProjectChecklistState = {
   itemsState: Record<string, ItemState>
   generalChat: ChatMessage[]
+  observations: string
 }
 
 // A visit's checklist state is independent of every other visit for the same
@@ -48,6 +50,7 @@ function initialProjectState(projectId: string, visitId: string): ProjectCheckli
   return {
     itemsState: initialStateForVisit(projectId, visitId),
     generalChat: initialGeneralChatForVisit(projectId, visitId),
+    observations: initialObservationsForVisit(projectId, visitId),
   }
 }
 
@@ -72,6 +75,7 @@ type ChecklistContextValue = {
   createVisit: (projectId: string) => string
   closeVisit: (projectId: string, visitId: string) => void
   sendReport: (projectId: string, visitId: string) => void
+  setObservations: (projectId: string, visitId: string, html: string) => void
   markManually: (projectId: string, visitId: string, itemId: string, status: ChecklistStatus, reason?: string) => void
   addEvidence: (
     projectId: string,
@@ -152,6 +156,14 @@ export function ChecklistProvider({ children }: { children: ReactNode }) {
         ...base,
         [projectId]: visits.map((v) => (v.id === visitId ? { ...v, reportSentAt: today() } : v)),
       }
+    })
+  }, [])
+
+  const setObservations = useCallback((projectId: string, visitId: string, html: string) => {
+    setByVisit((prev) => {
+      const base = ensureVisitState(projectId, visitId, prev)
+      const key = visitKey(projectId, visitId)
+      return { ...base, [key]: { ...base[key], observations: html } }
     })
   }, [])
 
@@ -305,6 +317,7 @@ export function ChecklistProvider({ children }: { children: ReactNode }) {
       return {
         ...base,
         [key]: {
+          ...projectState,
           itemsState: nextItemsState,
           generalChat: [...projectState.generalChat, inspectorMsg, aiMsg],
         },
@@ -391,6 +404,7 @@ export function ChecklistProvider({ children }: { children: ReactNode }) {
       return {
         ...base,
         [key]: {
+          ...projectState,
           itemsState: { ...projectState.itemsState, [itemId]: nextItem },
           generalChat: [
             ...projectState.generalChat.map((m) =>
@@ -410,6 +424,7 @@ export function ChecklistProvider({ children }: { children: ReactNode }) {
       createVisit,
       closeVisit,
       sendReport,
+      setObservations,
       markManually,
       addEvidence,
       sendGeneralMessage,
@@ -422,6 +437,7 @@ export function ChecklistProvider({ children }: { children: ReactNode }) {
       createVisit,
       closeVisit,
       sendReport,
+      setObservations,
       markManually,
       addEvidence,
       sendGeneralMessage,
@@ -450,12 +466,21 @@ export function useProjectVisits(projectId: string) {
 }
 
 export function useProjectChecklist(projectId: string, visitId: string) {
-  const { getProjectState, markManually, addEvidence, sendGeneralMessage, sendItemMessage, resolveGeneralMessage } =
-    useChecklist()
-  const { itemsState, generalChat } = getProjectState(projectId, visitId)
+  const {
+    getProjectState,
+    setObservations,
+    markManually,
+    addEvidence,
+    sendGeneralMessage,
+    sendItemMessage,
+    resolveGeneralMessage,
+  } = useChecklist()
+  const { itemsState, generalChat, observations } = getProjectState(projectId, visitId)
   return {
     itemsState,
     generalChat,
+    observations,
+    setObservations: (html: string) => setObservations(projectId, visitId, html),
     markManually: (itemId: string, status: ChecklistStatus, reason?: string) =>
       markManually(projectId, visitId, itemId, status, reason),
     addEvidence: (itemId: string, requirementIndex: number, type: EvidenceType, text: string, previewUrl?: string) =>

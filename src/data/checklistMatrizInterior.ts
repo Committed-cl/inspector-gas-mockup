@@ -746,6 +746,14 @@ export function initialGeneralChatForVisit(projectId: string, visitId: string): 
   return projectId === demoProjectId && visitId === demoVisitId ? initialGeneralChatLosTresAntonios : []
 }
 
+// Free-form notes the inspector adds at the end of the visit — appended to the
+// end of the report, separate from the per-item evidence trail.
+export function initialObservationsForVisit(projectId: string, visitId: string): string {
+  return projectId === demoProjectId && visitId === demoVisitId
+    ? '<p>Visita en buen estado general. <b>Pendiente</b>: confirmar aislación en todos los soportes y cargar foto de la profundidad de la matriz soterrada.</p>'
+    : ''
+}
+
 export function completedForState(state: Record<string, ItemState>): { completed: number; total: number } {
   const completed = checklistDef.filter((d) => ['ok', 'na'].includes(state[d.id].status)).length
   return { completed, total: checklistDef.length }

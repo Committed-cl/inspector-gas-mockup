@@ -5,6 +5,7 @@ import { useProjectChecklist, useProjectVisits, currentInspector } from '../stat
 import { projects } from '../data/mock'
 import ChecklistDesktopRow from '../components/ChecklistDesktopRow'
 import ChatPanel from '../components/ChatPanel'
+import RichTextEditor from '../components/RichTextEditor'
 import { formatDateCl } from '../utils/date'
 
 const statusSortOrder: Record<ChecklistStatus, number> = { pending: 0, warn: 1, ok: 2, na: 2 }
@@ -21,7 +22,7 @@ const visitStatusColor = {
 export default function ChecklistProject() {
   const { projectId = '', visitId = '' } = useParams()
   const project = projects.find((p) => p.id === projectId)
-  const { itemsState, markManually, generalChat, sendGeneralMessage, resolveGeneralMessage } =
+  const { itemsState, markManually, generalChat, sendGeneralMessage, resolveGeneralMessage, observations, setObservations } =
     useProjectChecklist(projectId, visitId)
   const { visits, closeVisit, sendReport } = useProjectVisits(projectId)
   const visit = visits.find((v) => v.id === visitId)
@@ -165,6 +166,17 @@ export default function ChecklistProject() {
                 </section>
               )
             })}
+
+            <section>
+              <h2 className="text-[12px] uppercase tracking-wide text-brand font-semibold mb-1">Observaciones</h2>
+              <p className="text-[11.5px] text-muted mb-3">Notas generales del inspector — se agregan al final del informe.</p>
+              <RichTextEditor
+                key={visitId}
+                value={observations}
+                onChange={setObservations}
+                placeholder="Escribe aquí observaciones generales de la visita..."
+              />
+            </section>
           </div>
         </main>
 
