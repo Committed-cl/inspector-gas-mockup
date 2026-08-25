@@ -71,6 +71,7 @@ type ChecklistContextValue = {
   getVisits: (projectId: string) => Visit[]
   createVisit: (projectId: string) => string
   closeVisit: (projectId: string, visitId: string) => void
+  sendReport: (projectId: string, visitId: string) => void
   markManually: (projectId: string, visitId: string, itemId: string, status: ChecklistStatus, reason?: string) => void
   addEvidence: (
     projectId: string,
@@ -139,6 +140,20 @@ export function ChecklistProvider({ children }: { children: ReactNode }) {
     },
     [byVisit],
   )
+
+  const sendReport = useCallback((projectId: string, visitId: string) => {
+    setVisitsByProject((prevVisits) => {
+      const base = ensureVisits(projectId, prevVisits)
+      const visits = base[projectId]
+      const visit = visits.find((v) => v.id === visitId)
+      if (!visit || visit.status === 'en_curso' || visit.reportSentAt) return base
+
+      return {
+        ...base,
+        [projectId]: visits.map((v) => (v.id === visitId ? { ...v, reportSentAt: today() } : v)),
+      }
+    })
+  }, [])
 
   const markManually = useCallback(
     (projectId: string, visitId: string, itemId: string, status: ChecklistStatus, reason?: string) => {
@@ -394,6 +409,7 @@ export function ChecklistProvider({ children }: { children: ReactNode }) {
       getVisits,
       createVisit,
       closeVisit,
+      sendReport,
       markManually,
       addEvidence,
       sendGeneralMessage,
@@ -405,6 +421,7 @@ export function ChecklistProvider({ children }: { children: ReactNode }) {
       getVisits,
       createVisit,
       closeVisit,
+      sendReport,
       markManually,
       addEvidence,
       sendGeneralMessage,
@@ -423,11 +440,12 @@ export function useChecklist() {
 }
 
 export function useProjectVisits(projectId: string) {
-  const { getVisits, createVisit, closeVisit } = useChecklist()
+  const { getVisits, createVisit, closeVisit, sendReport } = useChecklist()
   return {
     visits: getVisits(projectId),
     createVisit: () => createVisit(projectId),
     closeVisit: (visitId: string) => closeVisit(projectId, visitId),
+    sendReport: (visitId: string) => sendReport(projectId, visitId),
   }
 }
 

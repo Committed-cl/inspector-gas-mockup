@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Link, useNavigate, useParams } from 'react-router-dom'
+import { Link, useParams } from 'react-router-dom'
 import { checklistDef, SECTIONS, formName, type ChecklistStatus } from '../data/checklistMatrizInterior'
 import { useProjectChecklist, useProjectVisits, currentInspector } from '../state/ChecklistContext'
 import { projects } from '../data/mock'
@@ -8,6 +8,8 @@ import ChatPanel from '../components/ChatPanel'
 import { formatDateCl } from '../utils/date'
 
 const statusSortOrder: Record<ChecklistStatus, number> = { pending: 0, warn: 1, ok: 2, na: 2 }
+
+const reportRecipients = ['supervisor@metrogas.cl', 'jefeobra@andes.cl', 'operaciones@gastec.cl']
 
 const visitStatusLabel = { en_curso: 'En curso', aprobada: 'Aprobada', rechazada: 'Rechazada' } as const
 const visitStatusColor = {
@@ -18,11 +20,10 @@ const visitStatusColor = {
 
 export default function ChecklistProject() {
   const { projectId = '', visitId = '' } = useParams()
-  const nav = useNavigate()
   const project = projects.find((p) => p.id === projectId)
   const { itemsState, markManually, generalChat, sendGeneralMessage, resolveGeneralMessage } =
     useProjectChecklist(projectId, visitId)
-  const { visits, closeVisit } = useProjectVisits(projectId)
+  const { visits, closeVisit, sendReport } = useProjectVisits(projectId)
   const visit = visits.find((v) => v.id === visitId)
   const [expandedOverride, setExpandedOverride] = useState<Record<string, boolean>>({})
 
@@ -71,16 +72,33 @@ export default function ChecklistProject() {
                 <div className="h-full bg-ok transition-all" style={{ width: `${(completed / total) * 100}%` }} />
               </div>
             </div>
-            {visit.status === 'en_curso' && (
+            {visit.status === 'en_curso' ? (
               <button
                 type="button"
-                onClick={() => {
-                  closeVisit(visitId)
-                  nav(`/checklist/${projectId}`)
-                }}
+                onClick={() => closeVisit(visitId)}
                 className="mt-2 text-[11.5px] font-semibold text-brand hover:underline"
               >
                 Cerrar visita
+              </button>
+            ) : visit.reportSentAt ? (
+              <div className="mt-2">
+                <p className="text-[11px] text-ok font-medium">Informe enviado el {formatDateCl(visit.reportSentAt)}</p>
+                <p className="text-[10.5px] text-muted mt-0.5">a {reportRecipients.join(', ')}</p>
+                <button
+                  type="button"
+                  onClick={() => window.print()}
+                  className="mt-1 text-[11.5px] font-semibold text-brand hover:underline"
+                >
+                  Descargar PDF
+                </button>
+              </div>
+            ) : (
+              <button
+                type="button"
+                onClick={() => sendReport(visitId)}
+                className="mt-2 text-[11.5px] font-semibold text-ok hover:underline"
+              >
+                Enviar informe
               </button>
             )}
           </div>

@@ -96,6 +96,7 @@ export type Visit = {
   id: string
   date: string
   status: VisitStatus
+  reportSentAt?: string
 }
 
 // The demo project's pre-loaded checklist progress lives on this visit — the
