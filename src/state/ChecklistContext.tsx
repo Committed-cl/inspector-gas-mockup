@@ -8,6 +8,7 @@ export type Visit = { id: string; projectId: string; date: string; status: Visit
 
 export type ProjectSummary = {
   id: string
+  clientId: string
   name: string
   address: string
   builder: string
@@ -16,6 +17,17 @@ export type ProjectSummary = {
   stageNumber: number
   stageName: string
   openVisit: { id: string; date: string } | null
+}
+
+export type CreateProjectInput = {
+  clientId: string
+  name: string
+  address: string
+  builder: string
+  installer: string
+  floors: number
+  stageNumber: number
+  stageName: string
 }
 
 type ChecklistState = { itemsState: Record<string, ItemState>; generalChat: ChatMessage[]; observations: string }
@@ -43,6 +55,7 @@ type Ctx = {
   fetchVisitsIfNeeded: (projectId: string) => void
   getChecklist: (projectId: string, visitId: string) => Async<ChecklistState>
   fetchChecklistIfNeeded: (projectId: string, visitId: string) => void
+  createProject: (input: CreateProjectInput) => Promise<string>
   createVisit: (projectId: string) => Promise<string>
   closeVisit: (projectId: string, visitId: string) => Promise<void>
   sendReport: (projectId: string, visitId: string) => Promise<void>
@@ -136,6 +149,16 @@ export function ChecklistProvider({ children }: { children: ReactNode }) {
     }))
   }
 
+  const createProject = useCallback(async (input: CreateProjectInput) => {
+    // POST /projects returns the bare Project (no openVisit) — a brand-new
+    // project never has one, so that's known statically rather than trusted
+    // blindly from the response shape.
+    const project = await api.post<Omit<ProjectSummary, 'openVisit'>>('/projects', input)
+    const summary: ProjectSummary = { ...project, openVisit: null }
+    setProjects((prev) => ({ data: [...(prev.data ?? []), summary], loading: false, error: null }))
+    return summary.id
+  }, [])
+
   const createVisit = useCallback(async (projectId: string) => {
     const visit = await api.post<Visit>(`/projects/${projectId}/visits`)
     setVisitsByProject((prev) => ({
@@ -228,6 +251,7 @@ export function ChecklistProvider({ children }: { children: ReactNode }) {
     fetchVisitsIfNeeded,
     getChecklist,
     fetchChecklistIfNeeded,
+    createProject,
     createVisit,
     closeVisit,
     sendReport,
@@ -263,6 +287,11 @@ export function useProject(projectId: string) {
   }, [projectId, fetchProjectIfNeeded])
   const state = getProject(projectId)
   return { ...state, loading: isPending(state) }
+}
+
+export function useCreateProject() {
+  const { createProject } = useChecklist()
+  return createProject
 }
 
 export function useProjectVisits(projectId: string) {

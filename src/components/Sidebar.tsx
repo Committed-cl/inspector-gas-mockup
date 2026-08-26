@@ -3,10 +3,14 @@ import { Link, useLocation } from 'react-router-dom'
 const items = [
   { to: '/admin/etapas', label: 'Etapas' },
   { to: '/admin/items/extintor', label: 'Ítems de checklist' },
+  { to: '/admin/empresas', label: 'Empresas' },
+  { to: '/admin/clientes', label: 'Clientes' },
+  { to: '/admin/usuarios', label: 'Usuarios' },
   { to: '/proyectos', label: 'Proyectos (app inspector)' },
+  { to: '/checklist', label: 'Ir a checklist' },
 ]
 
-export default function Sidebar() {
+export default function Sidebar({ demoMode = true }: { demoMode?: boolean }) {
   const { pathname } = useLocation()
   return (
     <aside className="w-60 shrink-0 border-r border-hairline bg-white/60 backdrop-blur min-h-screen p-5">
@@ -16,7 +20,7 @@ export default function Sidebar() {
       </Link>
       <nav className="flex flex-col gap-1">
         {items.map((i) => {
-          const active = pathname.startsWith(i.to)
+          const active = pathname.startsWith(i.to) && (i.to !== '/checklist' || pathname === '/checklist')
           return (
             <Link
               key={i.to}
@@ -30,9 +34,11 @@ export default function Sidebar() {
           )
         })}
       </nav>
-      <div className="mt-10 p-3 rounded-lg bg-brand-soft text-[11.5px] text-brand leading-snug">
-        Modo demo — los cambios no se persisten.
-      </div>
+      {demoMode && (
+        <div className="mt-10 p-3 rounded-lg bg-brand-soft text-[11.5px] text-brand leading-snug">
+          Modo demo — los cambios no se persisten.
+        </div>
+      )}
     </aside>
   )
 }

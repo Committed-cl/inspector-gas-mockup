@@ -29,16 +29,23 @@ export default function ChecklistProjects() {
             <p className="text-[12px] text-muted">
               {auth?.user.name} · {auth?.user.role}
             </p>
-            <button
-              type="button"
-              onClick={() => {
-                logout()
-                nav('/login')
-              }}
-              className="mt-1 text-[11.5px] font-semibold text-brand hover:underline"
-            >
-              Cerrar sesión
-            </button>
+            <div className="mt-1 flex items-center gap-3 justify-end">
+              {auth?.user.isAdmin && (
+                <Link to="/admin/empresas" className="text-[11.5px] font-semibold text-brand hover:underline">
+                  Panel admin
+                </Link>
+              )}
+              <button
+                type="button"
+                onClick={() => {
+                  logout()
+                  nav('/login')
+                }}
+                className="text-[11.5px] font-semibold text-brand hover:underline"
+              >
+                Cerrar sesión
+              </button>
+            </div>
           </div>
         </div>
         <Link to="/" className="inline-flex items-center gap-1 text-[12px] text-brand mt-3">
@@ -48,6 +55,12 @@ export default function ChecklistProjects() {
 
       <main className="px-6 py-8">
         <div className="max-w-3xl mx-auto flex flex-col gap-3">
+          <Link
+            to="/checklist/nueva-obra"
+            className="self-start bg-brand hover:bg-brand-dark text-white text-[12.5px] font-semibold px-4 py-2 rounded-lg transition-colors"
+          >
+            + Nueva obra
+          </Link>
           {projects.map((p) => (
             <Link
               key={p.id}
