@@ -32,6 +32,12 @@ jobs:
       - name: Build
         run: npm run build
 
+      # GitHub Pages has no server-side routing — a direct load or refresh of
+      # any sub-route (e.g. /checklist) 404s unless we also serve the SPA
+      # shell at 404.html, letting React Router pick up the route client-side.
+      - name: SPA fallback for client-side routing
+        run: cp dist/index.html dist/404.html
+
       - name: Setup Pages
         uses: actions/configure-pages@v5
 
