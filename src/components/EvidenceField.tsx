@@ -1,4 +1,5 @@
 import { useRef, useState } from 'react'
+import { compressImageFile } from '../lib/compressImage'
 import type { RequirementState } from '../data/checklistMatrizInterior'
 
 const evidenceSourceLabel = {
@@ -15,6 +16,7 @@ type Props = {
 
 export default function EvidenceField({ requirement, onAdd }: Props) {
   const [text, setText] = useState('')
+  const [fileError, setFileError] = useState<string | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   function submitText() {
@@ -23,11 +25,16 @@ export default function EvidenceField({ requirement, onAdd }: Props) {
     setText('')
   }
 
-  function onFileSelected(e: React.ChangeEvent<HTMLInputElement>) {
+  async function onFileSelected(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
-    if (!file) return
-    onAdd(file.name, URL.createObjectURL(file))
     e.target.value = ''
+    if (!file) return
+    setFileError(null)
+    try {
+      onAdd(file.name, await compressImageFile(file))
+    } catch {
+      setFileError('No se pudo procesar la foto.')
+    }
   }
 
   return (
@@ -63,6 +70,7 @@ export default function EvidenceField({ requirement, onAdd }: Props) {
           >
             📷 Subir foto
           </button>
+          {fileError && <p className="text-[11.5px] text-danger mt-1">{fileError}</p>}
         </div>
       ) : (
         <div className="mt-1 flex items-center gap-2">

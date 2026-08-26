@@ -140,9 +140,8 @@ export default function ChecklistItemPage() {
             subtitle="Todo lo que hables, escribas o subas acá queda asociado solo a este ítem — no hace falta que digas a cuál te refieres."
             messages={state.chat}
             placeholder="Cuéntame qué observaste para este ítem..."
-            onSend={(text, type) => sendItemMessage(def.id, text, type)}
+            onSend={(text, type, previewUrl) => sendItemMessage(def.id, text, type, previewUrl)}
             micHint="Ya revisé este punto, cumple con lo que exige la norma."
-            attachHint="Aquí tienes la foto que respalda este ítem."
           />
         </aside>
       </div>

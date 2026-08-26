@@ -189,7 +189,6 @@ export default function ChecklistProject() {
             placeholder="Ej: la matriz está pintada y a la vista..."
             onSend={sendGeneralMessage}
             micHint="Revisé el manifold, está pintado, y el bastón de la red interior tiene marcado el número de cada departamento."
-            attachHint="Aquí tienes una foto."
             onSelectOption={resolveGeneralMessage}
           />
         </aside>

@@ -70,8 +70,8 @@ type Ctx = {
     text: string,
     previewUrl?: string,
   ) => Promise<void>
-  sendGeneralMessage: (projectId: string, visitId: string, text: string, type?: EvidenceType) => Promise<void>
-  sendItemMessage: (projectId: string, visitId: string, itemId: string, text: string, type?: EvidenceType) => Promise<void>
+  sendGeneralMessage: (projectId: string, visitId: string, text: string, type?: EvidenceType, previewUrl?: string) => Promise<void>
+  sendItemMessage: (projectId: string, visitId: string, itemId: string, text: string, type?: EvidenceType, previewUrl?: string) => Promise<void>
   resolveGeneralMessage: (projectId: string, visitId: string, messageId: string, itemId: string) => Promise<void>
 }
 
@@ -216,23 +216,29 @@ export function ChecklistProvider({ children }: { children: ReactNode }) {
     [],
   )
 
-  const sendGeneralMessage = useCallback(async (projectId: string, visitId: string, text: string, type: EvidenceType = 'text') => {
-    if (!text.trim()) return
-    adoptChecklist(
-      projectId,
-      visitId,
-      await api.post<ChecklistState>(`/projects/${projectId}/visits/${visitId}/messages`, { text, type }),
-    )
-  }, [])
+  const sendGeneralMessage = useCallback(
+    async (projectId: string, visitId: string, text: string, type: EvidenceType = 'text', previewUrl?: string) => {
+      if (!text.trim()) return
+      adoptChecklist(
+        projectId,
+        visitId,
+        await api.post<ChecklistState>(`/projects/${projectId}/visits/${visitId}/messages`, { text, type, previewUrl }),
+      )
+    },
+    [],
+  )
 
-  const sendItemMessage = useCallback(async (projectId: string, visitId: string, itemId: string, text: string, type: EvidenceType = 'text') => {
-    if (!text.trim()) return
-    adoptChecklist(
-      projectId,
-      visitId,
-      await api.post<ChecklistState>(`/projects/${projectId}/visits/${visitId}/items/${itemId}/messages`, { text, type }),
-    )
-  }, [])
+  const sendItemMessage = useCallback(
+    async (projectId: string, visitId: string, itemId: string, text: string, type: EvidenceType = 'text', previewUrl?: string) => {
+      if (!text.trim()) return
+      adoptChecklist(
+        projectId,
+        visitId,
+        await api.post<ChecklistState>(`/projects/${projectId}/visits/${visitId}/items/${itemId}/messages`, { text, type, previewUrl }),
+      )
+    },
+    [],
+  )
 
   const resolveGeneralMessage = useCallback(async (projectId: string, visitId: string, messageId: string, itemId: string) => {
     adoptChecklist(
@@ -336,8 +342,9 @@ export function useProjectChecklist(projectId: string, visitId: string) {
     markManually: (itemId: string, status: ChecklistStatus, reason?: string) => markManually(projectId, visitId, itemId, status, reason),
     addEvidence: (itemId: string, requirementIndex: number, type: EvidenceType, text: string, previewUrl?: string) =>
       addEvidence(projectId, visitId, itemId, requirementIndex, type, text, previewUrl),
-    sendGeneralMessage: (text: string, type?: EvidenceType) => sendGeneralMessage(projectId, visitId, text, type),
-    sendItemMessage: (itemId: string, text: string, type?: EvidenceType) => sendItemMessage(projectId, visitId, itemId, text, type),
+    sendGeneralMessage: (text: string, type?: EvidenceType, previewUrl?: string) => sendGeneralMessage(projectId, visitId, text, type, previewUrl),
+    sendItemMessage: (itemId: string, text: string, type?: EvidenceType, previewUrl?: string) =>
+      sendItemMessage(projectId, visitId, itemId, text, type, previewUrl),
     resolveGeneralMessage: (messageId: string, itemId: string) => resolveGeneralMessage(projectId, visitId, messageId, itemId),
   }
 }
