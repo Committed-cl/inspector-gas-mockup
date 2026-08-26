@@ -29,16 +29,23 @@ export default function ChecklistProjects() {
             <p className="text-[12px] text-muted">
               {auth?.user.name} · {auth?.user.role}
             </p>
-            <button
-              type="button"
-              onClick={() => {
-                logout()
-                nav('/login')
-              }}
-              className="mt-1 text-[11.5px] font-semibold text-brand hover:underline"
-            >
-              Cerrar sesión
-            </button>
+            <div className="mt-1 flex items-center gap-3 justify-end">
+              {auth?.user.isAdmin && (
+                <Link to="/admin" className="text-[11.5px] font-semibold text-brand hover:underline">
+                  Panel admin
+                </Link>
+              )}
+              <button
+                type="button"
+                onClick={() => {
+                  logout()
+                  nav('/login')
+                }}
+                className="text-[11.5px] font-semibold text-brand hover:underline"
+              >
+                Cerrar sesión
+              </button>
+            </div>
           </div>
         </div>
         <Link to="/" className="inline-flex items-center gap-1 text-[12px] text-brand mt-3">

@@ -25,7 +25,10 @@ export type ChatMessage = {
   // name. Cleared once one of them is picked.
   options?: { itemId: string; title: string }[]
   // The evidence (text + type) waiting to be filed once an option is picked.
-  pendingEvidence?: { text: string; type: EvidenceType }
+  pendingEvidence?: { text: string; type: EvidenceType; previewUrl?: string }
+  // Thumbnail for a photo message — a compressed data: URL (no storage
+  // backend exists yet, see lib/compressImage.ts).
+  previewUrl?: string
 }
 
 export type Evidence = {

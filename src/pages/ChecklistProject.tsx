@@ -185,11 +185,11 @@ export default function ChecklistProject() {
           <ChatPanel
             title="Chat general del checklist"
             subtitle="Cuéntame qué revisaste sin indicar el ítem — yo identifico a cuál (o cuáles) corresponde y actualizo su estado."
+            chatId={visitId}
             messages={generalChat}
             placeholder="Ej: la matriz está pintada y a la vista..."
             onSend={sendGeneralMessage}
             micHint="Revisé el manifold, está pintado, y el bastón de la red interior tiene marcado el número de cada departamento."
-            attachHint="Aquí tienes una foto."
             onSelectOption={resolveGeneralMessage}
           />
         </aside>

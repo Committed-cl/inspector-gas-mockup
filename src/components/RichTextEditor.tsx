@@ -14,17 +14,35 @@ const COMMANDS: { command: string; label: string; icon: string }[] = [
 
 export default function RichTextEditor({ value, onChange, placeholder }: Props) {
   const ref = useRef<HTMLDivElement>(null)
+  // Tracks what the DOM was last set to (by us, or mirrored from typing) so
+  // the sync effect below can tell "value changed because I just typed it"
+  // (skip — would fight the cursor) apart from "value changed from outside,
+  // e.g. the chat appending an observation" (must re-render).
+  const lastValueRef = useRef<string | null>(null)
 
-  // Set once on mount only — re-applying `value` on every keystroke via
-  // dangerouslySetInnerHTML would fight the browser's own cursor position.
   useEffect(() => {
-    if (ref.current) ref.current.innerHTML = value
-  }, [])
+    if (!ref.current) return
+    // Every keystroke here triggers a save round-trip (onChange -> API ->
+    // the response flows back into `value`) — while the field is focused,
+    // a stale in-flight response landing after a later keystroke must not
+    // stomp what's already on screen.
+    if (document.activeElement === ref.current) return
+    if (value !== lastValueRef.current) {
+      ref.current.innerHTML = value
+      lastValueRef.current = value
+    }
+  }, [value])
+
+  function handleInput() {
+    const html = ref.current?.innerHTML ?? ''
+    lastValueRef.current = html
+    onChange(html)
+  }
 
   function exec(command: string) {
     ref.current?.focus()
     document.execCommand(command)
-    onChange(ref.current?.innerHTML ?? '')
+    handleInput()
   }
 
   return (
@@ -47,7 +65,7 @@ export default function RichTextEditor({ value, onChange, placeholder }: Props) 
         ref={ref}
         contentEditable
         suppressContentEditableWarning
-        onInput={() => onChange(ref.current?.innerHTML ?? '')}
+        onInput={handleInput}
         data-placeholder={placeholder}
         className="min-h-[110px] px-3 py-2.5 text-[13px] text-ink leading-relaxed outline-none empty:before:content-[attr(data-placeholder)] empty:before:text-muted [&_ul]:list-disc [&_ul]:pl-5"
       />
