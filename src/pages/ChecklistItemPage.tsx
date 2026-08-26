@@ -1,10 +1,10 @@
 import { Link, useParams } from 'react-router-dom'
 import { checklistDef, requiredEvidenceState, missingEvidenceHint } from '../data/checklistMatrizInterior'
-import { useProjectChecklist } from '../state/ChecklistContext'
-import { projects } from '../data/mock'
+import { useProject, useProjectChecklist } from '../state/ChecklistContext'
 import ChatPanel from '../components/ChatPanel'
 import StatusControl from '../components/StatusControl'
 import EvidenceField from '../components/EvidenceField'
+import CenteredMessage from '../components/CenteredMessage'
 
 const statusLabel = { ok: 'Cumple', warn: 'Parcial', pending: 'Pendiente', na: 'No aplica' } as const
 const statusColor = {
@@ -23,22 +23,21 @@ const resultBorderClass = {
 
 export default function ChecklistItemPage() {
   const { projectId = '', visitId = '', itemId } = useParams()
-  const project = projects.find((p) => p.id === projectId)
-  const { itemsState, markManually, addEvidence, sendItemMessage } = useProjectChecklist(projectId, visitId)
+  const project = useProject(projectId)
+  const { itemsState, markManually, addEvidence, sendItemMessage, loading: checklistLoading } = useProjectChecklist(projectId, visitId)
   const def = checklistDef.find((d) => d.id === itemId)
 
-  if (!project || !def) {
+  if (project.loading || checklistLoading) return <CenteredMessage text="Cargando..." />
+  if (!project.data || !def) {
     return (
-      <div className="min-h-screen grid place-items-center bg-base">
-        <div className="text-center">
-          <p className="text-ink font-semibold">{!project ? 'Proyecto no encontrado' : 'Ítem no encontrado'}</p>
-          <Link to="/checklist" className="text-brand text-[13px] mt-2 inline-block">
-            ← Volver al listado de proyectos
-          </Link>
-        </div>
-      </div>
+      <CenteredMessage
+        text={!project.data ? 'Proyecto no encontrado' : 'Ítem no encontrado'}
+        linkTo="/checklist"
+        linkLabel="← Volver al listado de proyectos"
+      />
     )
   }
+  const projectData = project.data
 
   const state = itemsState[def.id]
   const requirements = requiredEvidenceState(def, state.evidence)
@@ -56,7 +55,7 @@ export default function ChecklistItemPage() {
         <div className="flex items-start justify-between gap-4">
           <div>
             <p className="text-[11.5px] uppercase tracking-wide text-muted font-semibold">
-              {project.name} · {def.section}
+              {projectData.name} · {def.section}
             </p>
             <h1 className="text-[19px] font-bold text-ink mt-0.5 leading-tight">{def.title}</h1>
           </div>

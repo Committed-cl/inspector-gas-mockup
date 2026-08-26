@@ -1,15 +1,30 @@
 import { useNavigate } from 'react-router-dom'
-import { useState, FormEvent } from 'react'
+import { useState, type FormEvent } from 'react'
 import PhoneFrame from '../components/PhoneFrame'
-import { inspector } from '../data/mock'
+import { useAuth } from '../lib/auth'
+import { ApiError } from '../lib/api'
 
 export default function Login() {
   const nav = useNavigate()
+  const { login } = useAuth()
+  const [email, setEmail] = useState('r.martinez@metrogas.cl')
+  const [password, setPassword] = useState('')
   const [remember, setRemember] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+  const [submitting, setSubmitting] = useState(false)
 
-  const submit = (e: FormEvent) => {
+  const submit = async (e: FormEvent) => {
     e.preventDefault()
-    nav('/proyectos')
+    setError(null)
+    setSubmitting(true)
+    try {
+      await login(email, password)
+      nav('/checklist')
+    } catch (err) {
+      setError(err instanceof ApiError && err.status === 401 ? 'Email o contraseña incorrectos.' : 'No se pudo iniciar sesión. Intenta de nuevo.')
+    } finally {
+      setSubmitting(false)
+    }
   }
 
   return (
@@ -25,7 +40,8 @@ export default function Login() {
             <span className="text-[12px] font-medium text-ink">Email</span>
             <input
               type="email"
-              defaultValue={inspector.email}
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
               className="rounded-lg border border-hairline px-3 py-2.5 text-[14px] focus:outline-none focus:ring-2 focus:ring-brand/30 focus:border-brand"
             />
           </label>
@@ -34,7 +50,8 @@ export default function Login() {
             <span className="text-[12px] font-medium text-ink">Contraseña</span>
             <input
               type="password"
-              defaultValue="demo-password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
               className="rounded-lg border border-hairline px-3 py-2.5 text-[14px] focus:outline-none focus:ring-2 focus:ring-brand/30 focus:border-brand"
             />
           </label>
@@ -49,23 +66,20 @@ export default function Login() {
             Recordar este dispositivo
           </label>
 
+          {error && <p className="text-[12.5px] text-danger">{error}</p>}
+
           <button
             type="submit"
-            className="mt-2 bg-brand hover:bg-brand-dark text-white font-semibold py-3 rounded-lg transition-colors"
+            disabled={submitting}
+            className="mt-2 bg-brand hover:bg-brand-dark text-white font-semibold py-3 rounded-lg transition-colors disabled:opacity-60"
           >
-            Ingresar
+            {submitting ? 'Ingresando...' : 'Ingresar'}
           </button>
 
           <button type="button" className="text-[12.5px] text-brand/80 hover:underline">
             ¿Olvidaste tu contraseña?
           </button>
         </form>
-
-        <div className="mt-auto pt-6 border-t border-hairline">
-          <p className="text-[11px] text-muted text-center">
-            Demo navegable — cualquier click en "Ingresar" entra al prototipo.
-          </p>
-        </div>
       </div>
     </PhoneFrame>
   )

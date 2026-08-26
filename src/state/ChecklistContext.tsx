@@ -1,82 +1,53 @@
-import { createContext, useCallback, useContext, useMemo, useState, type ReactNode } from 'react'
+import { createContext, useCallback, useContext, useEffect, useRef, useState, type ReactNode } from 'react'
 import { Outlet } from 'react-router-dom'
-import {
-  checklistDef,
-  initialGeneralChatForVisit,
-  initialObservationsForVisit,
-  initialStateForVisit,
-  initialVisitsForProject,
-  completedForState,
-  matchItemsByKeyword,
-  suggestItemsForText,
-  nextPendingRequirement,
-  hasSufficientEvidence,
-  inspector,
-  type ChatMessage,
-  type ChecklistStatus,
-  type Evidence,
-  type EvidenceType,
-  type ItemState,
-  type Visit,
-} from '../data/checklistMatrizInterior'
+import { api } from '../lib/api'
+import type { ChatMessage, ChecklistStatus, EvidenceType, ItemState } from '../data/checklistMatrizInterior'
 
-let seq = 0
-function nextId(prefix: string) {
-  seq += 1
-  return `${prefix}-${seq}`
+export type VisitStatus = 'en_curso' | 'aprobada' | 'rechazada'
+export type Visit = { id: string; projectId: string; date: string; status: VisitStatus; reportSentAt?: string }
+
+export type ProjectSummary = {
+  id: string
+  name: string
+  address: string
+  builder: string
+  installer: string
+  floors: number
+  stageNumber: number
+  stageName: string
+  openVisit: { id: string; date: string } | null
 }
 
-function currentTime() {
-  return new Date().toLocaleTimeString('es-CL', { hour: '2-digit', minute: '2-digit', hour12: false })
+type ChecklistState = { itemsState: Record<string, ItemState>; generalChat: ChatMessage[]; observations: string }
+
+type Async<T> = { data: T | null; loading: boolean; error: string | null }
+function idle<T>(): Async<T> {
+  return { data: null, loading: false, error: null }
+}
+// On the render before a fetch-on-mount effect has run, an untouched slot
+// reads as idle() — loading: false, data: null — which would let pages
+// render as if data resolved to "nothing" instead of "not fetched yet".
+// Treat "no data and no error yet" as still loading too.
+function isPending<T>(a: Async<T>): boolean {
+  return a.loading || (!a.data && !a.error)
 }
 
-function today() {
-  return new Date().toISOString().slice(0, 10)
-}
+const visitKey = (projectId: string, visitId: string) => `${projectId}::${visitId}`
 
-type ProjectChecklistState = {
-  itemsState: Record<string, ItemState>
-  generalChat: ChatMessage[]
-  observations: string
-}
-
-// A visit's checklist state is independent of every other visit for the same
-// project — the key combines both so obra → visita → checklist stays 1:1:1.
-function visitKey(projectId: string, visitId: string) {
-  return `${projectId}::${visitId}`
-}
-
-function initialProjectState(projectId: string, visitId: string): ProjectChecklistState {
-  return {
-    itemsState: initialStateForVisit(projectId, visitId),
-    generalChat: initialGeneralChatForVisit(projectId, visitId),
-    observations: initialObservationsForVisit(projectId, visitId),
-  }
-}
-
-function ensureVisitState(
-  projectId: string,
-  visitId: string,
-  byVisit: Record<string, ProjectChecklistState>,
-): Record<string, ProjectChecklistState> {
-  const key = visitKey(projectId, visitId)
-  if (byVisit[key]) return byVisit
-  return { ...byVisit, [key]: initialProjectState(projectId, visitId) }
-}
-
-function ensureVisits(projectId: string, byProject: Record<string, Visit[]>): Record<string, Visit[]> {
-  if (byProject[projectId]) return byProject
-  return { ...byProject, [projectId]: initialVisitsForProject(projectId) }
-}
-
-type ChecklistContextValue = {
-  getProjectState: (projectId: string, visitId: string) => ProjectChecklistState
-  getVisits: (projectId: string) => Visit[]
-  createVisit: (projectId: string) => string
-  closeVisit: (projectId: string, visitId: string) => void
-  sendReport: (projectId: string, visitId: string) => void
-  setObservations: (projectId: string, visitId: string, html: string) => void
-  markManually: (projectId: string, visitId: string, itemId: string, status: ChecklistStatus, reason?: string) => void
+type Ctx = {
+  projects: Async<ProjectSummary[]>
+  fetchProjectsIfNeeded: () => void
+  getProject: (projectId: string) => Async<ProjectSummary>
+  fetchProjectIfNeeded: (projectId: string) => void
+  getVisits: (projectId: string) => Async<Visit[]>
+  fetchVisitsIfNeeded: (projectId: string) => void
+  getChecklist: (projectId: string, visitId: string) => Async<ChecklistState>
+  fetchChecklistIfNeeded: (projectId: string, visitId: string) => void
+  createVisit: (projectId: string) => Promise<string>
+  closeVisit: (projectId: string, visitId: string) => Promise<void>
+  sendReport: (projectId: string, visitId: string) => Promise<void>
+  setObservations: (projectId: string, visitId: string, html: string) => Promise<void>
+  markManually: (projectId: string, visitId: string, itemId: string, status: ChecklistStatus, reason?: string) => Promise<void>
   addEvidence: (
     projectId: string,
     visitId: string,
@@ -85,366 +56,188 @@ type ChecklistContextValue = {
     type: EvidenceType,
     text: string,
     previewUrl?: string,
-  ) => void
-  sendGeneralMessage: (projectId: string, visitId: string, text: string, type?: EvidenceType) => void
-  sendItemMessage: (projectId: string, visitId: string, itemId: string, text: string, type?: EvidenceType) => void
-  resolveGeneralMessage: (projectId: string, visitId: string, messageId: string, itemId: string) => void
+  ) => Promise<void>
+  sendGeneralMessage: (projectId: string, visitId: string, text: string, type?: EvidenceType) => Promise<void>
+  sendItemMessage: (projectId: string, visitId: string, itemId: string, text: string, type?: EvidenceType) => Promise<void>
+  resolveGeneralMessage: (projectId: string, visitId: string, messageId: string, itemId: string) => Promise<void>
 }
 
-const ChecklistContext = createContext<ChecklistContextValue | null>(null)
+const ChecklistContext = createContext<Ctx | null>(null)
 
 export function ChecklistProvider({ children }: { children: ReactNode }) {
-  const [byVisit, setByVisit] = useState<Record<string, ProjectChecklistState>>({})
-  const [visitsByProject, setVisitsByProject] = useState<Record<string, Visit[]>>({})
+  const [projects, setProjects] = useState<Async<ProjectSummary[]>>(idle())
+  const [projectById, setProjectById] = useState<Record<string, Async<ProjectSummary>>>({})
+  const [visitsByProject, setVisitsByProject] = useState<Record<string, Async<Visit[]>>>({})
+  const [checklistByVisit, setChecklistByVisit] = useState<Record<string, Async<ChecklistState>>>({})
+  // The rich text editor fires onChange on every keystroke — debounce the
+  // save so it doesn't send one PUT per character (and so out-of-order
+  // responses to overlapping requests can't clobber a newer local edit).
+  const observationsDebounce = useRef<Record<string, ReturnType<typeof setTimeout>>>({})
 
-  const getProjectState = useCallback(
-    (projectId: string, visitId: string) => byVisit[visitKey(projectId, visitId)] ?? initialProjectState(projectId, visitId),
-    [byVisit],
-  )
+  const fetchProjectsIfNeeded = useCallback(() => {
+    setProjects((prev) => {
+      if (prev.data || prev.loading) return prev
+      api.get<ProjectSummary[]>('/projects').then(
+        (data) => setProjects({ data, loading: false, error: null }),
+        (err) => setProjects({ data: null, loading: false, error: String(err) }),
+      )
+      return { data: null, loading: true, error: null }
+    })
+  }, [])
 
-  const getVisits = useCallback(
-    (projectId: string) => visitsByProject[projectId] ?? initialVisitsForProject(projectId),
-    [visitsByProject],
-  )
+  const getProject = useCallback((projectId: string) => projectById[projectId] ?? idle<ProjectSummary>(), [projectById])
+  const fetchProjectIfNeeded = useCallback((projectId: string) => {
+    setProjectById((prev) => {
+      if (prev[projectId]?.data || prev[projectId]?.loading) return prev
+      api.get<ProjectSummary>(`/projects/${projectId}`).then(
+        (data) => setProjectById((p) => ({ ...p, [projectId]: { data, loading: false, error: null } })),
+        (err) => setProjectById((p) => ({ ...p, [projectId]: { data: null, loading: false, error: String(err) } })),
+      )
+      return { ...prev, [projectId]: { data: null, loading: true, error: null } }
+    })
+  }, [])
 
-  const createVisit = useCallback((projectId: string) => {
-    let newId = ''
+  const getVisits = useCallback((projectId: string) => visitsByProject[projectId] ?? idle<Visit[]>(), [visitsByProject])
+  const fetchVisitsIfNeeded = useCallback((projectId: string) => {
     setVisitsByProject((prev) => {
-      const base = ensureVisits(projectId, prev)
-      const visits = base[projectId]
-      const open = visits.find((v) => v.status === 'en_curso')
-      if (open) {
-        newId = open.id
-        return base
-      }
-      newId = nextId(`visita-${projectId}`)
-      const visit: Visit = { id: newId, date: today(), status: 'en_curso' }
-      return { ...base, [projectId]: [...visits, visit] }
+      if (prev[projectId]?.data || prev[projectId]?.loading) return prev
+      api.get<Visit[]>(`/projects/${projectId}/visits`).then(
+        (data) => setVisitsByProject((v) => ({ ...v, [projectId]: { data, loading: false, error: null } })),
+        (err) => setVisitsByProject((v) => ({ ...v, [projectId]: { data: null, loading: false, error: String(err) } })),
+      )
+      return { ...prev, [projectId]: { data: null, loading: true, error: null } }
     })
-    return newId
   }, [])
 
-  const closeVisit = useCallback(
-    (projectId: string, visitId: string) => {
-      setVisitsByProject((prevVisits) => {
-        const base = ensureVisits(projectId, prevVisits)
-        const visits = base[projectId]
-        const visit = visits.find((v) => v.id === visitId)
-        if (!visit || visit.status !== 'en_curso') return base
-
-        const state = byVisit[visitKey(projectId, visitId)] ?? initialProjectState(projectId, visitId)
-        const { completed, total } = completedForState(state.itemsState)
-        const status: Visit['status'] = completed === total ? 'aprobada' : 'rechazada'
-
-        return {
-          ...base,
-          [projectId]: visits.map((v) => (v.id === visitId ? { ...v, status } : v)),
-        }
-      })
-    },
-    [byVisit],
+  const getChecklist = useCallback(
+    (projectId: string, visitId: string) => checklistByVisit[visitKey(projectId, visitId)] ?? idle<ChecklistState>(),
+    [checklistByVisit],
   )
-
-  const sendReport = useCallback((projectId: string, visitId: string) => {
-    setVisitsByProject((prevVisits) => {
-      const base = ensureVisits(projectId, prevVisits)
-      const visits = base[projectId]
-      const visit = visits.find((v) => v.id === visitId)
-      if (!visit || visit.status === 'en_curso' || visit.reportSentAt) return base
-
-      return {
-        ...base,
-        [projectId]: visits.map((v) => (v.id === visitId ? { ...v, reportSentAt: today() } : v)),
-      }
+  const fetchChecklistIfNeeded = useCallback((projectId: string, visitId: string) => {
+    const key = visitKey(projectId, visitId)
+    setChecklistByVisit((prev) => {
+      if (prev[key]?.data || prev[key]?.loading) return prev
+      api.get<ChecklistState>(`/projects/${projectId}/visits/${visitId}/checklist`).then(
+        (data) => setChecklistByVisit((c) => ({ ...c, [key]: { data, loading: false, error: null } })),
+        (err) => setChecklistByVisit((c) => ({ ...c, [key]: { data: null, loading: false, error: String(err) } })),
+      )
+      return { ...prev, [key]: { data: null, loading: true, error: null } }
     })
   }, [])
 
-  const setObservations = useCallback((projectId: string, visitId: string, html: string) => {
-    setByVisit((prev) => {
-      const base = ensureVisitState(projectId, visitId, prev)
-      const key = visitKey(projectId, visitId)
-      return { ...base, [key]: { ...base[key], observations: html } }
-    })
+  const adoptChecklist = (projectId: string, visitId: string, data: ChecklistState) => {
+    setChecklistByVisit((prev) => ({ ...prev, [visitKey(projectId, visitId)]: { data, loading: false, error: null } }))
+  }
+
+  const adoptVisit = (projectId: string, visit: Visit) => {
+    setVisitsByProject((prev) => ({
+      ...prev,
+      [projectId]: { data: (prev[projectId]?.data ?? []).map((v) => (v.id === visit.id ? visit : v)), loading: false, error: null },
+    }))
+  }
+
+  const createVisit = useCallback(async (projectId: string) => {
+    const visit = await api.post<Visit>(`/projects/${projectId}/visits`)
+    setVisitsByProject((prev) => ({
+      ...prev,
+      [projectId]: {
+        data: (prev[projectId]?.data ?? []).some((v) => v.id === visit.id)
+          ? prev[projectId]!.data!
+          : [...(prev[projectId]?.data ?? []), visit],
+        loading: false,
+        error: null,
+      },
+    }))
+    return visit.id
   }, [])
 
-  const markManually = useCallback(
-    (projectId: string, visitId: string, itemId: string, status: ChecklistStatus, reason?: string) => {
-      const time = currentTime()
-      setByVisit((prev) => {
-        const base = ensureVisitState(projectId, visitId, prev)
-        const key = visitKey(projectId, visitId)
-        const projectState = base[key]
-        const prevItem = projectState.itemsState[itemId]
-        const def = checklistDef.find((d) => d.id === itemId)
+  const closeVisit = useCallback(async (projectId: string, visitId: string) => {
+    adoptVisit(projectId, await api.post<Visit>(`/projects/${projectId}/visits/${visitId}/close`))
+  }, [])
 
-        // A manual mark can't reach green if the item is missing evidence the
-        // checklist requires — it stays amber until that evidence is loaded.
-        const finalStatus: ChecklistStatus =
-          status === 'ok' && def && !hasSufficientEvidence(def, prevItem.evidence) ? 'warn' : status
+  const sendReport = useCallback(async (projectId: string, visitId: string) => {
+    adoptVisit(projectId, await api.post<Visit>(`/projects/${projectId}/visits/${visitId}/send-report`))
+  }, [])
 
-        // The manual mark shows up in the evidence list as the current state of
-        // the mark — not as history. A new click replaces the previous one;
-        // entries don't pile up every time Cumple/No cumple gets touched.
-        const evidenceText =
-          finalStatus === 'na'
-            ? `Marcado manualmente como no aplica${reason ? `: ${reason}` : '.'}`
-            : finalStatus === 'ok'
-              ? 'Marcado manualmente como cumplido.'
-              : finalStatus === 'warn'
-                ? 'Marcado como cumplido, pero falta evidencia para confirmarlo.'
-                : 'Marcado manualmente como no cumple.'
+  const setObservations = useCallback(async (projectId: string, visitId: string, html: string) => {
+    const key = visitKey(projectId, visitId)
+    if (observationsDebounce.current[key]) clearTimeout(observationsDebounce.current[key])
+    observationsDebounce.current[key] = setTimeout(async () => {
+      delete observationsDebounce.current[key]
+      adoptChecklist(projectId, visitId, await api.put<ChecklistState>(`/projects/${projectId}/visits/${visitId}/observations`, { observations: html }))
+    }, 400)
+  }, [])
 
-        const manualMark: Evidence = {
-          id: nextId('ev'),
-          type: 'text',
-          source: 'manual-mark',
-          text: evidenceText,
-          time,
-          result: finalStatus,
-        }
-
-        return {
-          ...base,
-          [key]: {
-            ...projectState,
-            itemsState: {
-              ...projectState.itemsState,
-              [itemId]: {
-                ...prevItem,
-                status: finalStatus,
-                source: 'manual',
-                notApplicableReason: finalStatus === 'na' ? reason : undefined,
-                evidence: [...prevItem.evidence.filter((e) => e.source !== 'manual-mark'), manualMark],
-              },
-            },
-          },
-        }
-      })
-    },
-    [],
-  )
+  const markManually = useCallback(async (projectId: string, visitId: string, itemId: string, status: ChecklistStatus, reason?: string) => {
+    adoptChecklist(
+      projectId,
+      visitId,
+      await api.post<ChecklistState>(`/projects/${projectId}/visits/${visitId}/items/${itemId}/mark`, { status, reason }),
+    )
+  }, [])
 
   const addEvidence = useCallback(
-    (
-      projectId: string,
-      visitId: string,
-      itemId: string,
-      requirementIndex: number,
-      type: EvidenceType,
-      text: string,
-      previewUrl?: string,
-    ) => {
+    async (projectId: string, visitId: string, itemId: string, requirementIndex: number, type: EvidenceType, text: string, previewUrl?: string) => {
       if (!text.trim()) return
-      const time = currentTime()
-      setByVisit((prev) => {
-        const base = ensureVisitState(projectId, visitId, prev)
-        const key = visitKey(projectId, visitId)
-        const projectState = base[key]
-        const prevItem = projectState.itemsState[itemId]
-        const newEvidence: Evidence = { id: nextId('ev'), type, source: 'manual', text, time, requirementIndex, previewUrl }
-        // With at least one piece of evidence loaded, the item can no longer stay
-        // red — it moves to amber even if more fields are still missing. It
-        // still needs Cumple to reach green, and is left alone if it was already
-        // green, amber, or not-applicable.
-        const finalStatus = prevItem.status === 'pending' ? 'warn' : prevItem.status
-        return {
-          ...base,
-          [key]: {
-            ...projectState,
-            itemsState: {
-              ...projectState.itemsState,
-              [itemId]: { ...prevItem, status: finalStatus, evidence: [...prevItem.evidence, newEvidence] },
-            },
-          },
-        }
-      })
+      adoptChecklist(
+        projectId,
+        visitId,
+        await api.post<ChecklistState>(`/projects/${projectId}/visits/${visitId}/items/${itemId}/evidence`, {
+          requirementIndex,
+          type,
+          text,
+          previewUrl,
+        }),
+      )
     },
     [],
   )
 
-  const sendGeneralMessage = useCallback((projectId: string, visitId: string, text: string, type: EvidenceType = 'text') => {
+  const sendGeneralMessage = useCallback(async (projectId: string, visitId: string, text: string, type: EvidenceType = 'text') => {
     if (!text.trim()) return
-    const time = currentTime()
-    const inspectorMsg: ChatMessage = { id: nextId('gm'), role: 'inspector', text, type, time }
-    const matched = matchItemsByKeyword(text)
-
-    setByVisit((prev) => {
-      const base = ensureVisitState(projectId, visitId, prev)
-      const key = visitKey(projectId, visitId)
-      const projectState = base[key]
-
-      if (matched.length === 0) {
-        const suggestions = suggestItemsForText(text, projectState.itemsState)
-        const aiMsg: ChatMessage = {
-          id: nextId('gm'),
-          role: 'ai',
-          text:
-            suggestions.length > 0
-              ? 'No estoy seguro a qué ítem corresponde esto. ¿Es alguno de estos?'
-              : 'No logro identificar a qué ítem del checklist corresponde esto. ¿Me puedes decir a cuál te refieres, o contármelo dentro del chat de ese ítem?',
-          time,
-          options: suggestions.length > 0 ? suggestions.map((d) => ({ itemId: d.id, title: d.title })) : undefined,
-          pendingEvidence: suggestions.length > 0 ? { text, type } : undefined,
-        }
-        return {
-          ...base,
-          [key]: { ...projectState, generalChat: [...projectState.generalChat, inspectorMsg, aiMsg] },
-        }
-      }
-
-      const nextItemsState = { ...projectState.itemsState }
-      const updated: string[] = []
-      for (const def of matched) {
-        const prevItem = nextItemsState[def.id]
-        if (prevItem.status === 'na') continue
-        const requirementIndex = nextPendingRequirement(def, prevItem.evidence, type)
-        const newEvidence: Evidence = { id: nextId('ev'), type, source: 'general-chat', text, time, requirementIndex }
-        const evidence = [...prevItem.evidence, newEvidence]
-        const sufficient = hasSufficientEvidence(def, evidence)
-        nextItemsState[def.id] = { ...prevItem, status: sufficient ? 'ok' : 'warn', source: 'chat', evidence }
-        if (sufficient) updated.push(def.title)
-      }
-
-      const titles = updated.map((t) => `"${t}"`).join(' y ')
-      const aiText =
-        updated.length > 0
-          ? `Marqué ${titles} como cumplido${updated.length > 1 ? 's' : ''} con tu ${
-              type === 'photo' ? 'mensaje y la foto adjunta' : type === 'audio' ? 'declaración por voz' : 'mensaje'
-            }.`
-          : `Anoté esto en ${matched.length > 1 ? 'los ítems correspondientes' : `"${matched[0].title}"`}, pero todavía falta evidencia para darlos por cumplidos.`
-      const aiMsg: ChatMessage = { id: nextId('gm'), role: 'ai', text: aiText, time }
-
-      return {
-        ...base,
-        [key]: {
-          ...projectState,
-          itemsState: nextItemsState,
-          generalChat: [...projectState.generalChat, inspectorMsg, aiMsg],
-        },
-      }
-    })
+    adoptChecklist(
+      projectId,
+      visitId,
+      await api.post<ChecklistState>(`/projects/${projectId}/visits/${visitId}/messages`, { text, type }),
+    )
   }, [])
 
-  const sendItemMessage = useCallback(
-    (projectId: string, visitId: string, itemId: string, text: string, type: EvidenceType = 'text') => {
-      if (!text.trim()) return
-      const def = checklistDef.find((d) => d.id === itemId)
-      if (!def) return
-      const time = currentTime()
-      const inspectorMsg: ChatMessage = { id: nextId('im'), role: 'inspector', text, type, time }
-
-      setByVisit((prev) => {
-        const base = ensureVisitState(projectId, visitId, prev)
-        const key = visitKey(projectId, visitId)
-        const projectState = base[key]
-        const prevItem = projectState.itemsState[itemId]
-        const requirementIndex = nextPendingRequirement(def, prevItem.evidence, type)
-        const newEvidence: Evidence = { id: nextId('ev'), type, source: 'item-chat', text, time, requirementIndex }
-        const evidence = [...prevItem.evidence, newEvidence]
-        const sufficient = hasSufficientEvidence(def, evidence)
-
-        const aiText = sufficient
-          ? `Marqué "${def.title}" como cumplido con ${type === 'photo' ? 'la foto adjunta' : 'tu declaración'}.`
-          : `Todavía falta evidencia para dar "${def.title}" por cumplido — ${def.regulatoryCriteria}. ¿Puedes contarme o adjuntar lo que falta?`
-
-        const aiMsg: ChatMessage = { id: nextId('im'), role: 'ai', text: aiText, time }
-
-        const nextItem: ItemState = {
-          ...prevItem,
-          status: prevItem.status === 'na' ? prevItem.status : sufficient ? 'ok' : 'warn',
-          source: 'chat',
-          evidence,
-          chat: [...prevItem.chat, inspectorMsg, aiMsg],
-        }
-
-        return {
-          ...base,
-          [key]: {
-            ...projectState,
-            itemsState: { ...projectState.itemsState, [itemId]: nextItem },
-          },
-        }
-      })
-    },
-    [],
-  )
-
-  const resolveGeneralMessage = useCallback((projectId: string, visitId: string, messageId: string, itemId: string) => {
-    const time = currentTime()
-    setByVisit((prev) => {
-      const base = ensureVisitState(projectId, visitId, prev)
-      const key = visitKey(projectId, visitId)
-      const projectState = base[key]
-      const target = projectState.generalChat.find((m) => m.id === messageId)
-      const def = checklistDef.find((d) => d.id === itemId)
-      if (!target || !target.pendingEvidence || !def) return base
-
-      const { text, type } = target.pendingEvidence
-      const prevItem = projectState.itemsState[itemId]
-      const requirementIndex = nextPendingRequirement(def, prevItem.evidence, type)
-      const newEvidence: Evidence = { id: nextId('ev'), type, source: 'general-chat', text, time, requirementIndex }
-      const evidence = [...prevItem.evidence, newEvidence]
-      const sufficient = hasSufficientEvidence(def, evidence)
-      const nextItem: ItemState = {
-        ...prevItem,
-        status: prevItem.status === 'na' ? prevItem.status : sufficient ? 'ok' : 'warn',
-        source: 'chat',
-        evidence,
-      }
-
-      const confirmMsg: ChatMessage = {
-        id: nextId('gm'),
-        role: 'ai',
-        text: sufficient
-          ? `Marqué "${def.title}" como cumplido con tu mensaje.`
-          : `Anoté esto en "${def.title}", pero todavía falta evidencia para darlo por cumplido.`,
-        time,
-      }
-
-      return {
-        ...base,
-        [key]: {
-          ...projectState,
-          itemsState: { ...projectState.itemsState, [itemId]: nextItem },
-          generalChat: [
-            ...projectState.generalChat.map((m) =>
-              m.id === messageId ? { ...m, options: undefined, pendingEvidence: undefined } : m,
-            ),
-            confirmMsg,
-          ],
-        },
-      }
-    })
+  const sendItemMessage = useCallback(async (projectId: string, visitId: string, itemId: string, text: string, type: EvidenceType = 'text') => {
+    if (!text.trim()) return
+    adoptChecklist(
+      projectId,
+      visitId,
+      await api.post<ChecklistState>(`/projects/${projectId}/visits/${visitId}/items/${itemId}/messages`, { text, type }),
+    )
   }, [])
 
-  const value = useMemo(
-    () => ({
-      getProjectState,
-      getVisits,
-      createVisit,
-      closeVisit,
-      sendReport,
-      setObservations,
-      markManually,
-      addEvidence,
-      sendGeneralMessage,
-      sendItemMessage,
-      resolveGeneralMessage,
-    }),
-    [
-      getProjectState,
-      getVisits,
-      createVisit,
-      closeVisit,
-      sendReport,
-      setObservations,
-      markManually,
-      addEvidence,
-      sendGeneralMessage,
-      sendItemMessage,
-      resolveGeneralMessage,
-    ],
-  )
+  const resolveGeneralMessage = useCallback(async (projectId: string, visitId: string, messageId: string, itemId: string) => {
+    adoptChecklist(
+      projectId,
+      visitId,
+      await api.post<ChecklistState>(`/projects/${projectId}/visits/${visitId}/messages/${messageId}/resolve`, { itemId }),
+    )
+  }, [])
+
+  const value: Ctx = {
+    projects,
+    fetchProjectsIfNeeded,
+    getProject,
+    fetchProjectIfNeeded,
+    getVisits,
+    fetchVisitsIfNeeded,
+    getChecklist,
+    fetchChecklistIfNeeded,
+    createVisit,
+    closeVisit,
+    sendReport,
+    setObservations,
+    markManually,
+    addEvidence,
+    sendGeneralMessage,
+    sendItemMessage,
+    resolveGeneralMessage,
+  }
 
   return <ChecklistContext.Provider value={value}>{children}</ChecklistContext.Provider>
 }
@@ -455,10 +248,33 @@ export function useChecklist() {
   return ctx
 }
 
+export function useProjects() {
+  const { projects, fetchProjectsIfNeeded } = useChecklist()
+  useEffect(() => {
+    fetchProjectsIfNeeded()
+  }, [fetchProjectsIfNeeded])
+  return { ...projects, loading: isPending(projects) }
+}
+
+export function useProject(projectId: string) {
+  const { getProject, fetchProjectIfNeeded } = useChecklist()
+  useEffect(() => {
+    fetchProjectIfNeeded(projectId)
+  }, [projectId, fetchProjectIfNeeded])
+  const state = getProject(projectId)
+  return { ...state, loading: isPending(state) }
+}
+
 export function useProjectVisits(projectId: string) {
-  const { getVisits, createVisit, closeVisit, sendReport } = useChecklist()
+  const { getVisits, fetchVisitsIfNeeded, createVisit, closeVisit, sendReport } = useChecklist()
+  useEffect(() => {
+    fetchVisitsIfNeeded(projectId)
+  }, [projectId, fetchVisitsIfNeeded])
+  const state = getVisits(projectId)
   return {
-    visits: getVisits(projectId),
+    visits: state.data ?? [],
+    loading: isPending(state),
+    error: state.error,
     createVisit: () => createVisit(projectId),
     closeVisit: (visitId: string) => closeVisit(projectId, visitId),
     sendReport: (visitId: string) => sendReport(projectId, visitId),
@@ -467,7 +283,8 @@ export function useProjectVisits(projectId: string) {
 
 export function useProjectChecklist(projectId: string, visitId: string) {
   const {
-    getProjectState,
+    getChecklist,
+    fetchChecklistIfNeeded,
     setObservations,
     markManually,
     addEvidence,
@@ -475,24 +292,26 @@ export function useProjectChecklist(projectId: string, visitId: string) {
     sendItemMessage,
     resolveGeneralMessage,
   } = useChecklist()
-  const { itemsState, generalChat, observations } = getProjectState(projectId, visitId)
+  useEffect(() => {
+    fetchChecklistIfNeeded(projectId, visitId)
+  }, [projectId, visitId, fetchChecklistIfNeeded])
+  const state = getChecklist(projectId, visitId)
+  const { data, error } = state
   return {
-    itemsState,
-    generalChat,
-    observations,
+    itemsState: data?.itemsState ?? {},
+    generalChat: data?.generalChat ?? [],
+    observations: data?.observations ?? '',
+    loading: isPending(state),
+    error,
     setObservations: (html: string) => setObservations(projectId, visitId, html),
-    markManually: (itemId: string, status: ChecklistStatus, reason?: string) =>
-      markManually(projectId, visitId, itemId, status, reason),
+    markManually: (itemId: string, status: ChecklistStatus, reason?: string) => markManually(projectId, visitId, itemId, status, reason),
     addEvidence: (itemId: string, requirementIndex: number, type: EvidenceType, text: string, previewUrl?: string) =>
       addEvidence(projectId, visitId, itemId, requirementIndex, type, text, previewUrl),
     sendGeneralMessage: (text: string, type?: EvidenceType) => sendGeneralMessage(projectId, visitId, text, type),
-    sendItemMessage: (itemId: string, text: string, type?: EvidenceType) =>
-      sendItemMessage(projectId, visitId, itemId, text, type),
+    sendItemMessage: (itemId: string, text: string, type?: EvidenceType) => sendItemMessage(projectId, visitId, itemId, text, type),
     resolveGeneralMessage: (messageId: string, itemId: string) => resolveGeneralMessage(projectId, visitId, messageId, itemId),
   }
 }
-
-export const currentInspector = inspector
 
 export function ChecklistLayout() {
   return (

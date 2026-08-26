@@ -1,8 +1,9 @@
 import { Link, useNavigate, useParams } from 'react-router-dom'
-import { projects } from '../data/mock'
 import { formName } from '../data/checklistMatrizInterior'
-import { currentInspector, useProjectVisits } from '../state/ChecklistContext'
+import { useProject, useProjectVisits } from '../state/ChecklistContext'
+import { useAuth } from '../lib/auth'
 import { formatDateCl } from '../utils/date'
+import CenteredMessage from '../components/CenteredMessage'
 
 const statusLabel = { en_curso: 'En curso', aprobada: 'Aprobada', rechazada: 'Rechazada' } as const
 const statusColor = {
@@ -14,27 +15,21 @@ const statusColor = {
 export default function ObraVisitas() {
   const { projectId = '' } = useParams()
   const nav = useNavigate()
-  const project = projects.find((p) => p.id === projectId)
-  const { visits, createVisit } = useProjectVisits(projectId)
+  const { auth } = useAuth()
+  const project = useProject(projectId)
+  const { visits, loading, error, createVisit } = useProjectVisits(projectId)
 
-  if (!project) {
-    return (
-      <div className="min-h-screen grid place-items-center bg-base">
-        <div className="text-center">
-          <p className="text-ink font-semibold">Proyecto no encontrado</p>
-          <Link to="/checklist" className="text-brand text-[13px] mt-2 inline-block">
-            ← Volver al listado de proyectos
-          </Link>
-        </div>
-      </div>
-    )
+  if (project.loading || loading) return <CenteredMessage text="Cargando..." />
+  if (error || !project.data) {
+    return <CenteredMessage text="Proyecto no encontrado" linkTo="/checklist" linkLabel="← Volver al listado de proyectos" />
   }
+  const projectData = project.data
 
   const sorted = [...visits].sort((a, b) => b.date.localeCompare(a.date))
   const open = visits.find((v) => v.status === 'en_curso')
 
-  function startVisit() {
-    const visitId = createVisit()
+  async function startVisit() {
+    const visitId = await createVisit()
     nav(`/checklist/${projectId}/${visitId}`)
   }
 
@@ -43,13 +38,13 @@ export default function ObraVisitas() {
       <header className="border-b border-hairline bg-white px-6 py-4">
         <div className="flex items-center justify-between gap-4 flex-wrap">
           <div>
-            <h1 className="text-[19px] font-bold text-ink leading-tight">{project.name}</h1>
+            <h1 className="text-[19px] font-bold text-ink leading-tight">{projectData.name}</h1>
             <p className="text-[12.5px] text-muted mt-0.5">
-              {formName} · Contratista {project.installer}
+              {formName} · Contratista {projectData.installer}
             </p>
           </div>
           <p className="text-[12px] text-muted">
-            {currentInspector.name} · {currentInspector.role}
+            {auth?.user.name} · {auth?.user.role}
           </p>
         </div>
         <Link to="/checklist" className="inline-flex items-center gap-1 text-[12px] text-brand mt-3">

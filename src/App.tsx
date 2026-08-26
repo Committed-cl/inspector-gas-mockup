@@ -14,6 +14,7 @@ import ObraVisitas from './pages/ObraVisitas'
 import ChecklistProject from './pages/ChecklistProject'
 import ChecklistItemPage from './pages/ChecklistItemPage'
 import { ChecklistLayout } from './state/ChecklistContext'
+import RequireAuth from './components/RequireAuth'
 
 export default function App() {
   return (
@@ -28,7 +29,13 @@ export default function App() {
       <Route path="/visita/enviado" element={<VisitaEnviado />} />
       <Route path="/admin/etapas" element={<AdminEtapas />} />
       <Route path="/admin/items/:id" element={<AdminItemDetalle />} />
-      <Route element={<ChecklistLayout />}>
+      <Route
+        element={
+          <RequireAuth>
+            <ChecklistLayout />
+          </RequireAuth>
+        }
+      >
         <Route path="/checklist" element={<ChecklistProjects />} />
         <Route path="/checklist/:projectId" element={<ObraVisitas />} />
         <Route path="/checklist/:projectId/:visitId" element={<ChecklistProject />} />

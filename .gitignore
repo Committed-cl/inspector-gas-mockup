@@ -22,3 +22,7 @@ vite.config.d.ts
 # Env
 .env
 .env.*
+# Not secret (a public API URL each) — Vite needs these committed to pick the
+# right VITE_API_URL for `vite dev` vs `vite build`.
+!.env.development
+!.env.production

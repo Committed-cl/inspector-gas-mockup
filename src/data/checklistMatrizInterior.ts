@@ -2,6 +2,12 @@
 // Transcribed from docs/checklist-matriz-interior.md (source: meet-2026-07-24/Check List V2.xlsx).
 // Excludes "Prueba Hermeticidad redes PE" (out of scope) and the items flagged as
 // duplicates / "do not consider" in the 2026-07-24 meeting.
+//
+// This is static reference/display data mirrored 1:1 from the backend's
+// api/src/domain/checklist-definition.ts — immutable at runtime, so it's kept
+// as a frontend constant rather than fetched over the wire. Visit state
+// (itemsState, chat, observations) comes from the real API — see
+// ../state/ChecklistContext.tsx.
 
 export type ChecklistStatus = 'ok' | 'warn' | 'pending' | 'na'
 
@@ -76,44 +82,7 @@ export const SECTIONS = [
   'Conducto Técnico',
 ] as const
 
-export const inspector = {
-  name: 'Rodrigo Martínez',
-  role: 'Gestor Interior Obra',
-}
-
 export const formName = 'Formulario Puesta en Servicio Matriz Interior'
-
-// The only project shipped with pre-loaded demo progress (declarations, evidence,
-// chat). Every other project starts with a blank checklist.
-export const demoProjectId = 'los-tres-antonios'
-
-// A project ("obra") can have several visits over time; each visit has its own
-// checklist. Only one visit per project should be "en_curso" at a time — past
-// visits are closed with a final verdict (aprobada / rechazada).
-export type VisitStatus = 'en_curso' | 'aprobada' | 'rechazada'
-
-export type Visit = {
-  id: string
-  date: string
-  status: VisitStatus
-  reportSentAt?: string
-}
-
-// The demo project's pre-loaded checklist progress lives on this visit — the
-// one currently "en_curso" for that project.
-export const demoVisitId = 'visita-3'
-
-const seedVisitsByProject: Record<string, Visit[]> = {
-  [demoProjectId]: [
-    { id: 'visita-1', date: '2026-03-12', status: 'aprobada' },
-    { id: 'visita-2', date: '2026-03-28', status: 'rechazada' },
-    { id: demoVisitId, date: '2026-08-24', status: 'en_curso' },
-  ],
-}
-
-export function initialVisitsForProject(projectId: string): Visit[] {
-  return seedVisitsByProject[projectId] ? [...seedVisitsByProject[projectId]] : []
-}
 
 export const checklistDef: ChecklistItemDef[] = [
   // Pruebas
@@ -471,225 +440,6 @@ export const checklistDef: ChecklistItemDef[] = [
   },
 ]
 
-function makeEvidence(
-  id: string,
-  type: EvidenceType,
-  source: Evidence['source'],
-  text: string,
-  time: string,
-  requirementIndex = 0,
-): Evidence {
-  return { id, type, source, text, time, requirementIndex }
-}
-
-function makeMessage(id: string, role: ChatRole, text: string, time: string, type?: EvidenceType): ChatMessage {
-  return { id, role, text, time, type }
-}
-
-const initialGeneralChatLosTresAntonios: ChatMessage[] = [
-  makeMessage('g1', 'inspector', 'La matriz está pintada de amarillo y a la vista en todo su trayecto.', '14:12'),
-  makeMessage(
-    'g2',
-    'ai',
-    'Marqué "Matriz Pintada" y "Matriz a la vista y/o registrable en toda su longitud" como cumplidos con tu declaración.',
-    '14:12',
-  ),
-]
-
-export function emptyChecklistState(): Record<string, ItemState> {
-  return Object.fromEntries(
-    checklistDef.map((def) => [def.id, { status: 'pending' as ChecklistStatus, source: null, evidence: [], chat: [] }]),
-  )
-}
-
-const initialStateLosTresAntonios: Record<string, ItemState> = emptyChecklistState()
-
-function setState(id: string, patch: Partial<ItemState>) {
-  initialStateLosTresAntonios[id] = { ...initialStateLosTresAntonios[id], ...patch }
-}
-
-// Starting state for the demo — a realistic mix of green/amber/red/not-applicable.
-// Every green item carries at least one piece of evidence — an item can't be
-// marked done without it.
-setState('atravieso-muro-sello', {
-  status: 'ok',
-  source: 'chat',
-  evidence: [makeEvidence('e-ams-1', 'text', 'item-chat', 'Revisé todos los puntos de atravieso, todos con sello anular correcto.', '13:35')],
-})
-setState('distancia-edificaciones-1m', {
-  status: 'ok',
-  source: 'manual',
-  evidence: [makeEvidence('e-de1m-1', 'text', 'manual', 'La matriz pasa a más de 1 m de la edificación en todo su trazado.', '13:20')],
-})
-setState('distancia-agua-potable-50cm', {
-  status: 'ok',
-  source: 'manual',
-  evidence: [makeEvidence('e-dap-1', 'text', 'manual', 'Cumple la separación de 50 cm respecto de la red de agua potable.', '13:21')],
-})
-setState('leyenda-gas-flecha', {
-  status: 'ok',
-  source: 'manual',
-  evidence: [makeEvidence('e-lgf-1', 'text', 'manual', 'Señalética de gas natural con flecha de flujo presente en el recinto.', '13:58')],
-})
-setState('ventilacion-inf-sup', {
-  status: 'ok',
-  source: 'manual',
-  evidence: [makeEvidence('e-vis-1', 'text', 'manual', 'Ventilación inferior y superior instalada según lo definido en el proyecto.', '14:02')],
-})
-setState('medidor-marcado', {
-  status: 'ok',
-  source: 'manual',
-  evidence: [makeEvidence('e-mm-1', 'text', 'manual', 'Cada medidor tiene el número de departamento correspondiente marcado.', '14:03')],
-})
-
-setState('matriz-vista-registrable', {
-  status: 'ok',
-  source: 'chat',
-  evidence: [makeEvidence('e-mvr-1', 'text', 'general-chat', 'La matriz está pintada de amarillo y a la vista en todo su trayecto.', '14:12')],
-})
-setState('matriz-pintada', {
-  status: 'ok',
-  source: 'chat',
-  evidence: [makeEvidence('e-mp-1', 'text', 'general-chat', 'La matriz está pintada de amarillo y a la vista en todo su trayecto.', '14:12')],
-})
-
-setState('prueba-hermeticidad-matriz', {
-  status: 'warn',
-  source: 'chat',
-  evidence: [
-    makeEvidence('e-phm-1', 'text', 'item-chat', 'La prueba duró 25 minutos.', '13:40', 1),
-    makeEvidence('e-phm-2', 'text', 'item-chat', 'Se probó a 180 kPa, dentro del rango exigido.', '13:40', 2),
-  ],
-  chat: [
-    makeMessage('phm-1', 'inspector', 'Se hizo la prueba de hermeticidad, quedó conforme.', '13:40'),
-    makeMessage(
-      'phm-2',
-      'ai',
-      'Para dar este ítem por cumplido necesito la foto del formulario firmado con tiempo y presión de la prueba — la norma exige caída de presión ≤1 kPa. ¿Puedes subir la foto?',
-      '13:40',
-    ),
-  ],
-})
-
-setState('profundidad-61cm', {
-  status: 'warn',
-  source: 'chat',
-  evidence: [makeEvidence('e-p61-1', 'text', 'item-chat', 'La matriz va enterrada, calculo que está como a 50 centímetros.', '13:55')],
-  chat: [
-    makeMessage('p61-1', 'inspector', 'La matriz va enterrada, calculo que está como a 50 centímetros.', '13:55'),
-    makeMessage(
-      'p61-2',
-      'ai',
-      'Para dar este ítem por cumplido necesito una foto que muestre la profundidad medida — la norma exige mínimo 60 cm y tu declaración no lo confirma. ¿Puedes subir una foto de la cinta métrica junto a la tubería?',
-      '13:55',
-    ),
-  ],
-})
-
-setState('soportes-aislacion', {
-  status: 'warn',
-  source: 'chat',
-  evidence: [makeEvidence('e-sa-1', 'text', 'item-chat', 'Los soportes que alcancé a ver tenían aislación de PVC.', '14:20')],
-  chat: [
-    makeMessage('sa-1', 'inspector', 'Los soportes que alcancé a ver tenían aislación de PVC.', '14:20'),
-    makeMessage(
-      'sa-2',
-      'ai',
-      '¿Revisaste todos los soportes de la matriz o solo algunos? Este ítem requiere confirmar el 100%, porque suele faltar aislación en uno o dos puntos.',
-      '14:20',
-    ),
-  ],
-})
-
-setState('profundidad-80cm-jardines', {
-  status: 'na',
-  source: 'manual',
-  notApplicableReason: 'No hay tramo bajo jardines ni con tránsito vehicular en este proyecto.',
-})
-setState('llave-corte-general', {
-  status: 'na',
-  source: 'manual',
-  notApplicableReason: 'La llave de corte general está en el módulo, no aplica instalación independiente.',
-})
-setState('vigon-zocalo-falso', {
-  status: 'na',
-  source: 'manual',
-  notApplicableReason: 'El proyecto no tiene vigón ni zócalo falso.',
-})
-setState('proteccion-rejilla', {
-  status: 'na',
-  source: 'manual',
-  notApplicableReason: 'La apertura en la losa del nicho de medidores no supera el tamaño que exige rejilla.',
-})
-setState('conducto-vertical-continuo', {
-  status: 'na',
-  source: 'manual',
-  notApplicableReason: 'El proyecto no tiene conducto técnico — los medidores están en primer piso.',
-})
-setState('conducto-ventilacion-100cm2', {
-  status: 'na',
-  source: 'manual',
-  notApplicableReason: 'No aplica — no hay conducto técnico en este proyecto.',
-})
-setState('conducto-sombrerete', {
-  status: 'na',
-  source: 'manual',
-  notApplicableReason: 'No aplica — no hay conducto técnico en este proyecto.',
-})
-
-export function matchItemsByKeyword(text: string): ChecklistItemDef[] {
-  const lower = text.toLowerCase()
-  return checklistDef.filter((def) => def.keywords.some((k) => lower.includes(k)))
-}
-
-const STOPWORDS = new Set([
-  'el', 'la', 'los', 'las', 'de', 'del', 'en', 'y', 'a', 'que', 'se', 'con', 'por', 'un', 'una',
-  'al', 'lo', 'su', 'sus', 'esta', 'esta', 'fue', 'ya', 'no', 'si', 'muy', 'mas', 'para', 'foto',
-])
-
-function tokenize(text: string): string[] {
-  return text
-    .toLowerCase()
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '')
-    .replace(/[^a-z0-9\s]/g, ' ')
-    .split(/\s+/)
-    .filter((w) => w.length > 2 && !STOPWORDS.has(w))
-}
-
-// Used when a keyword match fails outright. First tries a loose lexical
-// overlap against each item's title/section/keywords; if that also comes up
-// empty, falls back to the items still open — the ones with partial evidence
-// already logged (amber) are more likely candidates than untouched ones.
-export function suggestItemsForText(
-  text: string,
-  itemsState: Record<string, ItemState>,
-  limit = 4,
-): ChecklistItemDef[] {
-  const tokens = tokenize(text)
-  const scored = checklistDef
-    .map((def) => {
-      const haystack = tokenize([def.title, def.section, ...def.keywords].join(' '))
-      const score = tokens.filter((t) => haystack.some((h) => h.includes(t) || t.includes(h))).length
-      return { def, score }
-    })
-    .filter((s) => s.score > 0)
-    .sort((a, b) => b.score - a.score)
-
-  if (scored.length > 0) return scored.slice(0, limit).map((s) => s.def)
-
-  const open = checklistDef.filter((def) => !['ok', 'na'].includes(itemsState[def.id].status))
-  const byRelevance = [...open].sort((a, b) => {
-    const rank = (id: string) => (itemsState[id].status === 'warn' ? 0 : 1)
-    return rank(a.id) - rank(b.id)
-  })
-  return byRelevance.slice(0, limit)
-}
-
-export function itemRequiresPhoto(def: ChecklistItemDef): boolean {
-  return def.requiredEvidence.some((r) => r.type === 'photo')
-}
-
 export type RequirementState = RequiredEvidence & { fulfilled: boolean; evidence?: Evidence }
 
 // Each required field has its own slot for evidence — identified by its
@@ -706,55 +456,8 @@ export function requiredEvidenceState(def: ChecklistItemDef, evidence: Evidence[
   })
 }
 
-// For evidence arriving via chat (without the inspector picking which field it
-// belongs to): a photo can fulfill a photo field or, failing that, any pending
-// declaration field. Text or audio can only fulfill a declaration field —
-// never one that specifically requires a photo.
-export function nextPendingRequirement(
-  def: ChecklistItemDef,
-  existingEvidence: Evidence[],
-  preferredType: EvidenceType,
-): number | undefined {
-  const states = requiredEvidenceState(def, existingEvidence)
-  if (preferredType === 'photo') {
-    const pendingPhoto = states.findIndex((r) => !r.fulfilled && r.type === 'photo')
-    if (pendingPhoto !== -1) return pendingPhoto
-    const anyPending = states.findIndex((r) => !r.fulfilled)
-    return anyPending !== -1 ? anyPending : undefined
-  }
-  const pendingDeclaration = states.findIndex((r) => !r.fulfilled && r.type === 'declaration')
-  return pendingDeclaration !== -1 ? pendingDeclaration : undefined
-}
-
-// An item can only go green if ALL of its required evidence fields are
-// fulfilled. The "Cumple" button by itself is never enough.
-export function hasSufficientEvidence(def: ChecklistItemDef, evidence: Evidence[]): boolean {
-  return requiredEvidenceState(def, evidence).every((r) => r.fulfilled)
-}
-
 export function missingEvidenceHint(def: ChecklistItemDef, evidence: Evidence[]): string | undefined {
   const missing = requiredEvidenceState(def, evidence).filter((r) => !r.fulfilled)
   if (missing.length === 0) return undefined
   return `Falta ${missing.map((r) => r.label.toLowerCase()).join(', ')} para quedar en verde.`
-}
-
-export function initialStateForVisit(projectId: string, visitId: string): Record<string, ItemState> {
-  return projectId === demoProjectId && visitId === demoVisitId ? initialStateLosTresAntonios : emptyChecklistState()
-}
-
-export function initialGeneralChatForVisit(projectId: string, visitId: string): ChatMessage[] {
-  return projectId === demoProjectId && visitId === demoVisitId ? initialGeneralChatLosTresAntonios : []
-}
-
-// Free-form notes the inspector adds at the end of the visit — appended to the
-// end of the report, separate from the per-item evidence trail.
-export function initialObservationsForVisit(projectId: string, visitId: string): string {
-  return projectId === demoProjectId && visitId === demoVisitId
-    ? '<p>Visita en buen estado general. <b>Pendiente</b>: confirmar aislación en todos los soportes y cargar foto de la profundidad de la matriz soterrada.</p>'
-    : ''
-}
-
-export function completedForState(state: Record<string, ItemState>): { completed: number; total: number } {
-  const completed = checklistDef.filter((d) => ['ok', 'na'].includes(state[d.id].status)).length
-  return { completed, total: checklistDef.length }
 }

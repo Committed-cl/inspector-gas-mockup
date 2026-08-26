@@ -1,11 +1,12 @@
 import { useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { checklistDef, SECTIONS, formName, type ChecklistStatus } from '../data/checklistMatrizInterior'
-import { useProjectChecklist, useProjectVisits, currentInspector } from '../state/ChecklistContext'
-import { projects } from '../data/mock'
+import { useProject, useProjectChecklist, useProjectVisits } from '../state/ChecklistContext'
+import { useAuth } from '../lib/auth'
 import ChecklistDesktopRow from '../components/ChecklistDesktopRow'
 import ChatPanel from '../components/ChatPanel'
 import RichTextEditor from '../components/RichTextEditor'
+import CenteredMessage from '../components/CenteredMessage'
 import { formatDateCl } from '../utils/date'
 
 const statusSortOrder: Record<ChecklistStatus, number> = { pending: 0, warn: 1, ok: 2, na: 2 }
@@ -21,28 +22,28 @@ const visitStatusColor = {
 
 export default function ChecklistProject() {
   const { projectId = '', visitId = '' } = useParams()
-  const project = projects.find((p) => p.id === projectId)
-  const { itemsState, markManually, generalChat, sendGeneralMessage, resolveGeneralMessage, observations, setObservations } =
+  const { auth } = useAuth()
+  const project = useProject(projectId)
+  const { itemsState, markManually, generalChat, sendGeneralMessage, resolveGeneralMessage, observations, setObservations, loading: checklistLoading, error: checklistError } =
     useProjectChecklist(projectId, visitId)
-  const { visits, closeVisit, sendReport } = useProjectVisits(projectId)
+  const { visits, loading: visitsLoading, closeVisit, sendReport } = useProjectVisits(projectId)
   const visit = visits.find((v) => v.id === visitId)
   const [expandedOverride, setExpandedOverride] = useState<Record<string, boolean>>({})
 
-  if (!project || !visit) {
+  if (project.loading || checklistLoading || visitsLoading) return <CenteredMessage text="Cargando..." />
+  if (!project.data || checklistError || !visit) {
     return (
-      <div className="min-h-screen grid place-items-center bg-base">
-        <div className="text-center">
-          <p className="text-ink font-semibold">{!project ? 'Proyecto no encontrado' : 'Visita no encontrada'}</p>
-          <Link to="/checklist" className="text-brand text-[13px] mt-2 inline-block">
-            ← Volver al listado de proyectos
-          </Link>
-        </div>
-      </div>
+      <CenteredMessage
+        text={!project.data ? 'Proyecto no encontrado' : !visit ? 'Visita no encontrada' : 'No se pudo cargar el checklist'}
+        linkTo="/checklist"
+        linkLabel="← Volver al listado de proyectos"
+      />
     )
   }
+  const projectData = project.data
 
   const total = checklistDef.length
-  const completed = checklistDef.filter((d) => ['ok', 'na'].includes(itemsState[d.id].status)).length
+  const completed = checklistDef.filter((d) => ['ok', 'na'].includes(itemsState[d.id]?.status)).length
 
   return (
     <div className="h-screen flex flex-col bg-base overflow-hidden">
@@ -53,7 +54,7 @@ export default function ChecklistProject() {
               <span className="h-1.5 w-1.5 rounded-full bg-accent" />
               Nuevo · versión desktop
             </div>
-            <h1 className="text-[19px] font-bold text-ink leading-tight">{project.name}</h1>
+            <h1 className="text-[19px] font-bold text-ink leading-tight">{projectData.name}</h1>
             <p className="text-[12.5px] text-muted mt-0.5 flex items-center gap-1.5">
               {formName} · Visita {formatDateCl(visit.date)}
               <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded-md ${visitStatusColor[visit.status]}`}>
@@ -63,7 +64,7 @@ export default function ChecklistProject() {
           </div>
           <div className="text-right">
             <p className="text-[12px] text-muted">
-              {currentInspector.name} · {currentInspector.role}
+              {auth?.user.name} · {auth?.user.role}
             </p>
             <div className="mt-1.5 flex items-center gap-2 justify-end">
               <span className="text-[12px] font-semibold text-brand whitespace-nowrap">
@@ -116,12 +117,12 @@ export default function ChecklistProject() {
               const items = checklistDef.filter((d) => d.section === section)
               if (items.length === 0) return null
 
-              const sectionComplete = items.every((d) => ['ok', 'na'].includes(itemsState[d.id].status))
+              const sectionComplete = items.every((d) => ['ok', 'na'].includes(itemsState[d.id]?.status))
               const expanded = expandedOverride[section] ?? !sectionComplete
               const sortedItems = [...items].sort(
-                (a, b) => statusSortOrder[itemsState[a.id].status] - statusSortOrder[itemsState[b.id].status],
+                (a, b) => statusSortOrder[itemsState[a.id]?.status] - statusSortOrder[itemsState[b.id]?.status],
               )
-              const doneCount = items.filter((d) => ['ok', 'na'].includes(itemsState[d.id].status)).length
+              const doneCount = items.filter((d) => ['ok', 'na'].includes(itemsState[d.id]?.status)).length
 
               return (
                 <section key={section}>
