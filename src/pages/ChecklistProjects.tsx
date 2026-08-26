@@ -31,7 +31,7 @@ export default function ChecklistProjects() {
             </p>
             <div className="mt-1 flex items-center gap-3 justify-end">
               {auth?.user.isAdmin && (
-                <Link to="/admin/empresas" className="text-[11.5px] font-semibold text-brand hover:underline">
+                <Link to="/admin" className="text-[11.5px] font-semibold text-brand hover:underline">
                   Panel admin
                 </Link>
               )}
@@ -55,12 +55,6 @@ export default function ChecklistProjects() {
 
       <main className="px-6 py-8">
         <div className="max-w-3xl mx-auto flex flex-col gap-3">
-          <Link
-            to="/checklist/nueva-obra"
-            className="self-start bg-brand hover:bg-brand-dark text-white text-[12.5px] font-semibold px-4 py-2 rounded-lg transition-colors"
-          >
-            + Nueva obra
-          </Link>
           {projects.map((p) => (
             <Link
               key={p.id}

@@ -9,6 +9,7 @@ import VisitaRevisar from './pages/VisitaRevisar'
 import VisitaEnviado from './pages/VisitaEnviado'
 import AdminEtapas from './pages/AdminEtapas'
 import AdminItemDetalle from './pages/AdminItemDetalle'
+import AdminDashboard from './pages/AdminDashboard'
 import AdminEmpresas from './pages/AdminEmpresas'
 import AdminClientes from './pages/AdminClientes'
 import AdminUsuarios from './pages/AdminUsuarios'
@@ -41,6 +42,7 @@ export default function App() {
           </RequireAdmin>
         }
       >
+        <Route path="/admin" element={<AdminDashboard />} />
         <Route path="/admin/empresas" element={<AdminEmpresas />} />
         <Route path="/admin/clientes" element={<AdminClientes />} />
         <Route path="/admin/usuarios" element={<AdminUsuarios />} />
@@ -53,7 +55,14 @@ export default function App() {
         }
       >
         <Route path="/checklist" element={<ChecklistProjects />} />
-        <Route path="/checklist/nueva-obra" element={<ChecklistNuevaObra />} />
+        <Route
+          path="/checklist/nueva-obra"
+          element={
+            <RequireAdmin>
+              <ChecklistNuevaObra />
+            </RequireAdmin>
+          }
+        />
         <Route path="/checklist/:projectId" element={<ObraVisitas />} />
         <Route path="/checklist/:projectId/:visitId" element={<ChecklistProject />} />
         <Route path="/checklist/:projectId/:visitId/:itemId" element={<ChecklistItemPage />} />

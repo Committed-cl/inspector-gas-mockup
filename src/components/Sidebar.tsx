@@ -1,11 +1,12 @@
 import { Link, useLocation } from 'react-router-dom'
 
 const items = [
-  { to: '/admin/etapas', label: 'Etapas' },
-  { to: '/admin/items/extintor', label: 'Ítems de checklist' },
+  { to: '/admin', label: 'Dashboard' },
   { to: '/admin/empresas', label: 'Empresas' },
   { to: '/admin/clientes', label: 'Clientes' },
   { to: '/admin/usuarios', label: 'Usuarios' },
+  { to: '/admin/etapas', label: 'Etapas' },
+  { to: '/admin/items/extintor', label: 'Ítems de checklist' },
   { to: '/proyectos', label: 'Proyectos (app inspector)' },
   { to: '/checklist', label: 'Ir a checklist' },
 ]
@@ -20,7 +21,7 @@ export default function Sidebar({ demoMode = true }: { demoMode?: boolean }) {
       </Link>
       <nav className="flex flex-col gap-1">
         {items.map((i) => {
-          const active = pathname.startsWith(i.to) && (i.to !== '/checklist' || pathname === '/checklist')
+          const active = i.to === '/admin' || i.to === '/checklist' ? pathname === i.to : pathname.startsWith(i.to)
           return (
             <Link
               key={i.to}

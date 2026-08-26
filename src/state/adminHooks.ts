@@ -62,3 +62,8 @@ export function useUsers() {
 
   return { users: data ?? [], loading, error, createUser }
 }
+
+export function useObrasCount() {
+  const { data, loading } = useAsyncList<{ id: string }>('/projects')
+  return { count: data?.length ?? null, loading }
+}
