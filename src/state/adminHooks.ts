@@ -67,3 +67,30 @@ export function useObrasCount() {
   const { data, loading } = useAsyncList<{ id: string }>('/projects')
   return { count: data?.length ?? null, loading }
 }
+
+export type AiVendor = 'gemini' | 'anthropic' | 'openai' | 'claude-cli'
+export type AiConfigView = { vendor: AiVendor; model: string | null; apiKeySet: boolean; apiKeyPreview: string | null }
+
+// Single-object GET (not a list, so it doesn't fit useAsyncList's shape) —
+// the value is null when the company hasn't configured a vendor yet.
+export function useAiConfig(companyId: string) {
+  const [state, setState] = useState<Async<AiConfigView | null>>({ data: null, loading: true, error: null })
+
+  const refetch = useCallback(() => {
+    setState({ data: null, loading: true, error: null })
+    api.get<AiConfigView | null>(`/companies/${encodeURIComponent(companyId)}/ai-config`).then(
+      (data) => setState({ data, loading: false, error: null }),
+      (err) => setState({ data: null, loading: false, error: String(err) }),
+    )
+  }, [companyId])
+
+  useEffect(refetch, [refetch])
+
+  const saveConfig = async (vendor: AiVendor, apiKey: string | undefined, model: string | undefined) => {
+    const view = await api.put<AiConfigView>(`/companies/${encodeURIComponent(companyId)}/ai-config`, { vendor, apiKey, model })
+    setState({ data: view, loading: false, error: null })
+    return view
+  }
+
+  return { config: state.data, loading: state.loading, error: state.error, saveConfig }
+}

@@ -77,6 +77,12 @@ export default function AdminDashboard() {
             >
               + Nueva obra
             </Link>
+            <Link
+              to="/admin/ia"
+              className="text-[12.5px] font-semibold text-brand bg-brand-soft hover:bg-brand-soft/70 px-3 py-2 rounded-lg transition-colors"
+            >
+              Configuración de IA
+            </Link>
           </div>
         </div>
       </main>

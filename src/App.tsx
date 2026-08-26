@@ -13,6 +13,7 @@ import AdminDashboard from './pages/AdminDashboard'
 import AdminEmpresas from './pages/AdminEmpresas'
 import AdminClientes from './pages/AdminClientes'
 import AdminUsuarios from './pages/AdminUsuarios'
+import AdminIaConfig from './pages/AdminIaConfig'
 import ChecklistProjects from './pages/ChecklistProjects'
 import ChecklistNuevaObra from './pages/ChecklistNuevaObra'
 import ObraVisitas from './pages/ObraVisitas'
@@ -46,6 +47,7 @@ export default function App() {
         <Route path="/admin/empresas" element={<AdminEmpresas />} />
         <Route path="/admin/clientes" element={<AdminClientes />} />
         <Route path="/admin/usuarios" element={<AdminUsuarios />} />
+        <Route path="/admin/ia" element={<AdminIaConfig />} />
       </Route>
       <Route
         element={

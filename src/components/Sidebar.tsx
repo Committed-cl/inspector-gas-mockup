@@ -5,6 +5,7 @@ const items = [
   { to: '/admin/empresas', label: 'Empresas' },
   { to: '/admin/clientes', label: 'Clientes' },
   { to: '/admin/usuarios', label: 'Usuarios' },
+  { to: '/admin/ia', label: 'Configuración de IA' },
   { to: '/admin/etapas', label: 'Etapas' },
   { to: '/admin/items/extintor', label: 'Ítems de checklist' },
   { to: '/proyectos', label: 'Proyectos (app inspector)' },
