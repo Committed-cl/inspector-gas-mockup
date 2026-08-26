@@ -6,6 +6,9 @@ import type { ChatMessage, EvidenceType } from '../data/checklistMatrizInterior'
 type Props = {
   title: string
   subtitle?: string
+  // Shown small under the title so it can be read off and reported when
+  // something goes wrong — matches what the admin ai-logs endpoint expects.
+  chatId?: string
   messages: ChatMessage[]
   placeholder: string
   onSend: (text: string, type?: EvidenceType, previewUrl?: string) => void
@@ -13,7 +16,7 @@ type Props = {
   onSelectOption?: (messageId: string, itemId: string) => void
 }
 
-export default function ChatPanel({ title, subtitle, messages, placeholder, onSend, micHint, onSelectOption }: Props) {
+export default function ChatPanel({ title, subtitle, chatId, messages, placeholder, onSend, micHint, onSelectOption }: Props) {
   const [draft, setDraft] = useState('')
   const [pendingType, setPendingType] = useState<EvidenceType>('text')
   const [pendingPhoto, setPendingPhoto] = useState<string | null>(null)
@@ -54,7 +57,10 @@ export default function ChatPanel({ title, subtitle, messages, placeholder, onSe
   return (
     <div className="flex flex-col h-full">
       <div className="px-4 py-3 border-b border-hairline">
-        <p className="text-[13px] font-semibold text-ink">{title}</p>
+        <div className="flex items-center justify-between gap-2">
+          <p className="text-[13px] font-semibold text-ink">{title}</p>
+          {chatId && <p className="font-mono text-[10px] text-muted shrink-0" title="Id de este chat — reportalo si algo falla">{chatId}</p>}
+        </div>
         {subtitle && <p className="text-[11.5px] text-muted mt-0.5 leading-snug">{subtitle}</p>}
       </div>
       <div className="flex-1 overflow-y-auto thin-scroll px-4 py-3 flex flex-col gap-2">
