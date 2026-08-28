@@ -7,6 +7,7 @@ import ChecklistDesktopRow from '../components/ChecklistDesktopRow'
 import ChatPanel from '../components/ChatPanel'
 import RichTextEditor from '../components/RichTextEditor'
 import CenteredMessage from '../components/CenteredMessage'
+import MobilePanelTabs, { type MobilePanel } from '../components/MobilePanelTabs'
 import { formatDateCl } from '../utils/date'
 
 const statusSortOrder: Record<ChecklistStatus, number> = { pending: 0, warn: 1, ok: 2, na: 2 }
@@ -29,6 +30,7 @@ export default function ChecklistProject() {
   const { visits, loading: visitsLoading, closeVisit, sendReport } = useProjectVisits(projectId)
   const visit = visits.find((v) => v.id === visitId)
   const [expandedOverride, setExpandedOverride] = useState<Record<string, boolean>>({})
+  const [mobilePanel, setMobilePanel] = useState<MobilePanel>('primary')
 
   if (project.loading || checklistLoading || visitsLoading) return <CenteredMessage text="Cargando..." />
   if (!project.data || checklistError || !visit) {
@@ -50,14 +52,12 @@ export default function ChecklistProject() {
       <header className="border-b border-hairline bg-white px-6 py-4">
         <div className="flex items-center justify-between gap-4 flex-wrap">
           <div>
-            <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-accent/10 text-accent text-[10.5px] font-semibold uppercase tracking-wide mb-1.5">
-              <span className="h-1.5 w-1.5 rounded-full bg-accent" />
-              Nuevo · versión desktop
-            </div>
             <h1 className="text-[19px] font-bold text-ink leading-tight">{projectData.name}</h1>
-            <p className="text-[12.5px] text-muted mt-0.5 flex items-center gap-1.5">
+            <p className="text-[12.5px] text-muted mt-0.5 flex items-center flex-wrap gap-1.5">
               {formName} · Visita {formatDateCl(visit.date)}
-              <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded-md ${visitStatusColor[visit.status]}`}>
+              <span
+                className={`shrink-0 whitespace-nowrap text-[10px] font-semibold px-1.5 py-0.5 rounded-md ${visitStatusColor[visit.status]}`}
+              >
                 {visitStatusLabel[visit.status]}
               </span>
             </p>
@@ -110,8 +110,12 @@ export default function ChecklistProject() {
         </Link>
       </header>
 
+      <MobilePanelTabs active={mobilePanel} onChange={setMobilePanel} primaryLabel="Checklist" />
+
       <div className="flex-1 flex min-h-0 overflow-hidden">
-        <main className="flex-1 min-h-0 overflow-y-auto px-6 py-6">
+        <main
+          className={`${mobilePanel === 'primary' ? 'block' : 'hidden'} md:block flex-1 min-h-0 overflow-y-auto px-6 py-6`}
+        >
           <div className="max-w-3xl mx-auto flex flex-col gap-8">
             {SECTIONS.map((section) => {
               const items = checklistDef.filter((d) => d.section === section)
@@ -181,7 +185,9 @@ export default function ChecklistProject() {
           </div>
         </main>
 
-        <aside className="w-[380px] shrink-0 min-h-0 border-l border-hairline bg-white">
+        <aside
+          className={`${mobilePanel === 'chat' ? 'block' : 'hidden'} md:block w-full md:w-[380px] md:shrink-0 min-h-0 border-l-0 md:border-l border-hairline bg-white`}
+        >
           <ChatPanel
             title="Chat general del checklist"
             subtitle="Cuéntame qué revisaste sin indicar el ítem — yo identifico a cuál (o cuáles) corresponde y actualizo su estado."

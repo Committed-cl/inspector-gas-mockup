@@ -18,10 +18,6 @@ export default function ChecklistProjects() {
       <header className="border-b border-hairline bg-white px-6 py-4">
         <div className="flex items-center justify-between gap-4 flex-wrap">
           <div>
-            <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-accent/10 text-accent text-[10.5px] font-semibold uppercase tracking-wide mb-1.5">
-              <span className="h-1.5 w-1.5 rounded-full bg-accent" />
-              Nuevo · versión desktop
-            </div>
             <h1 className="text-[19px] font-bold text-ink leading-tight">Inspector Gas</h1>
             <p className="text-[12.5px] text-muted mt-0.5">{formName} · Selecciona un proyecto</p>
           </div>
@@ -48,9 +44,6 @@ export default function ChecklistProjects() {
             </div>
           </div>
         </div>
-        <Link to="/" className="inline-flex items-center gap-1 text-[12px] text-brand mt-3">
-          ← Volver a la demo
-        </Link>
       </header>
 
       <main className="px-6 py-8">

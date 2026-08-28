@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { checklistDef, requiredEvidenceState, missingEvidenceHint } from '../data/checklistMatrizInterior'
 import { useProject, useProjectChecklist } from '../state/ChecklistContext'
@@ -5,6 +6,7 @@ import ChatPanel from '../components/ChatPanel'
 import StatusControl from '../components/StatusControl'
 import EvidenceField from '../components/EvidenceField'
 import CenteredMessage from '../components/CenteredMessage'
+import MobilePanelTabs, { type MobilePanel } from '../components/MobilePanelTabs'
 
 const statusLabel = { ok: 'Cumple', warn: 'Parcial', pending: 'Pendiente', na: 'No aplica' } as const
 const statusColor = {
@@ -23,6 +25,7 @@ const resultBorderClass = {
 
 export default function ChecklistItemPage() {
   const { projectId = '', visitId = '', itemId } = useParams()
+  const [mobilePanel, setMobilePanel] = useState<MobilePanel>('primary')
   const project = useProject(projectId)
   const { itemsState, markManually, addEvidence, sendItemMessage, loading: checklistLoading } = useProjectChecklist(projectId, visitId)
   const def = checklistDef.find((d) => d.id === itemId)
@@ -59,14 +62,18 @@ export default function ChecklistItemPage() {
             </p>
             <h1 className="text-[19px] font-bold text-ink mt-0.5 leading-tight">{def.title}</h1>
           </div>
-          <span className={`shrink-0 text-[11px] font-semibold px-2 py-1 rounded-md ${statusColor[state.status]}`}>
+          <span className={`shrink-0 whitespace-nowrap text-[11px] font-semibold px-2 py-1 rounded-md ${statusColor[state.status]}`}>
             {statusLabel[state.status]}
           </span>
         </div>
       </header>
 
+      <MobilePanelTabs active={mobilePanel} onChange={setMobilePanel} primaryLabel="Detalle" />
+
       <div className="flex-1 flex min-h-0 overflow-hidden">
-        <main className="flex-1 min-h-0 overflow-y-auto px-6 py-6">
+        <main
+          className={`${mobilePanel === 'primary' ? 'block' : 'hidden'} md:block flex-1 min-h-0 overflow-y-auto px-6 py-6`}
+        >
           <div className="max-w-xl mx-auto flex flex-col gap-5">
             <section className="bg-white border border-hairline rounded-xl p-4">
               <p className="text-[11px] uppercase tracking-wide text-brand/70 font-semibold">Qué busca validar la app</p>
@@ -134,7 +141,9 @@ export default function ChecklistItemPage() {
           </div>
         </main>
 
-        <aside className="w-[380px] shrink-0 min-h-0 border-l border-hairline bg-white">
+        <aside
+          className={`${mobilePanel === 'chat' ? 'block' : 'hidden'} md:block w-full md:w-[380px] md:shrink-0 min-h-0 border-l-0 md:border-l border-hairline bg-white`}
+        >
           <ChatPanel
             title="Chat de este ítem"
             subtitle="Todo lo que hables, escribas o subas acá queda asociado solo a este ítem — no hace falta que digas a cuál te refieres."
