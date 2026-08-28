@@ -49,65 +49,65 @@ export default function ChecklistProject() {
 
   return (
     <div className="h-screen flex flex-col bg-base overflow-hidden">
-      <header className="border-b border-hairline bg-white px-6 py-4">
-        <div className="flex items-center justify-between gap-4 flex-wrap">
-          <div>
-            <h1 className="text-[19px] font-bold text-ink leading-tight">{projectData.name}</h1>
-            <p className="text-[12.5px] text-muted mt-0.5 flex items-center flex-wrap gap-1.5">
-              {formName} · Visita {formatDateCl(visit.date)}
+      <header className="border-b border-hairline bg-white px-4 py-2.5 md:px-6 md:py-4">
+        <Link to={`/checklist/${projectId}`} className="inline-flex items-center gap-1 text-[12px] text-brand">
+          ← Volver al historial de visitas
+        </Link>
+        <div className="mt-1.5 flex items-start justify-between gap-3 flex-wrap">
+          <div className="min-w-0">
+            <div className="flex items-center gap-2 flex-wrap">
+              <h1 className="text-[17px] md:text-[19px] font-bold text-ink leading-tight">{projectData.name}</h1>
               <span
                 className={`shrink-0 whitespace-nowrap text-[10px] font-semibold px-1.5 py-0.5 rounded-md ${visitStatusColor[visit.status]}`}
               >
                 {visitStatusLabel[visit.status]}
               </span>
+            </div>
+            <p className="text-[11.5px] text-muted mt-0.5">
+              {formName} · Visita {formatDateCl(visit.date)}
+              <span className="hidden md:inline"> · {auth?.user.name}</span>
             </p>
           </div>
-          <div className="text-right">
-            <p className="text-[12px] text-muted">
-              {auth?.user.name} · {auth?.user.role}
-            </p>
-            <div className="mt-1.5 flex items-center gap-2 justify-end">
-              <span className="text-[12px] font-semibold text-brand whitespace-nowrap">
-                {completed}/{total} completados
-              </span>
-              <div className="w-28 h-1.5 bg-hairline rounded-full overflow-hidden">
-                <div className="h-full bg-ok transition-all" style={{ width: `${(completed / total) * 100}%` }} />
-              </div>
+          <div className="flex items-center gap-2 shrink-0">
+            <span className="text-[12px] font-semibold text-brand whitespace-nowrap">
+              {completed}/{total}
+            </span>
+            <div className="w-16 md:w-28 h-1.5 bg-hairline rounded-full overflow-hidden">
+              <div className="h-full bg-ok transition-all" style={{ width: `${(completed / total) * 100}%` }} />
             </div>
-            {visit.status === 'en_curso' ? (
-              <button
-                type="button"
-                onClick={() => closeVisit(visitId)}
-                className="mt-2 text-[11.5px] font-semibold text-brand hover:underline"
-              >
-                Cerrar visita
-              </button>
-            ) : visit.reportSentAt ? (
-              <div className="mt-2">
-                <p className="text-[11px] text-ok font-medium">Informe enviado el {formatDateCl(visit.reportSentAt)}</p>
-                <p className="text-[10.5px] text-muted mt-0.5">a {reportRecipients.join(', ')}</p>
-                <button
-                  type="button"
-                  onClick={() => window.print()}
-                  className="mt-1 text-[11.5px] font-semibold text-brand hover:underline"
-                >
-                  Descargar PDF
-                </button>
-              </div>
-            ) : (
-              <button
-                type="button"
-                onClick={() => sendReport(visitId)}
-                className="mt-2 text-[11.5px] font-semibold text-ok hover:underline"
-              >
-                Enviar informe
-              </button>
-            )}
           </div>
         </div>
-        <Link to={`/checklist/${projectId}`} className="inline-flex items-center gap-1 text-[12px] text-brand mt-3">
-          ← Volver al historial de visitas
-        </Link>
+        <div className="mt-1.5 text-[11px] flex items-center gap-1.5 flex-wrap">
+          {visit.status === 'en_curso' ? (
+            <button
+              type="button"
+              onClick={() => closeVisit(visitId)}
+              className="text-[11.5px] font-semibold text-brand hover:underline"
+            >
+              Cerrar visita
+            </button>
+          ) : visit.reportSentAt ? (
+            <>
+              <span className="text-ok font-medium">Informe enviado el {formatDateCl(visit.reportSentAt)}</span>
+              <span className="hidden md:inline text-muted">· a {reportRecipients.join(', ')}</span>
+              <button
+                type="button"
+                onClick={() => window.print()}
+                className="font-semibold text-brand hover:underline"
+              >
+                Descargar PDF
+              </button>
+            </>
+          ) : (
+            <button
+              type="button"
+              onClick={() => sendReport(visitId)}
+              className="text-[11.5px] font-semibold text-ok hover:underline"
+            >
+              Enviar informe
+            </button>
+          )}
+        </div>
       </header>
 
       <MobilePanelTabs active={mobilePanel} onChange={setMobilePanel} primaryLabel="Checklist" />
