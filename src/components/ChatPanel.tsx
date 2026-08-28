@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import TranscriptBubble from './TranscriptBubble'
 import { compressImageFile } from '../lib/compressImage'
 import type { ChatMessage, EvidenceType } from '../data/checklistMatrizInterior'
@@ -11,7 +11,7 @@ type Props = {
   chatId?: string
   messages: ChatMessage[]
   placeholder: string
-  onSend: (text: string, type?: EvidenceType, previewUrl?: string) => void
+  onSend: (text: string, type?: EvidenceType, previewUrl?: string) => Promise<void>
   micHint: string
   onSelectOption?: (messageId: string, itemId: string) => void
 }
@@ -22,20 +22,37 @@ export default function ChatPanel({ title, subtitle, chatId, messages, placehold
   const [pendingPhoto, setPendingPhoto] = useState<string | null>(null)
   const [compressing, setCompressing] = useState(false)
   const [photoError, setPhotoError] = useState<string | null>(null)
+  // Shown the instant "Enviar" is clicked, before the round trip (which now
+  // includes a real AI call, ~1-2s) resolves and the real message lands via
+  // `messages` — otherwise the input just goes quiet for that whole time.
+  const [outgoing, setOutgoing] = useState<{ text: string; type: EvidenceType; previewUrl?: string } | null>(null)
+  const [sendError, setSendError] = useState<string | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const scrollRef = useRef<HTMLDivElement>(null)
 
-  function submit() {
-    if (pendingPhoto) {
-      onSend(draft.trim() || 'Foto adjunta', 'photo', pendingPhoto)
-      setPendingPhoto(null)
-      setDraft('')
-      setPendingType('text')
-      return
-    }
-    if (!draft.trim()) return
-    onSend(draft, pendingType)
+  useEffect(() => {
+    scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight })
+  }, [messages, outgoing])
+
+  async function submit() {
+    if (!pendingPhoto && !draft.trim()) return
+    const text = pendingPhoto ? draft.trim() || 'Foto adjunta' : draft
+    const type = pendingPhoto ? 'photo' : pendingType
+    const previewUrl = pendingPhoto ?? undefined
+
+    setOutgoing({ text, type, previewUrl })
+    setSendError(null)
+    setPendingPhoto(null)
     setDraft('')
     setPendingType('text')
+
+    try {
+      await onSend(text, type, previewUrl)
+    } catch {
+      setSendError('No se pudo enviar. Intentá de nuevo.')
+    } finally {
+      setOutgoing(null)
+    }
   }
 
   async function onFileSelected(e: React.ChangeEvent<HTMLInputElement>) {
@@ -63,8 +80,8 @@ export default function ChatPanel({ title, subtitle, chatId, messages, placehold
         </div>
         {subtitle && <p className="text-[11.5px] text-muted mt-0.5 leading-snug">{subtitle}</p>}
       </div>
-      <div className="flex-1 overflow-y-auto thin-scroll px-4 py-3 flex flex-col gap-2">
-        {messages.length === 0 && (
+      <div ref={scrollRef} className="flex-1 overflow-y-auto thin-scroll px-4 py-3 flex flex-col gap-2">
+        {messages.length === 0 && !outgoing && (
           <p className="text-[12px] text-muted italic text-center mt-6">Aún no hay mensajes en este chat.</p>
         )}
         {messages.map((m) => (
@@ -77,6 +94,21 @@ export default function ChatPanel({ title, subtitle, chatId, messages, placehold
             onSelectOption={onSelectOption ? (itemId) => onSelectOption(m.id, itemId) : undefined}
           />
         ))}
+        {outgoing && (
+          <>
+            <TranscriptBubble role="inspector" text={outgoing.type === 'audio' ? `🎙 ${outgoing.text}` : outgoing.text} previewUrl={outgoing.previewUrl} />
+            <div className="flex justify-start">
+              <div className="max-w-[85%] rounded-2xl rounded-bl-sm px-3 py-2 bg-brand-soft text-ink">
+                <p className="text-[10px] font-semibold uppercase tracking-wide text-brand/70 mb-1">Asistente IA</p>
+                <span className="inline-flex items-center gap-1">
+                  <span className="h-1.5 w-1.5 rounded-full bg-brand/50 animate-bounce [animation-delay:-0.3s]" />
+                  <span className="h-1.5 w-1.5 rounded-full bg-brand/50 animate-bounce [animation-delay:-0.15s]" />
+                  <span className="h-1.5 w-1.5 rounded-full bg-brand/50 animate-bounce" />
+                </span>
+              </div>
+            </div>
+          </>
+        )}
       </div>
       <div className="border-t border-hairline p-3">
         {pendingPhoto && (
@@ -96,11 +128,12 @@ export default function ChatPanel({ title, subtitle, chatId, messages, placehold
           </div>
         )}
         {photoError && <p className="text-[11.5px] text-danger mb-2">{photoError}</p>}
+        {sendError && <p className="text-[11.5px] text-danger mb-2">{sendError}</p>}
         <div className="flex items-center gap-1.5">
           <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={onFileSelected} />
           <button
             onClick={() => fileInputRef.current?.click()}
-            disabled={compressing}
+            disabled={compressing || !!outgoing}
             className="shrink-0 h-9 w-9 grid place-items-center rounded-lg border border-hairline text-muted hover:bg-brand-soft hover:text-brand transition-colors disabled:opacity-50"
             title="Adjuntar foto"
             aria-label="Adjuntar foto"
@@ -112,7 +145,8 @@ export default function ChatPanel({ title, subtitle, chatId, messages, placehold
               setDraft(micHint)
               setPendingType('audio')
             }}
-            className="shrink-0 h-9 w-9 grid place-items-center rounded-lg border border-hairline text-muted hover:bg-brand-soft hover:text-brand transition-colors"
+            disabled={!!outgoing}
+            className="shrink-0 h-9 w-9 grid place-items-center rounded-lg border border-hairline text-muted hover:bg-brand-soft hover:text-brand transition-colors disabled:opacity-50"
             title="Dictar por voz"
             aria-label="Dictar por voz"
           >
@@ -127,14 +161,15 @@ export default function ChatPanel({ title, subtitle, chatId, messages, placehold
             onKeyDown={(e) => {
               if (e.key === 'Enter') submit()
             }}
+            disabled={!!outgoing}
             placeholder={pendingPhoto ? 'Descripción (opcional)...' : placeholder}
-            className="flex-1 min-w-0 text-[13px] px-3 py-2 rounded-lg border border-hairline focus:outline-none focus:ring-2 focus:ring-brand/30"
+            className="flex-1 min-w-0 text-[13px] px-3 py-2 rounded-lg border border-hairline focus:outline-none focus:ring-2 focus:ring-brand/30 disabled:bg-base disabled:text-muted"
           />
           <button
             onClick={submit}
-            disabled={!pendingPhoto && !draft.trim()}
+            disabled={!!outgoing || (!pendingPhoto && !draft.trim())}
             className={`shrink-0 h-9 w-9 grid place-items-center rounded-lg font-semibold transition-colors ${
-              pendingPhoto || draft.trim() ? 'bg-brand text-white hover:bg-brand-dark' : 'bg-hairline text-muted cursor-not-allowed'
+              !outgoing && (pendingPhoto || draft.trim()) ? 'bg-brand text-white hover:bg-brand-dark' : 'bg-hairline text-muted cursor-not-allowed'
             }`}
             aria-label="Enviar"
           >
