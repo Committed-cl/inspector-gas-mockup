@@ -70,7 +70,6 @@ export type ChecklistItemDef = {
   appValidates: string[]
   regulatoryCriteria: string
   requiredEvidence: RequiredEvidence[]
-  allowsNotApplicable?: boolean
   keywords: string[]
 }
 
@@ -179,7 +178,6 @@ export const checklistDef: ChecklistItemDef[] = [
     appValidates: ['Aplica a jardines o tránsito vehicular.', 'Misma exigencia de foto obligatoria.'],
     regulatoryCriteria: 'DS N°66/2007, Art. 46.2.2.c — bajo calles con circulación vehicular, cubierta mínima 80 cm.',
     requiredEvidence: [{ label: 'Foto de la profundidad medida', type: 'photo' }],
-    allowsNotApplicable: true,
     keywords: ['80 cm', 'jardines', 'tránsito vehicular'],
   },
   {
@@ -284,7 +282,6 @@ export const checklistDef: ChecklistItemDef[] = [
     appValidates: ['Cumple o no cumple.', 'Admite "No aplica" cuando el proyecto no la requiere o está en el módulo.'],
     regulatoryCriteria: 'DS N°66/2007, Art. 52.4 — válvula de corte con accesibilidad Grado 1 (Art. 10.2.1).',
     requiredEvidence: [{ label: 'Declaración de cumplimiento', type: 'declaration' }],
-    allowsNotApplicable: true,
     keywords: ['llave de corte', 'corte general'],
   },
   {
@@ -305,7 +302,6 @@ export const checklistDef: ChecklistItemDef[] = [
     appValidates: ['Cumple / no cumple + foto.', 'Si no hay tramo soterrado, declarar "no aplica".'],
     regulatoryCriteria: 'DS N°66/2007, Art. 46.2.2.d — cinta amarilla con leyenda "GAS", a ≥25 cm sobre la tubería enterrada.',
     requiredEvidence: [{ label: 'Foto de la cinta instalada', type: 'photo' }],
-    allowsNotApplicable: true,
     keywords: ['cinta de advertencia', 'cinta amarilla'],
   },
   {
@@ -335,7 +331,6 @@ export const checklistDef: ChecklistItemDef[] = [
     appValidates: ['Si existe vigón o zócalo falso, confirmar que cumple estas características.', 'Admite "No aplica".'],
     regulatoryCriteria: 'DS N°66/2007, Art. 59.2.1.a, 59.2.3.a y 59.2.4.a — uso exclusivo, no combustible, resistencia al fuego F60/F90/F120.',
     requiredEvidence: [{ label: 'Declaración de cumplimiento de las características exigidas', type: 'declaration' }],
-    allowsNotApplicable: true,
     keywords: ['vigón', 'zócalo falso'],
   },
 
@@ -374,7 +369,6 @@ export const checklistDef: ChecklistItemDef[] = [
     appValidates: ['Cumple / no cumple / no aplica.', 'Requerida si la apertura en la losa supera el tamaño que exige rejilla.'],
     regulatoryCriteria: 'DS N°66/2007, Art. 59.2.4.b — reja desmontable que soporte ≥200 kgf si la superficie libre supera 400 cm².',
     requiredEvidence: [{ label: 'Declaración de cumplimiento', type: 'declaration' }],
-    allowsNotApplicable: true,
     keywords: ['rejilla', 'caída medidor'],
   },
   {
@@ -418,7 +412,6 @@ export const checklistDef: ChecklistItemDef[] = [
     appValidates: ['Cumple o no cumple.'],
     regulatoryCriteria: 'DS N°66/2007, Art. 59.2.4.a — vertical, rectilíneo, resistencia al fuego F60/F90/F120 según NCh935/1.',
     requiredEvidence: [{ label: 'Declaración de cumplimiento', type: 'declaration' }],
-    allowsNotApplicable: true,
     keywords: ['conducto técnico', 'sin quiebres'],
   },
   {
@@ -428,7 +421,6 @@ export const checklistDef: ChecklistItemDef[] = [
     appValidates: ['Cumple / no cumple / no aplica (si no hay conducto técnico).', 'Ventilación inferior por donde se toma el aire.'],
     regulatoryCriteria: 'DS N°66/2007, Art. 59.2.4.b — superficie libre mínima 100 cm² al atravesar la losa de cada piso.',
     requiredEvidence: [{ label: 'Declaración de cumplimiento', type: 'declaration' }],
-    allowsNotApplicable: true,
     keywords: ['tiro', '100 cm2', 'ventilación inferior conducto'],
   },
   {
@@ -438,7 +430,6 @@ export const checklistDef: ChecklistItemDef[] = [
     appValidates: ['Cumple / no cumple / no aplica (si no hay conducto técnico).', 'Debe salir "a los cuatro vientos".'],
     regulatoryCriteria: 'DS N°66/2007, Art. 59.2.4.c — sombrerete tipo aspirador estacionario, protegido de lluvia/insectos/pájaros.',
     requiredEvidence: [{ label: 'Declaración de cumplimiento', type: 'declaration' }],
-    allowsNotApplicable: true,
     keywords: ['sombrerete', 'aspirador estacionario'],
   },
 ]

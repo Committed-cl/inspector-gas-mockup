@@ -3,13 +3,12 @@ import type { ChecklistStatus } from '../data/checklistMatrizInterior'
 
 type Props = {
   status: ChecklistStatus
-  allowsNotApplicable?: boolean
   onMark: (status: ChecklistStatus, reason?: string) => void
   size?: 'sm' | 'md'
   hint?: string
 }
 
-export default function StatusControl({ status, allowsNotApplicable, onMark, size = 'sm', hint }: Props) {
+export default function StatusControl({ status, onMark, size = 'sm', hint }: Props) {
   const [showNaInput, setShowNaInput] = useState(false)
   const [reason, setReason] = useState('')
   const pad = size === 'sm' ? 'px-2.5 py-1 text-[11px]' : 'px-3.5 py-1.5 text-[12.5px]'
@@ -31,16 +30,14 @@ export default function StatusControl({ status, allowsNotApplicable, onMark, siz
         >
           No cumple
         </button>
-        {allowsNotApplicable && (
-          <button
-            onClick={() => setShowNaInput((v) => !v)}
-            className={`${pad} font-medium border-l border-hairline transition-colors ${
-              status === 'na' ? 'bg-muted text-white' : 'text-ink hover:bg-muted/10'
-            }`}
-          >
-            No aplica
-          </button>
-        )}
+        <button
+          onClick={() => setShowNaInput((v) => !v)}
+          className={`${pad} font-medium border-l border-hairline transition-colors ${
+            status === 'na' ? 'bg-muted text-white' : 'text-ink hover:bg-muted/10'
+          }`}
+        >
+          No aplica
+        </button>
       </div>
       {hint && status !== 'ok' && status !== 'na' && <p className="text-[11px] text-warn mt-1.5">{hint}</p>}
       {showNaInput && (

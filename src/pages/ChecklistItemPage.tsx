@@ -95,7 +95,6 @@ export default function ChecklistItemPage() {
               <p className="text-[11px] uppercase tracking-wide text-brand/70 font-semibold mb-2.5">Conclusión</p>
               <StatusControl
                 status={state.status}
-                allowsNotApplicable={def.allowsNotApplicable}
                 onMark={(status, reason) => markManually(def.id, status, reason)}
                 size="md"
                 hint={missingEvidenceHint(def, state.evidence)}

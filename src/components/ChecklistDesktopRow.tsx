@@ -77,7 +77,6 @@ export default function ChecklistDesktopRow({ def, state, projectId, visitId, on
           <div className="mt-2 flex items-center gap-3 flex-wrap">
             <StatusControl
               status={state.status}
-              allowsNotApplicable={def.allowsNotApplicable}
               onMark={onMark}
               size="sm"
               hint={missingEvidenceHint(def, state.evidence)}
