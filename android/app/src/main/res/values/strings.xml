@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Inspector Gas</string>
+    <string name="title_activity_main">Inspector Gas</string>
+    <string name="package_name">com.gaspex360.inspectorgas</string>
+    <string name="custom_url_scheme">com.gaspex360.inspectorgas</string>
+</resources>
