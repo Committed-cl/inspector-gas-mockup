@@ -94,7 +94,7 @@ export default function ChecklistNuevaObra() {
             />
           </label>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <label className="flex flex-col gap-1.5">
               <span className="text-[12px] font-medium text-ink">Constructora</span>
               <input
@@ -115,7 +115,7 @@ export default function ChecklistNuevaObra() {
             </label>
           </div>
 
-          <div className="grid grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <label className="flex flex-col gap-1.5">
               <span className="text-[12px] font-medium text-ink">Pisos</span>
               <input
@@ -127,7 +127,7 @@ export default function ChecklistNuevaObra() {
                 className="rounded-lg border border-hairline px-3 py-2.5 text-[14px] focus:outline-none focus:ring-2 focus:ring-brand/30 focus:border-brand"
               />
             </label>
-            <label className="flex flex-col gap-1.5 col-span-2">
+            <label className="flex flex-col gap-1.5 sm:col-span-2">
               <span className="text-[12px] font-medium text-ink">Etapa actual</span>
               <div className="flex gap-2">
                 <input
@@ -137,14 +137,14 @@ export default function ChecklistNuevaObra() {
                   onChange={(e) => setStageNumber(e.target.value)}
                   required
                   placeholder="N°"
-                  className="w-16 rounded-lg border border-hairline px-3 py-2.5 text-[14px] focus:outline-none focus:ring-2 focus:ring-brand/30 focus:border-brand"
+                  className="w-16 shrink-0 rounded-lg border border-hairline px-3 py-2.5 text-[14px] focus:outline-none focus:ring-2 focus:ring-brand/30 focus:border-brand"
                 />
                 <input
                   value={stageName}
                   onChange={(e) => setStageName(e.target.value)}
                   required
                   placeholder="Nombre de la etapa"
-                  className="flex-1 rounded-lg border border-hairline px-3 py-2.5 text-[14px] focus:outline-none focus:ring-2 focus:ring-brand/30 focus:border-brand"
+                  className="flex-1 min-w-0 rounded-lg border border-hairline px-3 py-2.5 text-[14px] focus:outline-none focus:ring-2 focus:ring-brand/30 focus:border-brand"
                 />
               </div>
             </label>

@@ -26,7 +26,7 @@ export default function AdminIaConfig() {
   return (
     <div className="min-h-screen flex bg-base">
       <Sidebar demoMode={false} />
-      <main className="flex-1 p-8 max-w-2xl">
+      <main className="flex-1 min-w-0 p-5 pt-16 md:p-8 max-w-2xl">
         <header>
           <p className="text-[12px] uppercase tracking-wide text-muted font-semibold">Administración</p>
           <h1 className="text-2xl font-bold text-ink mt-1">Configuración de IA</h1>

@@ -54,15 +54,15 @@ export default function ChecklistProjects() {
               to={`/checklist/${p.id}`}
               className="block bg-white border border-hairline rounded-xl px-5 py-4 hover:shadow-sm hover:border-brand/30 transition-all"
             >
-              <div className="flex items-start justify-between gap-4">
-                <div className="min-w-0">
+              <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-2 sm:gap-4">
+                <div className="min-w-0 flex-1">
                   <p className="text-[15px] font-semibold text-ink">{p.name}</p>
                   <p className="text-[12.5px] text-muted mt-0.5">{p.address}</p>
                   <p className="text-[12px] text-muted mt-1.5">
                     Constructora {p.builder} · Instaladora {p.installer}
                   </p>
                 </div>
-                <div className="text-right shrink-0">
+                <div className="sm:text-right shrink-0">
                   {p.openVisit ? (
                     <p className="text-[11px] text-muted">
                       Visita en curso desde{' '}
