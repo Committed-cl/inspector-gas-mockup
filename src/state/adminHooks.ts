@@ -1,12 +1,23 @@
 import { useCallback, useEffect, useState } from 'react'
 import { api } from '../lib/api'
+import type { ProjectSummary } from './ChecklistContext'
 
 export type UserRole = 'inspector-metrogas' | 'inspector-instaladora' | 'jefe-obra' | 'supervisor-metrogas' | 'admin'
 
 export type Company = { id: string; name: string; logoUrl: string }
 export type Client = { id: string; companyId: string; name: string }
-export type AdminUser = { id: string; email: string; name: string; role: UserRole; isAdmin: boolean; companyId: string }
+export type AdminUser = {
+  id: string
+  email: string
+  name: string
+  role: UserRole
+  isAdmin: boolean
+  companyId: string
+  projectIds?: string[]
+}
 export type CreateUserResult = { user: AdminUser; provisionalPassword: string }
+export type UpdateUserInput = Partial<{ name: string; role: UserRole; isAdmin: boolean; companyId: string; projectIds: string[] }>
+export type ResetPasswordResult = { provisionalPassword: string }
 
 type Async<T> = { data: T | null; loading: boolean; error: string | null }
 
@@ -23,7 +34,16 @@ function useAsyncList<T>(path: string) {
 
   useEffect(refetch, [refetch])
 
-  return { ...state, refetch }
+  // Patches the cached list from a mutation's own response instead of
+  // re-fetching — Datastore list queries (findAll) are only eventually
+  // consistent, so a refetch() issued right after a write can still race
+  // behind it and momentarily show stale data (observed live: a just-deleted
+  // user stayed in the list until a manual reload).
+  const mutate = useCallback((updater: (list: T[]) => T[]) => {
+    setState((s) => (s.data ? { ...s, data: updater(s.data) } : s))
+  }, [])
+
+  return { ...state, refetch, mutate }
 }
 
 export function useCompanies() {
@@ -52,20 +72,38 @@ export function useClients(companyId?: string) {
 }
 
 export function useUsers() {
-  const { data, loading, error, refetch } = useAsyncList<AdminUser>('/users')
+  const { data, loading, error, mutate } = useAsyncList<AdminUser>('/users')
 
   const createUser = async (email: string, name: string, role: UserRole, isAdmin: boolean, companyId: string) => {
     const result = await api.post<CreateUserResult>('/users', { email, name, role, isAdmin, companyId })
-    refetch()
+    mutate((list) => [...list, result.user])
     return result
   }
 
-  return { users: data ?? [], loading, error, createUser }
+  const updateUser = async (id: string, input: UpdateUserInput) => {
+    const user = await api.patch<AdminUser>(`/users/${encodeURIComponent(id)}`, input)
+    mutate((list) => list.map((u) => (u.id === id ? user : u)))
+    return user
+  }
+
+  const deleteUser = async (id: string) => {
+    await api.delete(`/users/${encodeURIComponent(id)}`)
+    mutate((list) => list.filter((u) => u.id !== id))
+  }
+
+  const resetPassword = (id: string) => api.post<ResetPasswordResult>(`/users/${encodeURIComponent(id)}/password`)
+
+  return { users: data ?? [], loading, error, createUser, updateUser, deleteUser, resetPassword }
 }
 
 export function useObrasCount() {
   const { data, loading } = useAsyncList<{ id: string }>('/projects')
   return { count: data?.length ?? null, loading }
+}
+
+export function useProjects() {
+  const { data, loading, error } = useAsyncList<ProjectSummary>('/projects')
+  return { projects: data ?? [], loading, error }
 }
 
 export type AiVendor = 'gemini' | 'anthropic' | 'openai' | 'claude-cli'
