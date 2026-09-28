@@ -150,7 +150,6 @@ export default function ChecklistItemPage() {
             messages={state.chat}
             placeholder="Cuéntame qué observaste para este ítem..."
             onSend={(text, type, previewUrl) => sendItemMessage(def.id, text, type, previewUrl)}
-            micHint="Ya revisé este punto, cumple con lo que exige la norma."
           />
         </aside>
       </div>

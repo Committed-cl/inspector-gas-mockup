@@ -195,7 +195,6 @@ export default function ChecklistProject() {
             messages={generalChat}
             placeholder="Ej: la matriz está pintada y a la vista..."
             onSend={sendGeneralMessage}
-            micHint="Revisé el manifold, está pintado, y el bastón de la red interior tiene marcado el número de cada departamento."
             onSelectOption={resolveGeneralMessage}
           />
         </aside>
