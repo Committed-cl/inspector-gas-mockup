@@ -9,6 +9,7 @@ type Props = {
   itemsState: Record<string, ItemState>
   observations: string
   supervisorName?: string
+  reportRef?: React.Ref<HTMLDivElement>
 }
 
 const visitTypeLabel = { gas_prueba: 'Gas de prueba', gas_final: 'Gas final' } as const
@@ -31,7 +32,7 @@ function Section({ n, title, children }: { n: number; title: string; children: R
 
 // Print-only visit report (the "Descargar PDF" action prints the page, see
 // ChecklistProject). Hidden on screen.
-export default function VisitReport({ project, visit, visits, itemsState, observations, supervisorName }: Props) {
+export default function VisitReport({ project, visit, visits, itemsState, observations, supervisorName, reportRef }: Props) {
   const defs = checklistDef.filter((d) => itemsState[d.id])
   const statusOf = (id: string) => itemsState[id].status
   const count = (s: string, list = defs) => list.filter((d) => statusOf(d.id) === s).length
@@ -76,7 +77,7 @@ export default function VisitReport({ project, visit, visits, itemsState, observ
   )
 
   return (
-    <div className="hidden print:block text-[10.5px] text-ink leading-snug">
+    <div ref={reportRef} className="hidden print:block text-[10.5px] text-ink leading-snug">
       <header className="border-b-2 border-brand pb-2">
         <div className="text-[9px] text-muted">Logo de la empresa cliente</div>
         <h1 className="text-[17px] font-bold text-brand">INFORME DE VISITA DE SUPERVISOR DE OBRA</h1>

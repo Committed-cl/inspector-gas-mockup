@@ -59,7 +59,7 @@ type Ctx = {
   createProject: (input: CreateProjectInput) => Promise<string>
   createVisit: (projectId: string, visitType: VisitType) => Promise<string>
   closeVisit: (projectId: string, visitId: string) => Promise<void>
-  sendReport: (projectId: string, visitId: string) => Promise<void>
+  sendReport: (projectId: string, visitId: string, pdfBase64?: string) => Promise<void>
   setObservations: (projectId: string, visitId: string, html: string) => Promise<void>
   markManually: (projectId: string, visitId: string, itemId: string, status: ChecklistStatus, reason?: string) => Promise<void>
   addEvidence: (
@@ -179,8 +179,8 @@ export function ChecklistProvider({ children }: { children: ReactNode }) {
     adoptVisit(projectId, await api.post<Visit>(`/projects/${projectId}/visits/${visitId}/close`))
   }, [])
 
-  const sendReport = useCallback(async (projectId: string, visitId: string) => {
-    adoptVisit(projectId, await api.post<Visit>(`/projects/${projectId}/visits/${visitId}/send-report`))
+  const sendReport = useCallback(async (projectId: string, visitId: string, pdfBase64?: string) => {
+    adoptVisit(projectId, await api.post<Visit>(`/projects/${projectId}/visits/${visitId}/send-report`, { pdfBase64 }))
   }, [])
 
   const setObservations = useCallback(async (projectId: string, visitId: string, html: string) => {
@@ -313,7 +313,7 @@ export function useProjectVisits(projectId: string) {
     error: state.error,
     createVisit: (visitType: VisitType) => createVisit(projectId, visitType),
     closeVisit: (visitId: string) => closeVisit(projectId, visitId),
-    sendReport: (visitId: string) => sendReport(projectId, visitId),
+    sendReport: (visitId: string, pdfBase64?: string) => sendReport(projectId, visitId, pdfBase64),
   }
 }
 

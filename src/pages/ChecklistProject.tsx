@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { checklistDef, SECTIONS, formName, type ChecklistStatus } from '../data/checklistMatrizInterior'
 import { useProject, useProjectChecklist, useProjectVisits } from '../state/ChecklistContext'
@@ -10,6 +10,7 @@ import CenteredMessage from '../components/CenteredMessage'
 import MobilePanelTabs, { type MobilePanel } from '../components/MobilePanelTabs'
 import VisitReport from '../components/VisitReport'
 import { formatDateCl } from '../utils/date'
+import { visitReportToPdfBase64 } from '../utils/reportPdf'
 
 const statusSortOrder: Record<ChecklistStatus, number> = { pending: 0, warn: 1, ok: 2, na: 2 }
 
@@ -32,6 +33,8 @@ export default function ChecklistProject() {
   const visit = visits.find((v) => v.id === visitId)
   const [expandedOverride, setExpandedOverride] = useState<Record<string, boolean>>({})
   const [mobilePanel, setMobilePanel] = useState<MobilePanel>('primary')
+  const reportRef = useRef<HTMLDivElement>(null)
+  const [sending, setSending] = useState(false)
 
   if (project.loading || checklistLoading || visitsLoading) return <CenteredMessage text="Cargando..." />
   if (!project.data || checklistError || !visit) {
@@ -105,10 +108,19 @@ export default function ChecklistProject() {
           ) : (
             <button
               type="button"
-              onClick={() => sendReport(visitId)}
-              className="text-[11.5px] font-semibold text-ok hover:underline"
+              disabled={sending}
+              onClick={async () => {
+                if (!reportRef.current) return
+                setSending(true)
+                try {
+                  await sendReport(visitId, await visitReportToPdfBase64(reportRef.current))
+                } finally {
+                  setSending(false)
+                }
+              }}
+              className="text-[11.5px] font-semibold text-ok hover:underline disabled:opacity-50"
             >
-              Enviar informe
+              {sending ? 'Enviando...' : 'Enviar informe'}
             </button>
           )}
         </div>
@@ -211,6 +223,7 @@ export default function ChecklistProject() {
       itemsState={itemsState}
       observations={observations}
       supervisorName={auth?.user.name}
+      reportRef={reportRef}
     />
     </>
   )
