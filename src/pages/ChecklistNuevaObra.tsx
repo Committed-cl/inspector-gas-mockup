@@ -17,6 +17,7 @@ export default function ChecklistNuevaObra() {
   const [floors, setFloors] = useState('')
   const [stageNumber, setStageNumber] = useState('')
   const [stageName, setStageName] = useState('')
+  const [projectCode, setProjectCode] = useState('')
   const [servicePressureKpa, setServicePressureKpa] = useState('')
   const [matrixVolumeM3, setMatrixVolumeM3] = useState('')
   const [error, setError] = useState<string | null>(null)
@@ -36,6 +37,7 @@ export default function ChecklistNuevaObra() {
         floors: Number(floors),
         stageNumber: Number(stageNumber),
         stageName,
+        ...(projectCode.trim() && { projectCode: projectCode.trim() }),
         ...(servicePressureKpa && { servicePressureKpa: Number(servicePressureKpa) }),
         ...(matrixVolumeM3 && { matrixVolumeM3: Number(matrixVolumeM3) }),
       })
@@ -94,6 +96,15 @@ export default function ChecklistNuevaObra() {
               value={address}
               onChange={(e) => setAddress(e.target.value)}
               required
+              className="rounded-lg border border-hairline px-3 py-2.5 text-[14px] focus:outline-none focus:ring-2 focus:ring-brand/30 focus:border-brand"
+            />
+          </label>
+
+          <label className="flex flex-col gap-1.5">
+            <span className="text-[12px] font-medium text-ink">Código de proyecto (opcional)</span>
+            <input
+              value={projectCode}
+              onChange={(e) => setProjectCode(e.target.value)}
               className="rounded-lg border border-hairline px-3 py-2.5 text-[14px] focus:outline-none focus:ring-2 focus:ring-brand/30 focus:border-brand"
             />
           </label>

@@ -100,6 +100,7 @@ export default function VisitReport({ project, visit, visits, itemsState, observ
         <table className="w-full border-collapse">
           <tbody>
             {kv('Proyecto', project.name)}
+            {kv('Código de proyecto', project.projectCode ?? '—')}
             {kv('Dirección', project.address)}
             {kv('Constructora', project.builder)}
             {kv('Instaladora', project.installer)}

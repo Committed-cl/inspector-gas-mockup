@@ -55,7 +55,9 @@ export default function ChecklistProjects() {
             >
               <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-2 sm:gap-4">
                 <div className="min-w-0 flex-1">
-                  <p className="text-[15px] font-semibold text-ink">{p.name}</p>
+                  <p className="text-[15px] font-semibold text-ink">{p.name}
+                    {p.projectCode && <span className="ml-2 text-[12px] font-medium text-muted">· {p.projectCode}</span>}
+                  </p>
                   <p className="text-[12.5px] text-muted mt-0.5">{p.address}</p>
                   <p className="text-[12px] text-muted mt-1.5">
                     Constructora {p.builder} · Instaladora {p.installer}

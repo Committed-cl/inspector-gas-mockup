@@ -17,6 +17,7 @@ export type ProjectSummary = {
   floors: number
   stageNumber: number
   stageName: string
+  projectCode?: string
   servicePressureKpa?: number
   matrixVolumeM3?: number
   openVisit: { id: string; date: string } | null
@@ -31,6 +32,7 @@ export type CreateProjectInput = {
   floors: number
   stageNumber: number
   stageName: string
+  projectCode?: string
   servicePressureKpa?: number
   matrixVolumeM3?: number
 }
