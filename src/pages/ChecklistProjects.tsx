@@ -1,5 +1,4 @@
 import { Link, useNavigate } from 'react-router-dom'
-import { formName } from '../data/checklistMatrizInterior'
 import { useProjects } from '../state/ChecklistContext'
 import { useAuth } from '../lib/auth'
 import { formatDateCl } from '../utils/date'
@@ -18,12 +17,12 @@ export default function ChecklistProjects() {
       <header className="border-b border-hairline bg-white px-6 py-4">
         <div className="flex items-center justify-between gap-4 flex-wrap">
           <div>
-            <h1 className="text-[19px] font-bold text-ink leading-tight">Inspector Gas</h1>
-            <p className="text-[12.5px] text-muted mt-0.5">{formName} · Selecciona un proyecto</p>
+            <h1 className="text-[19px] font-bold text-ink leading-tight">Visita de Supervisor</h1>
+            <p className="text-[12.5px] text-muted mt-0.5">Proyectos a su cargo — Selecciona un Proyecto</p>
           </div>
           <div className="text-right">
             <p className="text-[12px] text-muted">
-              {auth?.user.name} · {auth?.user.role}
+              {[auth?.user.name, 'Supervisor', auth?.user.companyName].filter(Boolean).join(' · ')}
             </p>
             <div className="mt-1 flex items-center gap-3 justify-end">
               {auth?.user.isAdmin && (
