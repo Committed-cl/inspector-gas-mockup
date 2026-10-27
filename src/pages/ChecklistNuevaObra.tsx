@@ -47,7 +47,7 @@ export default function ChecklistNuevaObra() {
       <header className="border-b border-hairline bg-white px-6 py-4">
         <h1 className="text-[19px] font-bold text-ink leading-tight">Nueva obra</h1>
         <p className="text-[12.5px] text-muted mt-0.5">Registra una nueva obra bajo un cliente existente.</p>
-        <Link to="/checklist" className="inline-flex items-center gap-1 text-[12px] text-brand mt-3">
+        <Link to="/checklist" className="inline-flex items-center gap-1.5 bg-brand hover:bg-brand-dark text-white font-semibold rounded-lg px-3.5 py-2 text-[12.5px] mt-3">
           ← Volver al listado de proyectos
         </Link>
       </header>

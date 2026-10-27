@@ -48,7 +48,7 @@ export default function ObraVisitas() {
             {auth?.user.name} · {auth?.user.role}
           </p>
         </div>
-        <Link to="/checklist" className="inline-flex items-center gap-1 text-[12px] text-brand mt-3">
+        <Link to="/checklist" className="inline-flex items-center gap-1.5 bg-brand hover:bg-brand-dark text-white font-semibold rounded-lg px-3.5 py-2 text-[12.5px] mt-3">
           ← Volver al listado de proyectos
         </Link>
       </header>
