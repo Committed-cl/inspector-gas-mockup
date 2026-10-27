@@ -1,4 +1,3 @@
-import { useState } from 'react'
 import type { ChecklistStatus } from '../data/checklistMatrizInterior'
 
 type Props = {
@@ -9,8 +8,6 @@ type Props = {
 }
 
 export default function StatusControl({ status, onMark, size = 'sm', hint }: Props) {
-  const [showNaInput, setShowNaInput] = useState(false)
-  const [reason, setReason] = useState('')
   const pad = size === 'sm' ? 'px-2.5 py-1 text-[11px]' : 'px-3.5 py-1.5 text-[12.5px]'
 
   return (
@@ -31,7 +28,7 @@ export default function StatusControl({ status, onMark, size = 'sm', hint }: Pro
           No cumple
         </button>
         <button
-          onClick={() => setShowNaInput((v) => !v)}
+          onClick={() => onMark('na')}
           className={`${pad} font-medium border-l border-hairline transition-colors ${
             status === 'na' ? 'bg-muted text-white' : 'text-ink hover:bg-muted/10'
           }`}
@@ -40,28 +37,6 @@ export default function StatusControl({ status, onMark, size = 'sm', hint }: Pro
         </button>
       </div>
       {hint && status !== 'ok' && status !== 'na' && <p className="text-[11px] text-warn mt-1.5">{hint}</p>}
-      {showNaInput && (
-        <div className="mt-2 flex items-center gap-2">
-          <input
-            value={reason}
-            onChange={(e) => setReason(e.target.value)}
-            placeholder="Justificación breve (ej. no hay tramo soterrado en este proyecto)"
-            className="flex-1 text-[12px] px-2.5 py-1.5 rounded-lg border border-hairline focus:outline-none focus:ring-2 focus:ring-brand/30"
-          />
-          <button
-            onClick={() => {
-              onMark('na', reason)
-              setShowNaInput(false)
-            }}
-            disabled={!reason.trim()}
-            className={`text-[12px] font-semibold px-3 py-1.5 rounded-lg ${
-              reason.trim() ? 'bg-brand text-white hover:bg-brand-dark' : 'bg-hairline text-muted cursor-not-allowed'
-            }`}
-          >
-            Confirmar
-          </button>
-        </div>
-      )}
     </div>
   )
 }
