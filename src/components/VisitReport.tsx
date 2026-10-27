@@ -1,6 +1,7 @@
 import { checklistDef, requiredEvidenceState, SECTIONS, formName, type ItemState } from '../data/checklistMatrizInterior'
 import type { ProjectSummary, Visit } from '../state/ChecklistContext'
 import { formatDateCl } from '../utils/date'
+import { detectQualityAlerts } from '../utils/qualityAlerts'
 
 type Props = {
   project: ProjectSummary
@@ -67,6 +68,8 @@ export default function VisitReport({ project, visit, visits, itemsState, observ
     if (s === 'ok' && missing.length) return [{ d, text: `Cargar ${missing.join(', ')} en: ${d.title}.`, section: d.section }]
     return []
   })
+
+  const qualityAlerts = detectQualityAlerts(defs, itemsState)
 
   const sentOn = visit.reportSentAt ? formatDateCl(visit.reportSentAt) : 'pendiente de envío'
   const kv = (label: string, value: string) => (
@@ -195,13 +198,27 @@ export default function VisitReport({ project, visit, visits, itemsState, observ
         )}
       </Section>
 
+      <Section n={6} title="Alertas de control de calidad (detectadas por la plataforma)">
+        {qualityAlerts.length === 0 ? (
+          <p>Sin alertas detectadas.</p>
+        ) : (
+          <ol className="list-decimal pl-5 space-y-0.5">
+            {qualityAlerts.map((a, i) => (
+              <li key={i}>
+                <span className="font-semibold">{a.title}:</span> {a.text}
+              </li>
+            ))}
+          </ol>
+        )}
+      </Section>
+
       {observations && observations !== '<p></p>' && (
-        <Section n={6} title="Observaciones del supervisor">
+        <Section n={7} title="Observaciones del supervisor">
           <div dangerouslySetInnerHTML={{ __html: observations }} />
         </Section>
       )}
 
-      <Section n={7} title="Anexo de detalle del checklist">
+      <Section n={8} title="Anexo de detalle del checklist">
         {SECTIONS.map((s) => {
           const list = defs.filter((d) => d.section === s)
           if (!list.length) return null
@@ -260,7 +277,7 @@ export default function VisitReport({ project, visit, visits, itemsState, observ
         })}
       </Section>
 
-      <Section n={8} title="Validación y distribución">
+      <Section n={9} title="Validación y distribución">
         <p>
           Informe emitido por {supervisorName ?? 'el supervisor de obra'}
           {visit.reportSentAt ? ` el ${formatDateCl(visit.reportSentAt)}` : ''}.
