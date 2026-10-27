@@ -8,6 +8,7 @@ import ChatPanel from '../components/ChatPanel'
 import RichTextEditor from '../components/RichTextEditor'
 import CenteredMessage from '../components/CenteredMessage'
 import MobilePanelTabs, { type MobilePanel } from '../components/MobilePanelTabs'
+import VisitReport from '../components/VisitReport'
 import { formatDateCl } from '../utils/date'
 
 const statusSortOrder: Record<ChecklistStatus, number> = { pending: 0, warn: 1, ok: 2, na: 2 }
@@ -50,7 +51,8 @@ export default function ChecklistProject() {
   const completed = visitDefs.filter((d) => ['ok', 'na'].includes(itemsState[d.id]?.status)).length
 
   return (
-    <div className="h-screen flex flex-col bg-base overflow-hidden">
+    <>
+    <div className="h-screen flex flex-col bg-base overflow-hidden print:hidden">
       <header className="border-b border-hairline bg-white px-4 py-2.5 md:px-6 md:py-4">
         <Link to={`/checklist/${projectId}`} className="inline-flex items-center gap-1 text-[12px] text-brand">
           ← Volver al historial de visitas
@@ -202,5 +204,14 @@ export default function ChecklistProject() {
         </aside>
       </div>
     </div>
+    <VisitReport
+      project={projectData}
+      visit={visit}
+      visits={visits}
+      itemsState={itemsState}
+      observations={observations}
+      supervisorName={auth?.user.name}
+    />
+    </>
   )
 }
