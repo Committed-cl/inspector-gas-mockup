@@ -43,9 +43,14 @@ export default function VisitReport({ project, visit, visits, itemsState, observ
   const applicable = total - na
   const compliance = applicable ? Math.round((ok / applicable) * 100) : 100
 
-  const reqs = (id: string) => requiredEvidenceState(defs.find((d) => d.id === id)!, itemsState[id].evidence)
-  const photoReqs = defs.flatMap((d) => reqs(d.id).filter((r) => r.type === 'photo'))
+  // "No aplica" items demand no evidence, so they contribute no requirements.
+  const reqs = (id: string) =>
+    statusOf(id) === 'na' ? [] : requiredEvidenceState(defs.find((d) => d.id === id)!, itemsState[id].evidence)
+  const allReqs = defs.flatMap((d) => reqs(d.id))
+  const photoReqs = allReqs.filter((r) => r.type === 'photo')
   const photosLoaded = photoReqs.filter((r) => r.fulfilled).length
+  const missingPhotos = photoReqs.length - photosLoaded
+  const missingDeclarations = allReqs.filter((r) => r.type !== 'photo' && !r.fulfilled).length
 
   const sorted = [...visits].sort((a, b) => a.date.localeCompare(b.date))
   const idx = sorted.findIndex((v) => v.id === visit.id)
@@ -111,7 +116,7 @@ export default function VisitReport({ project, visit, visits, itemsState, observ
         <p>
           {approved
             ? 'Todos los ítems aplicables quedaron en "Cumple" con su evidencia obligatoria cargada.'
-            : `La visita no cumple las condiciones de aprobación: ${warn} ítem(s) en "No cumple", ${pending} pendiente(s) y ${photoReqs.length - photosLoaded} foto(s) obligatoria(s) sin cargar.`}
+            : `La visita no cumple las condiciones de aprobación: ${warn} ítem(s) en "No cumple", ${pending} pendiente(s), ${missingPhotos} foto(s) obligatoria(s) sin cargar y ${missingDeclarations} declaración(es) obligatoria(s) faltante(s).`}
         </p>
         <p className="text-muted mt-1">
           Regla de dictamen: la visita se aprueba solo si el 100% de los ítems aplicables queda en "Cumple" con su evidencia
@@ -216,7 +221,8 @@ export default function VisitReport({ project, visit, visits, itemsState, observ
                 <tbody>
                   {list.map((d) => {
                     const st = itemsState[d.id]
-                    const comment = st.evidence.find((e) => e.type !== 'photo' && e.source !== 'manual-mark')?.text
+                    // Evidence is appended chronologically: the last declaration is the current one.
+                    const comment = [...st.evidence].reverse().find((e) => e.type !== 'photo' && e.source !== 'manual-mark')?.text
                     return (
                       <tr key={d.id} className="break-inside-avoid">
                         <td className={td}>{d.title}</td>
@@ -238,7 +244,8 @@ export default function VisitReport({ project, visit, visits, itemsState, observ
                               )}
                             </div>
                           ))}
-                          {!d.requiredEvidence.some((r) => r.type === 'photo') && (
+                          {st.status === 'na' && <div className="text-muted">no aplica</div>}
+                          {st.status !== 'na' && !d.requiredEvidence.some((r) => r.type === 'photo') && (
                             <div className="text-muted">no requiere imagen</div>
                           )}
                         </td>
