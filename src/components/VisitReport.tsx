@@ -69,7 +69,10 @@ export default function VisitReport({ project, visit, visits, itemsState, observ
     return []
   })
 
-  const qualityAlerts = detectQualityAlerts(defs, itemsState)
+  const qualityAlerts = detectQualityAlerts(defs, itemsState, {
+    servicePressureKpa: project.servicePressureKpa,
+    matrixVolumeM3: project.matrixVolumeM3,
+  })
 
   const sentOn = visit.reportSentAt ? formatDateCl(visit.reportSentAt) : 'pendiente de envío'
   const kv = (label: string, value: string) => (

@@ -10,8 +10,8 @@ const PARTIAL_DECLARATION = /alcanc[ée] a ver|algun[oa]s|la mayor[ií]a|parcial
 
 export type ProjectPressureData = { servicePressureKpa?: number; matrixVolumeM3?: number }
 
-// Automatic consistency checks run on the visit's checklist state. The project record does
-// not store service pressure / matrix volume yet, so that rule fires until they are provided.
+// Automatic consistency checks run on the visit's checklist state. The hermeticity rule fires
+// until the project's service pressure / matrix volume are provided.
 export function detectQualityAlerts(
   defs: ChecklistItemDef[],
   itemsState: Record<string, ItemState>,
