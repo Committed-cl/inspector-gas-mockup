@@ -75,7 +75,7 @@ export default function ChecklistProject() {
               {completed}/{total}
             </span>
             <div className="w-16 md:w-28 h-1.5 bg-hairline rounded-full overflow-hidden">
-              <div className="h-full bg-ok transition-all" style={{ width: `${(completed / total) * 100}%` }} />
+              <div className="h-full bg-ok transition-all" style={{ width: `${(total ? completed / total : 0) * 100}%` }} />
             </div>
           </div>
         </div>
