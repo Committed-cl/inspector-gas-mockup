@@ -126,7 +126,10 @@ export default function ChecklistProject() {
               >
                 {sending ? 'Enviando...' : 'Enviar informe'}
               </button>
-              {sendError && <span className="text-danger font-medium">{sendError}</span>}
+              <button type="button" onClick={() => window.print()} className="font-semibold text-brand hover:underline">
+                Descargar PDF
+              </button>
+              {sendError &&<span className="text-danger font-medium">{sendError}</span>}
             </>
           )}
         </div>
