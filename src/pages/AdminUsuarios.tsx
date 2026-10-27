@@ -4,11 +4,9 @@ import { useCompanies, useProjects, useUsers, type AdminUser, type UserRole } fr
 import { ApiError } from '../lib/api'
 
 const ROLES: { value: UserRole; label: string }[] = [
-  { value: 'inspector-metrogas', label: 'Inspector Metrogas' },
-  { value: 'inspector-instaladora', label: 'Inspector Instaladora' },
-  { value: 'jefe-obra', label: 'Jefe de Obra' },
-  { value: 'supervisor-metrogas', label: 'Supervisor Metrogas' },
-  { value: 'admin', label: 'Administrador' },
+  { value: 'admin-general', label: 'Administrador General' },
+  { value: 'lider-supervisores', label: 'Líder de Supervisores' },
+  { value: 'supervisor-proyecto', label: 'Supervisor de Proyecto' },
 ]
 
 export default function AdminUsuarios() {
@@ -17,7 +15,7 @@ export default function AdminUsuarios() {
   const { users, loading, createUser, updateUser, deleteUser, resetPassword } = useUsers()
   const [email, setEmail] = useState('')
   const [name, setName] = useState('')
-  const [role, setRole] = useState<UserRole>('inspector-metrogas')
+  const [role, setRole] = useState<UserRole>('supervisor-proyecto')
   const [isAdmin, setIsAdmin] = useState(false)
   const [companyId, setCompanyId] = useState('')
   const [error, setError] = useState<string | null>(null)

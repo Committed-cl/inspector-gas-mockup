@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { api } from '../lib/api'
 import type { ProjectSummary } from './ChecklistContext'
 
-export type UserRole = 'inspector-metrogas' | 'inspector-instaladora' | 'jefe-obra' | 'supervisor-metrogas' | 'admin'
+export type UserRole = 'admin-general' | 'lider-supervisores' | 'supervisor-proyecto'
 
 export type Company = { id: string; name: string; logoUrl: string }
 export type Client = { id: string; companyId: string; name: string }
