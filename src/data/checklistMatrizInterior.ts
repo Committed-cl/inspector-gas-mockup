@@ -217,15 +217,6 @@ export const checklistDef: ChecklistItemDef[] = [
     keywords: ['líneas eléctricas soterradas', 'cruces eléctricos'],
   },
   {
-    id: 'distancia-50cm-cruce-conductores',
-    section: 'Matriz Soterrada',
-    title: 'Distancia de 50 cm a cruce de conductores eléctricos',
-    appValidates: ['Solo registrar cumple / no cumple / no sabe.'],
-    regulatoryCriteria: 'DS N°66/2007, Art. 46.2.1.c.1 y Art. 78.3.2.a — 30 a 60 cm según aislación y voltaje.',
-    requiredEvidence: [{ label: 'Declaración de cumplimiento', type: 'declaration' }],
-    keywords: ['cruce de conductores', 'conductores eléctricos'],
-  },
-  {
     id: 'distancia-30cm-conductores-paralelos',
     section: 'Matriz Soterrada',
     title: 'Distancia de 30 cm a conductores eléctricos paralelos',
@@ -283,15 +274,6 @@ export const checklistDef: ChecklistItemDef[] = [
     regulatoryCriteria: 'DS N°66/2007, Art. 52.4 — válvula de corte con accesibilidad Grado 1 (Art. 10.2.1).',
     requiredEvidence: [{ label: 'Declaración de cumplimiento', type: 'declaration' }],
     keywords: ['llave de corte', 'corte general'],
-  },
-  {
-    id: 'distancia-lineas-conductores',
-    section: 'Matriz a la Vista',
-    title: 'Distancia a líneas y conductores eléctricos',
-    appValidates: ['Validar medidas de mitigación cuando no se cumple la distancia, en cruces o en tramos paralelos.'],
-    regulatoryCriteria: 'DS N°66/2007, Art. 78.3.2.b — 15 cm a 5 m según aislación y voltaje del conductor.',
-    requiredEvidence: [{ label: 'Declaración de distancia o medidas de mitigación', type: 'declaration' }],
-    keywords: ['líneas eléctricas', 'conductores eléctricos'],
   },
 
   // Señalética
@@ -426,7 +408,7 @@ export const checklistDef: ChecklistItemDef[] = [
   {
     id: 'conducto-sombrerete',
     section: 'Conducto Técnico',
-    title: 'Ventilación Sombrerete Aspirador Estacionario',
+    title: 'Ventilación Superior con Salida a los 4 vientos',
     appValidates: ['Cumple / no cumple / no aplica (si no hay conducto técnico).', 'Debe salir "a los cuatro vientos".'],
     regulatoryCriteria: 'DS N°66/2007, Art. 59.2.4.c — sombrerete tipo aspirador estacionario, protegido de lluvia/insectos/pájaros.',
     requiredEvidence: [{ label: 'Declaración de cumplimiento', type: 'declaration' }],
