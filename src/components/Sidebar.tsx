@@ -3,9 +3,9 @@ import { Link, useLocation } from 'react-router-dom'
 
 const items = [
   { to: '/admin', label: 'Dashboard' },
-  { to: '/admin/empresas', label: 'Empresas' },
-  { to: '/admin/clientes', label: 'Clientes' },
-  { to: '/admin/usuarios', label: 'Usuarios' },
+  { to: '/admin/empresas', label: 'Empresa' },
+  { to: '/admin/usuarios', label: 'Usuario' },
+  { to: '/checklist/nueva-obra', label: 'Proyecto' },
   { to: '/admin/ia', label: 'Configuración de IA' },
   { to: '/checklist', label: 'Ir a checklist' },
 ]
