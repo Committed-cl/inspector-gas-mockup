@@ -3,8 +3,72 @@ import Sidebar from '../components/Sidebar'
 import { useCompanies } from '../state/adminHooks'
 import { ApiError } from '../lib/api'
 
+const parseEmails = (text: string) => text.split(/[\s,;]+/).filter(Boolean)
+
+function RecipientsCell({ recipients, onSave }: { recipients: string[]; onSave: (emails: string[]) => Promise<unknown> }) {
+  const [editing, setEditing] = useState(false)
+  const [text, setText] = useState('')
+  const [error, setError] = useState<string | null>(null)
+  const [saving, setSaving] = useState(false)
+
+  const save = async () => {
+    setError(null)
+    setSaving(true)
+    try {
+      await onSave(parseEmails(text))
+      setEditing(false)
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'No se pudo guardar.')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  if (!editing) {
+    return (
+      <div className="flex items-center gap-3">
+        <span className={recipients.length ? 'text-ink' : 'text-muted italic'}>
+          {recipients.length ? recipients.join(', ') : 'Ninguno'}
+        </span>
+        <button
+          type="button"
+          onClick={() => {
+            setText(recipients.join('\n'))
+            setEditing(true)
+          }}
+          className="text-brand font-semibold text-[12.5px] hover:underline"
+        >
+          Editar
+        </button>
+      </div>
+    )
+  }
+
+  return (
+    <div className="flex flex-col gap-2">
+      <textarea
+        value={text}
+        onChange={(e) => setText(e.target.value)}
+        rows={3}
+        placeholder="uno@empresa.cl, otro@empresa.cl"
+        className="rounded-lg border border-hairline px-3 py-2 text-[13px] focus:outline-none focus:ring-2 focus:ring-brand/30 focus:border-brand"
+      />
+      {error && <p className="text-[12.5px] text-danger">{error}</p>}
+      <div className="flex gap-3">
+        <button type="button" onClick={save} disabled={saving} className="text-brand font-semibold text-[12.5px] disabled:opacity-60">
+          {saving ? 'Guardando...' : 'Guardar'}
+        </button>
+        <button type="button" onClick={() => setEditing(false)} className="text-muted text-[12.5px]">
+          Cancelar
+        </button>
+      </div>
+    </div>
+  )
+}
+
 export default function AdminEmpresas() {
-  const { companies, loading, createCompany } = useCompanies()
+  const { companies, loading, createCompany, updateRecipients } = useCompanies()
+  const [recipientsText, setRecipientsText] = useState('')
   const [name, setName] = useState('')
   const [logoUrl, setLogoUrl] = useState('')
   const [error, setError] = useState<string | null>(null)
@@ -15,9 +79,10 @@ export default function AdminEmpresas() {
     setError(null)
     setSubmitting(true)
     try {
-      await createCompany(name, logoUrl)
+      await createCompany(name, logoUrl, parseEmails(recipientsText))
       setName('')
       setLogoUrl('')
+      setRecipientsText('')
     } catch (err) {
       setError(err instanceof ApiError ? err.message : 'No se pudo crear la empresa.')
     } finally {
@@ -28,7 +93,7 @@ export default function AdminEmpresas() {
   return (
     <div className="min-h-screen flex bg-base">
       <Sidebar demoMode={false} />
-      <main className="flex-1 min-w-0 p-5 pt-16 md:p-8 max-w-3xl">
+      <main className="flex-1 min-w-0 p-5 pt-16 md:p-8 max-w-4xl">
         <header>
           <p className="text-[12px] uppercase tracking-wide text-muted font-semibold">Administración</p>
           <h1 className="text-2xl font-bold text-ink mt-1">Empresas</h1>
@@ -44,19 +109,20 @@ export default function AdminEmpresas() {
               <tr>
                 <th className="text-left px-4 py-3">Logo</th>
                 <th className="text-left px-4 py-3">Nombre</th>
+                <th className="text-left px-4 py-3">Destinatarios adicionales</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-hairline">
               {loading && (
                 <tr>
-                  <td colSpan={2} className="px-4 py-4 text-muted italic">
+                  <td colSpan={3} className="px-4 py-4 text-muted italic">
                     Cargando...
                   </td>
                 </tr>
               )}
               {!loading && companies.length === 0 && (
                 <tr>
-                  <td colSpan={2} className="px-4 py-4 text-muted italic">
+                  <td colSpan={3} className="px-4 py-4 text-muted italic">
                     Todavía no hay empresas.
                   </td>
                 </tr>
@@ -67,6 +133,9 @@ export default function AdminEmpresas() {
                     <img src={c.logoUrl} alt={c.name} className="h-8 max-w-[120px] object-contain" />
                   </td>
                   <td className="px-4 py-3 font-semibold text-ink">{c.name}</td>
+                  <td className="px-4 py-3">
+                    <RecipientsCell recipients={c.additionalRecipients} onSave={(emails) => updateRecipients(c.id, emails)} />
+                  </td>
                 </tr>
               ))}
             </tbody>
@@ -94,6 +163,19 @@ export default function AdminEmpresas() {
               placeholder="https://..."
               className="rounded-lg border border-hairline px-3 py-2.5 text-[14px] focus:outline-none focus:ring-2 focus:ring-brand/30 focus:border-brand"
             />
+          </label>
+          <label className="flex flex-col gap-1.5">
+            <span className="text-[12px] font-medium text-ink">Destinatarios adicionales de informes (opcional)</span>
+            <textarea
+              value={recipientsText}
+              onChange={(e) => setRecipientsText(e.target.value)}
+              rows={3}
+              placeholder="uno@empresa.cl, otro@empresa.cl"
+              className="rounded-lg border border-hairline px-3 py-2.5 text-[14px] focus:outline-none focus:ring-2 focus:ring-brand/30 focus:border-brand"
+            />
+            <span className="text-[11.5px] text-muted">
+              Reciben copia de cada informe, además del Líder de Supervisores y el Supervisor que lo emite.
+            </span>
           </label>
           {error && <p className="text-[12.5px] text-danger">{error}</p>}
           <button
