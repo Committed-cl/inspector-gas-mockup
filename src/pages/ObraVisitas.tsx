@@ -1,7 +1,7 @@
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { formName } from '../data/checklistMatrizInterior'
 import { useProject, useProjectVisits, type VisitType } from '../state/ChecklistContext'
-import { useAuth } from '../lib/auth'
+import { useAuth, useReadOnly } from '../lib/auth'
 import { formatDateCl } from '../utils/date'
 import CenteredMessage from '../components/CenteredMessage'
 
@@ -17,6 +17,7 @@ export default function ObraVisitas() {
   const { projectId = '' } = useParams()
   const nav = useNavigate()
   const { auth } = useAuth()
+  const readOnly = useReadOnly()
   const project = useProject(projectId)
   const { visits, loading, error, createVisit } = useProjectVisits(projectId)
 
@@ -64,7 +65,7 @@ export default function ObraVisitas() {
               >
                 Continuar visita en curso
               </Link>
-            ) : (
+            ) : readOnly ? null : (
               <div className="flex items-center gap-2 flex-wrap">
                 {(Object.keys(visitTypeLabel) as VisitType[]).map((t) => (
                   <button

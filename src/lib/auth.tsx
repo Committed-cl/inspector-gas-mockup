@@ -51,3 +51,10 @@ export function useAuth() {
   if (!ctx) throw new Error('useAuth debe usarse dentro de AuthProvider')
   return ctx
 }
+
+// Líder de Supervisores sees their company's projects but cannot edit anything
+// (the API also 403s every mutation for this role). Admins are never read-only.
+export function useReadOnly(): boolean {
+  const { auth } = useAuth()
+  return auth?.user.role === 'lider-supervisores' && !auth.user.isAdmin
+}

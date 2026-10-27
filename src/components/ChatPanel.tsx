@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import TranscriptBubble from './TranscriptBubble'
+import { useReadOnly } from '../lib/auth'
 import { ApiError } from '../lib/api'
 import { compressImageFile } from '../lib/compressImage'
 import { startRecording, type AudioRecorder } from '../lib/recordAudio'
@@ -18,6 +19,7 @@ type Props = {
 }
 
 export default function ChatPanel({ title, subtitle, chatId, messages, placeholder, onSend, onSelectOption }: Props) {
+  const readOnly = useReadOnly()
   const [draft, setDraft] = useState('')
   const [pendingType, setPendingType] = useState<EvidenceType>('text')
   const [pendingPhoto, setPendingPhoto] = useState<string | null>(null)
@@ -147,6 +149,9 @@ export default function ChatPanel({ title, subtitle, chatId, messages, placehold
           </>
         )}
       </div>
+      {readOnly ? (
+        <p className="border-t border-hairline p-3 text-[11.5px] text-muted italic">Acceso de solo lectura — este rol no puede enviar mensajes.</p>
+      ) : (
       <div className="border-t border-hairline p-3">
         {pendingPhoto && (
           <div className="mb-2 flex items-center gap-2 bg-brand-soft/60 rounded-lg p-2">
@@ -232,6 +237,7 @@ export default function ChatPanel({ title, subtitle, chatId, messages, placehold
           </button>
         </div>
       </div>
+      )}
     </div>
   )
 }

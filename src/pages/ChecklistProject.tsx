@@ -2,7 +2,7 @@ import { useRef, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { checklistDef, SECTIONS, formName, type ChecklistStatus } from '../data/checklistMatrizInterior'
 import { useProject, useProjectChecklist, useProjectVisits } from '../state/ChecklistContext'
-import { useAuth } from '../lib/auth'
+import { useAuth, useReadOnly } from '../lib/auth'
 import ChecklistDesktopRow from '../components/ChecklistDesktopRow'
 import ChatPanel from '../components/ChatPanel'
 import RichTextEditor from '../components/RichTextEditor'
@@ -24,6 +24,7 @@ const visitStatusColor = {
 export default function ChecklistProject() {
   const { projectId = '', visitId = '' } = useParams()
   const { auth } = useAuth()
+  const readOnly = useReadOnly()
   const project = useProject(projectId)
   const { itemsState, markManually, generalChat, sendGeneralMessage, resolveGeneralMessage, observations, setObservations, loading: checklistLoading, error: checklistError } =
     useProjectChecklist(projectId, visitId)
@@ -84,7 +85,7 @@ export default function ChecklistProject() {
           </div>
         </div>
         <div className="mt-1.5 text-[11px] flex items-center gap-1.5 flex-wrap">
-          {visit.status === 'en_curso' ? (
+          {readOnly ? null : visit.status === 'en_curso' ? (
             <button
               type="button"
               onClick={() => closeVisit(visitId)}
@@ -200,6 +201,7 @@ export default function ChecklistProject() {
                 key={visitId}
                 value={observations}
                 onChange={setObservations}
+                readOnly={readOnly}
                 placeholder="Escribe aquí observaciones generales de la visita..."
               />
             </section>

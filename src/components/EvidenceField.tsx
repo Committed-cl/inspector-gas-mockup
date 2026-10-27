@@ -1,4 +1,5 @@
 import { useRef, useState } from 'react'
+import { useReadOnly } from '../lib/auth'
 import { compressImageFile } from '../lib/compressImage'
 import type { RequirementState } from '../data/checklistMatrizInterior'
 
@@ -15,6 +16,7 @@ type Props = {
 }
 
 export default function EvidenceField({ requirement, onAdd }: Props) {
+  const readOnly = useReadOnly()
   const [text, setText] = useState('')
   const [fileError, setFileError] = useState<string | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
@@ -61,6 +63,8 @@ export default function EvidenceField({ requirement, onAdd }: Props) {
             — {requirement.evidence.text}
           </p>
         </div>
+      ) : readOnly ? (
+        <p className="mt-1 text-[12px] text-muted italic">Sin evidencia cargada</p>
       ) : requirement.type === 'photo' ? (
         <div className="mt-1.5">
           <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={onFileSelected} />

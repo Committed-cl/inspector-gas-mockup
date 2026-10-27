@@ -4,6 +4,7 @@ type Props = {
   value: string
   onChange: (html: string) => void
   placeholder?: string
+  readOnly?: boolean
 }
 
 const COMMANDS: { command: string; label: string; icon: string }[] = [
@@ -12,7 +13,7 @@ const COMMANDS: { command: string; label: string; icon: string }[] = [
   { command: 'insertUnorderedList', label: 'Lista', icon: '•' },
 ]
 
-export default function RichTextEditor({ value, onChange, placeholder }: Props) {
+export default function RichTextEditor({ value, onChange, placeholder, readOnly = false }: Props) {
   const ref = useRef<HTMLDivElement>(null)
   // Tracks what the DOM was last set to (by us, or mirrored from typing) so
   // the sync effect below can tell "value changed because I just typed it"
@@ -47,6 +48,7 @@ export default function RichTextEditor({ value, onChange, placeholder }: Props) 
 
   return (
     <div className="border border-hairline rounded-lg overflow-hidden bg-white">
+      {!readOnly && (
       <div className="flex items-center gap-1 border-b border-hairline bg-brand-soft/40 px-2 py-1.5">
         {COMMANDS.map((c) => (
           <button
@@ -61,9 +63,10 @@ export default function RichTextEditor({ value, onChange, placeholder }: Props) 
           </button>
         ))}
       </div>
+      )}
       <div
         ref={ref}
-        contentEditable
+        contentEditable={!readOnly}
         suppressContentEditableWarning
         onInput={handleInput}
         data-placeholder={placeholder}
