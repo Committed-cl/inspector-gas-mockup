@@ -17,6 +17,8 @@ export default function ChecklistNuevaObra() {
   const [floors, setFloors] = useState('')
   const [stageNumber, setStageNumber] = useState('')
   const [stageName, setStageName] = useState('')
+  const [servicePressureKpa, setServicePressureKpa] = useState('')
+  const [matrixVolumeM3, setMatrixVolumeM3] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
 
@@ -34,6 +36,8 @@ export default function ChecklistNuevaObra() {
         floors: Number(floors),
         stageNumber: Number(stageNumber),
         stageName,
+        ...(servicePressureKpa && { servicePressureKpa: Number(servicePressureKpa) }),
+        ...(matrixVolumeM3 && { matrixVolumeM3: Number(matrixVolumeM3) }),
       })
       nav(`/checklist/${id}`)
     } catch (err) {
@@ -147,6 +151,31 @@ export default function ChecklistNuevaObra() {
                   className="flex-1 min-w-0 rounded-lg border border-hairline px-3 py-2.5 text-[14px] focus:outline-none focus:ring-2 focus:ring-brand/30 focus:border-brand"
                 />
               </div>
+            </label>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <label className="flex flex-col gap-1.5">
+              <span className="text-[12px] font-medium text-ink">Presión de servicio (kPa)</span>
+              <input
+                type="number"
+                min={0}
+                step="any"
+                value={servicePressureKpa}
+                onChange={(e) => setServicePressureKpa(e.target.value)}
+                className="rounded-lg border border-hairline px-3 py-2.5 text-[14px] focus:outline-none focus:ring-2 focus:ring-brand/30 focus:border-brand"
+              />
+            </label>
+            <label className="flex flex-col gap-1.5">
+              <span className="text-[12px] font-medium text-ink">Volumen de la matriz (m³)</span>
+              <input
+                type="number"
+                min={0}
+                step="any"
+                value={matrixVolumeM3}
+                onChange={(e) => setMatrixVolumeM3(e.target.value)}
+                className="rounded-lg border border-hairline px-3 py-2.5 text-[14px] focus:outline-none focus:ring-2 focus:ring-brand/30 focus:border-brand"
+              />
             </label>
           </div>
 

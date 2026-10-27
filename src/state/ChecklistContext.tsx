@@ -17,6 +17,8 @@ export type ProjectSummary = {
   floors: number
   stageNumber: number
   stageName: string
+  servicePressureKpa?: number
+  matrixVolumeM3?: number
   openVisit: { id: string; date: string } | null
 }
 
@@ -29,6 +31,8 @@ export type CreateProjectInput = {
   floors: number
   stageNumber: number
   stageName: string
+  servicePressureKpa?: number
+  matrixVolumeM3?: number
 }
 
 type ChecklistState = { itemsState: Record<string, ItemState>; generalChat: ChatMessage[]; observations: string }
