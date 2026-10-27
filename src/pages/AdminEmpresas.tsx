@@ -71,6 +71,8 @@ export default function AdminEmpresas() {
   const [recipientsText, setRecipientsText] = useState('')
   const [name, setName] = useState('')
   const [logoUrl, setLogoUrl] = useState('')
+  const [builderName, setBuilderName] = useState('')
+  const [installerName, setInstallerName] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
 
@@ -79,10 +81,12 @@ export default function AdminEmpresas() {
     setError(null)
     setSubmitting(true)
     try {
-      await createCompany(name, logoUrl, parseEmails(recipientsText))
+      await createCompany(name, logoUrl, parseEmails(recipientsText), builderName, installerName)
       setName('')
       setLogoUrl('')
       setRecipientsText('')
+      setBuilderName('')
+      setInstallerName('')
     } catch (err) {
       setError(err instanceof ApiError ? err.message : 'No se pudo crear la empresa.')
     } finally {
@@ -109,20 +113,22 @@ export default function AdminEmpresas() {
               <tr>
                 <th className="text-left px-4 py-3">Logo</th>
                 <th className="text-left px-4 py-3">Nombre</th>
+                <th className="text-left px-4 py-3">Constructora</th>
+                <th className="text-left px-4 py-3">Instaladora</th>
                 <th className="text-left px-4 py-3">Destinatarios adicionales</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-hairline">
               {loading && (
                 <tr>
-                  <td colSpan={3} className="px-4 py-4 text-muted italic">
+                  <td colSpan={5} className="px-4 py-4 text-muted italic">
                     Cargando...
                   </td>
                 </tr>
               )}
               {!loading && companies.length === 0 && (
                 <tr>
-                  <td colSpan={3} className="px-4 py-4 text-muted italic">
+                  <td colSpan={5} className="px-4 py-4 text-muted italic">
                     Todavía no hay empresas.
                   </td>
                 </tr>
@@ -133,6 +139,8 @@ export default function AdminEmpresas() {
                     <img src={c.logoUrl} alt={c.name} className="h-8 max-w-[120px] object-contain" />
                   </td>
                   <td className="px-4 py-3 font-semibold text-ink">{c.name}</td>
+                  <td className="px-4 py-3">{c.builderName || <span className="text-muted italic">—</span>}</td>
+                  <td className="px-4 py-3">{c.installerName || <span className="text-muted italic">—</span>}</td>
                   <td className="px-4 py-3">
                     <RecipientsCell recipients={c.additionalRecipients} onSave={(emails) => updateRecipients(c.id, emails)} />
                   </td>
@@ -161,6 +169,22 @@ export default function AdminEmpresas() {
               required
               type="url"
               placeholder="https://..."
+              className="rounded-lg border border-hairline px-3 py-2.5 text-[14px] focus:outline-none focus:ring-2 focus:ring-brand/30 focus:border-brand"
+            />
+          </label>
+          <label className="flex flex-col gap-1.5">
+            <span className="text-[12px] font-medium text-ink">Constructora (opcional)</span>
+            <input
+              value={builderName}
+              onChange={(e) => setBuilderName(e.target.value)}
+              className="rounded-lg border border-hairline px-3 py-2.5 text-[14px] focus:outline-none focus:ring-2 focus:ring-brand/30 focus:border-brand"
+            />
+          </label>
+          <label className="flex flex-col gap-1.5">
+            <span className="text-[12px] font-medium text-ink">Empresa instaladora (opcional)</span>
+            <input
+              value={installerName}
+              onChange={(e) => setInstallerName(e.target.value)}
               className="rounded-lg border border-hairline px-3 py-2.5 text-[14px] focus:outline-none focus:ring-2 focus:ring-brand/30 focus:border-brand"
             />
           </label>

@@ -4,7 +4,7 @@ import type { ProjectSummary } from './ChecklistContext'
 
 export type UserRole = 'admin-general' | 'lider-supervisores' | 'supervisor-proyecto'
 
-export type Company = { id: string; name: string; logoUrl: string; additionalRecipients: string[] }
+export type Company = { id: string; name: string; logoUrl: string; additionalRecipients: string[]; builderName: string; installerName: string }
 export type Client = { id: string; companyId: string; name: string }
 export type AdminUser = {
   id: string
@@ -49,8 +49,8 @@ function useAsyncList<T>(path: string) {
 export function useCompanies() {
   const { data, loading, error, refetch, mutate } = useAsyncList<Company>('/companies')
 
-  const createCompany = async (name: string, logoUrl: string, additionalRecipients: string[]) => {
-    const company = await api.post<Company>('/companies', { name, logoUrl, additionalRecipients })
+  const createCompany = async (name: string, logoUrl: string, additionalRecipients: string[], builderName: string, installerName: string) => {
+    const company = await api.post<Company>('/companies', { name, logoUrl, additionalRecipients, builderName, installerName })
     refetch()
     return company
   }
