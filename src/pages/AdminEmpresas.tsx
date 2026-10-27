@@ -66,8 +66,83 @@ function RecipientsCell({ recipients, onSave }: { recipients: string[]; onSave: 
   )
 }
 
+function NamesCell({
+  builderName,
+  installerName,
+  onSave,
+}: {
+  builderName: string
+  installerName: string
+  onSave: (builderName: string, installerName: string) => Promise<unknown>
+}) {
+  const [editing, setEditing] = useState(false)
+  const [builder, setBuilder] = useState('')
+  const [installer, setInstaller] = useState('')
+  const [error, setError] = useState<string | null>(null)
+  const [saving, setSaving] = useState(false)
+
+  const save = async () => {
+    setError(null)
+    setSaving(true)
+    try {
+      await onSave(builder, installer)
+      setEditing(false)
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'No se pudo guardar.')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const dash = <span className="text-muted italic">—</span>
+
+  if (!editing) {
+    return (
+      <div className="flex flex-col gap-1">
+        <span>
+          <span className="text-muted text-[12px]">Constructora: </span>
+          {builderName || dash}
+        </span>
+        <span>
+          <span className="text-muted text-[12px]">Instaladora: </span>
+          {installerName || dash}
+        </span>
+        <button
+          type="button"
+          onClick={() => {
+            setBuilder(builderName)
+            setInstaller(installerName)
+            setEditing(true)
+          }}
+          className="text-brand font-semibold text-[12.5px] hover:underline self-start"
+        >
+          Editar
+        </button>
+      </div>
+    )
+  }
+
+  const inputClass =
+    'rounded-lg border border-hairline px-3 py-2 text-[13px] focus:outline-none focus:ring-2 focus:ring-brand/30 focus:border-brand'
+  return (
+    <div className="flex flex-col gap-2">
+      <input value={builder} onChange={(e) => setBuilder(e.target.value)} placeholder="Constructora" className={inputClass} />
+      <input value={installer} onChange={(e) => setInstaller(e.target.value)} placeholder="Instaladora" className={inputClass} />
+      {error && <p className="text-[12.5px] text-danger">{error}</p>}
+      <div className="flex gap-3">
+        <button type="button" onClick={save} disabled={saving} className="text-brand font-semibold text-[12.5px] disabled:opacity-60">
+          {saving ? 'Guardando...' : 'Guardar'}
+        </button>
+        <button type="button" onClick={() => setEditing(false)} className="text-muted text-[12.5px]">
+          Cancelar
+        </button>
+      </div>
+    </div>
+  )
+}
+
 export default function AdminEmpresas() {
-  const { companies, loading, createCompany, updateRecipients } = useCompanies()
+  const { companies, loading, createCompany, updateRecipients, updateCompanyNames } = useCompanies()
   const [recipientsText, setRecipientsText] = useState('')
   const [name, setName] = useState('')
   const [logoUrl, setLogoUrl] = useState('')
@@ -113,22 +188,21 @@ export default function AdminEmpresas() {
               <tr>
                 <th className="text-left px-4 py-3">Logo</th>
                 <th className="text-left px-4 py-3">Nombre</th>
-                <th className="text-left px-4 py-3">Constructora</th>
-                <th className="text-left px-4 py-3">Instaladora</th>
+                <th className="text-left px-4 py-3">Constructora / Instaladora</th>
                 <th className="text-left px-4 py-3">Destinatarios adicionales</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-hairline">
               {loading && (
                 <tr>
-                  <td colSpan={5} className="px-4 py-4 text-muted italic">
+                  <td colSpan={4} className="px-4 py-4 text-muted italic">
                     Cargando...
                   </td>
                 </tr>
               )}
               {!loading && companies.length === 0 && (
                 <tr>
-                  <td colSpan={5} className="px-4 py-4 text-muted italic">
+                  <td colSpan={4} className="px-4 py-4 text-muted italic">
                     Todavía no hay empresas.
                   </td>
                 </tr>
@@ -139,8 +213,13 @@ export default function AdminEmpresas() {
                     <img src={c.logoUrl} alt={c.name} className="h-8 max-w-[120px] object-contain" />
                   </td>
                   <td className="px-4 py-3 font-semibold text-ink">{c.name}</td>
-                  <td className="px-4 py-3">{c.builderName || <span className="text-muted italic">—</span>}</td>
-                  <td className="px-4 py-3">{c.installerName || <span className="text-muted italic">—</span>}</td>
+                  <td className="px-4 py-3">
+                    <NamesCell
+                      builderName={c.builderName}
+                      installerName={c.installerName}
+                      onSave={(builder, installer) => updateCompanyNames(c.id, builder, installer)}
+                    />
+                  </td>
                   <td className="px-4 py-3">
                     <RecipientsCell recipients={c.additionalRecipients} onSave={(emails) => updateRecipients(c.id, emails)} />
                   </td>

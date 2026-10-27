@@ -61,7 +61,13 @@ export function useCompanies() {
     return company
   }
 
-  return { companies: data ?? [], loading, error, createCompany, updateRecipients }
+  const updateCompanyNames = async (id: string, builderName: string, installerName: string) => {
+    const company = await api.patch<Company>(`/companies/${encodeURIComponent(id)}`, { builderName, installerName })
+    mutate((list) => list.map((c) => (c.id === id ? company : c)))
+    return company
+  }
+
+  return { companies: data ?? [], loading, error, createCompany, updateRecipients, updateCompanyNames }
 }
 
 export function useClients(companyId?: string) {
