@@ -87,11 +87,6 @@ export default function ChecklistItemPage() {
             </section>
 
             <section className="bg-white border border-hairline rounded-xl p-4">
-              <p className="text-[11px] uppercase tracking-wide text-brand/70 font-semibold">Criterio normativo</p>
-              <p className="mt-1.5 text-[13px] text-ink leading-relaxed">{def.regulatoryCriteria}</p>
-            </section>
-
-            <section className="bg-white border border-hairline rounded-xl p-4">
               <p className="text-[11px] uppercase tracking-wide text-brand/70 font-semibold mb-2.5">Conclusión</p>
               <StatusControl
                 status={state.status}
