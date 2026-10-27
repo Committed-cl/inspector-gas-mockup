@@ -4,7 +4,8 @@ import { api } from '../lib/api'
 import type { ChatMessage, ChecklistStatus, EvidenceType, ItemState } from '../data/checklistMatrizInterior'
 
 export type VisitStatus = 'en_curso' | 'aprobada' | 'rechazada'
-export type Visit = { id: string; projectId: string; date: string; status: VisitStatus; reportSentAt?: string }
+export type VisitType = 'gas_prueba' | 'gas_final'
+export type Visit = { id: string; projectId: string; visitType: VisitType; date: string; status: VisitStatus; reportSentAt?: string }
 
 export type ProjectSummary = {
   id: string
@@ -56,7 +57,7 @@ type Ctx = {
   getChecklist: (projectId: string, visitId: string) => Async<ChecklistState>
   fetchChecklistIfNeeded: (projectId: string, visitId: string) => void
   createProject: (input: CreateProjectInput) => Promise<string>
-  createVisit: (projectId: string) => Promise<string>
+  createVisit: (projectId: string, visitType: VisitType) => Promise<string>
   closeVisit: (projectId: string, visitId: string) => Promise<void>
   sendReport: (projectId: string, visitId: string) => Promise<void>
   setObservations: (projectId: string, visitId: string, html: string) => Promise<void>
@@ -159,8 +160,8 @@ export function ChecklistProvider({ children }: { children: ReactNode }) {
     return summary.id
   }, [])
 
-  const createVisit = useCallback(async (projectId: string) => {
-    const visit = await api.post<Visit>(`/projects/${projectId}/visits`)
+  const createVisit = useCallback(async (projectId: string, visitType: VisitType) => {
+    const visit = await api.post<Visit>(`/projects/${projectId}/visits`, { visitType })
     setVisitsByProject((prev) => ({
       ...prev,
       [projectId]: {
@@ -310,7 +311,7 @@ export function useProjectVisits(projectId: string) {
     visits: state.data ?? [],
     loading: isPending(state),
     error: state.error,
-    createVisit: () => createVisit(projectId),
+    createVisit: (visitType: VisitType) => createVisit(projectId, visitType),
     closeVisit: (visitId: string) => closeVisit(projectId, visitId),
     sendReport: (visitId: string) => sendReport(projectId, visitId),
   }

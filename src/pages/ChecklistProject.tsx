@@ -44,8 +44,10 @@ export default function ChecklistProject() {
   }
   const projectData = project.data
 
-  const total = checklistDef.length
-  const completed = checklistDef.filter((d) => ['ok', 'na'].includes(itemsState[d.id]?.status)).length
+  // A visit's state only holds the items of its visit type's checklist.
+  const visitDefs = checklistDef.filter((d) => itemsState[d.id])
+  const total = visitDefs.length
+  const completed = visitDefs.filter((d) => ['ok', 'na'].includes(itemsState[d.id]?.status)).length
 
   return (
     <div className="h-screen flex flex-col bg-base overflow-hidden">
@@ -118,7 +120,7 @@ export default function ChecklistProject() {
         >
           <div className="max-w-3xl mx-auto flex flex-col gap-8">
             {SECTIONS.map((section) => {
-              const items = checklistDef.filter((d) => d.section === section)
+              const items = visitDefs.filter((d) => d.section === section)
               if (items.length === 0) return null
 
               const sectionComplete = items.every((d) => ['ok', 'na'].includes(itemsState[d.id]?.status))
