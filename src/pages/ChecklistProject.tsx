@@ -14,8 +14,6 @@ import { visitReportToPdfBase64 } from '../utils/reportPdf'
 
 const statusSortOrder: Record<ChecklistStatus, number> = { pending: 0, warn: 1, ok: 2, na: 2 }
 
-const reportRecipients = ['supervisor@metrogas.cl', 'jefeobra@andes.cl', 'operaciones@gastec.cl']
-
 const visitStatusLabel = { en_curso: 'En curso', aprobada: 'Aprobada', rechazada: 'Rechazada' } as const
 const visitStatusColor = {
   en_curso: 'text-warn bg-warn/10',
@@ -35,6 +33,7 @@ export default function ChecklistProject() {
   const [mobilePanel, setMobilePanel] = useState<MobilePanel>('primary')
   const reportRef = useRef<HTMLDivElement>(null)
   const [sending, setSending] = useState(false)
+  const [sendError, setSendError] = useState<string | null>(null)
 
   if (project.loading || checklistLoading || visitsLoading) return <CenteredMessage text="Cargando..." />
   if (!project.data || checklistError || !visit) {
@@ -96,7 +95,7 @@ export default function ChecklistProject() {
           ) : visit.reportSentAt ? (
             <>
               <span className="text-ok font-medium">Informe enviado el {formatDateCl(visit.reportSentAt)}</span>
-              <span className="hidden md:inline text-muted">· a {reportRecipients.join(', ')}</span>
+              <span className="hidden md:inline text-muted">· al Líder de Supervisores, con copia a quien lo emitió</span>
               <button
                 type="button"
                 onClick={() => window.print()}
@@ -106,22 +105,28 @@ export default function ChecklistProject() {
               </button>
             </>
           ) : (
-            <button
-              type="button"
-              disabled={sending}
-              onClick={async () => {
-                if (!reportRef.current) return
-                setSending(true)
-                try {
-                  await sendReport(visitId, await visitReportToPdfBase64(reportRef.current))
-                } finally {
-                  setSending(false)
-                }
-              }}
-              className="text-[11.5px] font-semibold text-ok hover:underline disabled:opacity-50"
-            >
-              {sending ? 'Enviando...' : 'Enviar informe'}
-            </button>
+            <>
+              <button
+                type="button"
+                disabled={sending}
+                onClick={async () => {
+                  if (!reportRef.current) return
+                  setSending(true)
+                  setSendError(null)
+                  try {
+                    await sendReport(visitId, await visitReportToPdfBase64(reportRef.current))
+                  } catch (err) {
+                    setSendError(err instanceof Error && err.message ? err.message : 'No se pudo enviar el informe')
+                  } finally {
+                    setSending(false)
+                  }
+                }}
+                className="text-[11.5px] font-semibold text-ok hover:underline disabled:opacity-50"
+              >
+                {sending ? 'Enviando...' : 'Enviar informe'}
+              </button>
+              {sendError && <span className="text-danger font-medium">{sendError}</span>}
+            </>
           )}
         </div>
       </header>
