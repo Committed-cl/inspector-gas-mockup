@@ -31,7 +31,7 @@ export default function ChecklistItemPage() {
   const def = checklistDef.find((d) => d.id === itemId)
 
   if (project.loading || checklistLoading) return <CenteredMessage text="Cargando..." />
-  if (!project.data || !def) {
+  if (!project.data || !def || !itemsState[def.id]) {
     return (
       <CenteredMessage
         text={!project.data ? 'Proyecto no encontrado' : 'Ítem no encontrado'}
