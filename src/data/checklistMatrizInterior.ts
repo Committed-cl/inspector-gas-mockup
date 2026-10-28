@@ -74,7 +74,7 @@ export type ChecklistItemDef = {
 }
 
 export const SECTIONS = [
-  'Pruebas',
+  'General',
   'Matriz Soterrada',
   'Matriz a la Vista',
   'Señalética',
@@ -87,10 +87,10 @@ export const SECTIONS = [
 export const formName = 'Formulario Puesta en Servicio Matriz Interior'
 
 export const checklistDef: ChecklistItemDef[] = [
-  // Pruebas
+  // General
   {
     id: 'prueba-hermeticidad-matriz',
-    section: 'Pruebas',
+    section: 'General',
     title: 'Prueba Hermeticidad Matriz',
     appValidates: [
       'Que se haya hecho la prueba de hermeticidad.',
@@ -109,7 +109,7 @@ export const checklistDef: ChecklistItemDef[] = [
   },
   {
     id: 'prueba-hermeticidad-interior',
-    section: 'Pruebas',
+    section: 'General',
     title: 'Prueba Hermeticidad Interior',
     appValidates: ['El supervisor declara si la red interior quedó hermética tras la prueba realizada.'],
     regulatoryCriteria: 'DS N°66/2007, Art. 78.3.5 — mismo procedimiento que la matriz, aplicado a la red interior.',
@@ -118,7 +118,7 @@ export const checklistDef: ChecklistItemDef[] = [
   },
   {
     id: 'prueba-limpieza',
-    section: 'Pruebas',
+    section: 'General',
     title: 'Prueba de Limpieza',
     appValidates: [
       'Validar que se realizó la limpieza.',
@@ -131,8 +131,8 @@ export const checklistDef: ChecklistItemDef[] = [
   },
   {
     id: 'prueba-resistencia-matriz',
-    section: 'Pruebas',
-    title: 'Prueba Resistencia Matriz',
+    section: 'General',
+    title: 'Prueba de Resistencia Mecánica - Matriz',
     appValidates: [
       'Prueba de resistencia mecánica: tiempo aplicado.',
       'Presión usada.',
@@ -150,7 +150,7 @@ export const checklistDef: ChecklistItemDef[] = [
   },
   {
     id: 'atravieso-muro-sello',
-    section: 'Pruebas',
+    section: 'General',
     title: 'Atravieso muro externo: sello anular entre tubería de gas y camisa de protección',
     appValidates: ['Revisar todos los puntos donde la matriz atraviesa la línea de edificación desde el exterior.'],
     regulatoryCriteria: 'DS N°66/2007, Art. 46.2.5 y 46.2.6 — espacio anular sellado contra ingreso de gas/agua y corrosión.',
@@ -210,7 +210,7 @@ export const checklistDef: ChecklistItemDef[] = [
   {
     id: 'distancia-50cm-electricas-soterradas',
     section: 'Matriz Soterrada',
-    title: 'Distancia de 50 cm con cruces de líneas eléctricas soterradas',
+    title: 'Distancia de 50 cm con cruces de líneas eléctricas soterradas o de conductores eléctricos',
     appValidates: ['Solo registrar cumple / no cumple / no sabe.'],
     regulatoryCriteria: 'DS N°66/2007, Art. 78.3.2.a.2 — ≥50 cm de conductores aislados enterrados >400 V.',
     requiredEvidence: [{ label: 'Declaración de cumplimiento', type: 'declaration' }],
@@ -399,7 +399,7 @@ export const checklistDef: ChecklistItemDef[] = [
   {
     id: 'conducto-ventilacion-100cm2',
     section: 'Conducto Técnico',
-    title: 'Ventilación (tiro) 100 cm² mínimo',
+    title: 'Ventilación inferior 100 cm2 mínimo',
     appValidates: ['Cumple / no cumple / no aplica (si no hay conducto técnico).', 'Ventilación inferior por donde se toma el aire.'],
     regulatoryCriteria: 'DS N°66/2007, Art. 59.2.4.b — superficie libre mínima 100 cm² al atravesar la losa de cada piso.',
     requiredEvidence: [{ label: 'Declaración de cumplimiento', type: 'declaration' }],
