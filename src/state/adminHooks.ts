@@ -86,8 +86,8 @@ export function useClients(companyId?: string) {
 export function useUsers() {
   const { data, loading, error, mutate } = useAsyncList<AdminUser>('/users')
 
-  const createUser = async (email: string, name: string, role: UserRole, isAdmin: boolean, companyId: string) => {
-    const result = await api.post<CreateUserResult>('/users', { email, name, role, isAdmin, companyId })
+  const createUser = async (email: string, name: string, role: UserRole, isAdmin: boolean, companyId: string, projectIds: string[] = []) => {
+    const result = await api.post<CreateUserResult>('/users', { email, name, role, isAdmin, companyId, projectIds })
     mutate((list) => [...list, result.user])
     return result
   }

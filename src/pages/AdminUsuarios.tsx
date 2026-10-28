@@ -18,6 +18,7 @@ export default function AdminUsuarios() {
   const [role, setRole] = useState<UserRole>('supervisor-proyecto')
   const [isAdmin, setIsAdmin] = useState(false)
   const [companyId, setCompanyId] = useState('')
+  const [newProjectIds, setNewProjectIds] = useState<string[]>([])
   const [error, setError] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
   const [password, setPassword] = useState<{ email: string; value: string } | null>(null)
@@ -54,11 +55,12 @@ export default function AdminUsuarios() {
     setError(null)
     setSubmitting(true)
     try {
-      const result = await createUser(email, name, role, isAdmin, companyId)
+      const result = await createUser(email, name, role, isAdmin, companyId, newProjectIds)
       setPassword({ email: result.user.email, value: result.provisionalPassword })
       setEmail('')
       setName('')
       setIsAdmin(false)
+      setNewProjectIds([])
     } catch (err) {
       setError(err instanceof ApiError ? err.message : 'No se pudo crear el usuario.')
     } finally {
@@ -310,6 +312,25 @@ export default function AdminUsuarios() {
             <input type="checkbox" checked={isAdmin} onChange={(e) => setIsAdmin(e.target.checked)} className="h-4 w-4 rounded accent-brand" />
             Es administrador
           </label>
+          <div className="flex flex-col gap-1.5">
+            <span className="text-[12px] font-medium text-ink">Proyectos asignados</span>
+            {projects.length === 0 && <p className="text-[12px] text-muted italic">Todavía no hay proyectos creados.</p>}
+            <div className="flex flex-wrap gap-x-4 gap-y-1.5 max-h-32 overflow-y-auto">
+              {projects.map((p) => (
+                <label key={p.id} className="flex items-center gap-1.5 text-[12.5px] text-ink">
+                  <input
+                    type="checkbox"
+                    checked={newProjectIds.includes(p.id)}
+                    onChange={() =>
+                      setNewProjectIds((prev) => (prev.includes(p.id) ? prev.filter((id) => id !== p.id) : [...prev, p.id]))
+                    }
+                    className="h-3.5 w-3.5 rounded accent-brand"
+                  />
+                  {p.name}
+                </label>
+              ))}
+            </div>
+          </div>
           {error && <p className="text-[12.5px] text-danger">{error}</p>}
           <button
             type="submit"
