@@ -123,7 +123,7 @@ export default function VisitReport({ project, visit, visits, itemsState, observ
         <p className="text-[11px] font-semibold text-muted">Supervisa360</p>
         <p className="font-semibold">{formName}</p>
         <p>
-          {visitTypeLabel[visit.visitType]} · {project.name}
+          Visita {visitTypeLabel[visit.visitType]} · {project.name}
         </p>
         <p className="text-muted">
           Fecha de visita: {formatDateCl(visit.date)} · Fecha de envío: {sentOn}
