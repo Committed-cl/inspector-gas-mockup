@@ -4,7 +4,7 @@ import { api } from '../lib/api'
 import type { ChatMessage, ChecklistStatus, EvidenceType, ItemState } from '../data/checklistMatrizInterior'
 
 export type VisitStatus = 'en_curso' | 'aprobada' | 'rechazada'
-export type VisitType = 'gas_prueba' | 'gas_final'
+export type VisitType = 'gas_prueba' | 'gas_final' | 'visita_estandar'
 export type Visit = { id: string; projectId: string; visitType: VisitType; date: string; status: VisitStatus; reportSentAt?: string }
 
 export type ProjectSummary = {

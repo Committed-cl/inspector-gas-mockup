@@ -5,7 +5,7 @@ import { useAuth, useReadOnly } from '../lib/auth'
 import { formatDateCl } from '../utils/date'
 import CenteredMessage from '../components/CenteredMessage'
 
-export const visitTypeLabel: Record<VisitType, string> = { gas_prueba: 'Visita Gas de Prueba', gas_final: 'Visita Gas Final' }
+export const visitTypeLabel: Record<VisitType, string> = { gas_prueba: 'Visita Gas de Prueba', gas_final: 'Visita Gas Final', visita_estandar: 'Visita Estándar' }
 const statusLabel = { en_curso: 'En curso', aprobada: 'Aprobada', rechazada: 'Rechazada' } as const
 const statusColor = {
   en_curso: 'text-warn bg-warn/10',

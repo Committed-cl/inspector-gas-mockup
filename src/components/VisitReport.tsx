@@ -15,7 +15,7 @@ type Props = {
   reportRef?: React.Ref<HTMLDivElement>
 }
 
-const visitTypeLabel = { gas_prueba: 'Gas de prueba', gas_final: 'Gas final' } as const
+const visitTypeLabel = { gas_prueba: 'Gas de prueba', gas_final: 'Gas final', visita_estandar: 'Estándar' } as const
 const resultLabel = { ok: 'Cumple', warn: 'No cumple', na: 'No aplica', pending: 'Pendiente' } as const
 const resultColor = { ok: 'text-ok', warn: 'text-danger', na: 'text-muted', pending: 'text-warn' } as const
 
