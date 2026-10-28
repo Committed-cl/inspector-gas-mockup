@@ -104,12 +104,12 @@ export default function VisitReport({ project, visit, visits, itemsState, observ
     </table>
   )
 
-  const indicators: { label: string; value: string; color: string }[] = [
+  const indicators: { label: string; value: string; detail?: string; color: string }[] = [
     { label: 'Total de ítems', value: String(total), color: 'text-ink' },
     { label: 'Cumple', value: String(ok), color: 'text-ok' },
     { label: 'No cumple', value: String(warn), color: 'text-danger' },
     { label: 'No aplica', value: String(na), color: 'text-muted' },
-    { label: '% de cumplimiento (ítems aplicables)', value: `${compliance}%`, color: 'text-brand' },
+    { label: '% de cumplimiento (ítems aplicables)', value: `${compliance}%`, detail: `(${ok} de ${applicable} aplicables)`, color: 'text-brand' },
     { label: 'Fotos obligatorias cargadas', value: `${photosLoaded}/${photoReqs.length}`, color: 'text-ink' },
   ]
 
@@ -164,6 +164,7 @@ export default function VisitReport({ project, visit, visits, itemsState, observ
           {indicators.map((i) => (
             <div key={i.label} className="border border-hairline rounded px-2 py-2 text-center">
               <div className={`text-[20px] font-extrabold ${i.color}`}>{i.value}</div>
+              {i.detail && <div className="text-[9px] font-semibold text-muted">{i.detail}</div>}
               <div className="text-muted">{i.label}</div>
             </div>
           ))}
