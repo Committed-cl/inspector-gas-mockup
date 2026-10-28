@@ -115,7 +115,7 @@ export default function ChecklistProject() {
                   setSending(true)
                   setSendError(null)
                   try {
-                    await sendReport(visitId, await visitReportToPdfBase64(reportRef.current))
+                    await sendReport(visitId, await visitReportToPdfBase64(reportRef.current, visitId))
                   } catch (err) {
                     setSendError(err instanceof Error && err.message ? err.message : 'No se pudo enviar el informe')
                   } finally {
