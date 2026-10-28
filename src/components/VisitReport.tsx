@@ -203,7 +203,7 @@ export default function VisitReport({ project, visit, visits, itemsState, observ
                   <td className={td}>{w}</td>
                   <td className={td}>{count('na', list)}</td>
                   <td className={`${td} font-semibold ${w ? 'text-danger' : p ? 'text-warn' : allNa ? 'text-muted' : 'text-ok'}`}>
-                    {w ? 'No cumple' : p ? 'Pendiente' : allNa ? 'No aplica' : 'Cumple'}
+                    {w || p ? 'Con brechas' : allNa ? 'No aplica' : 'Cumple'}
                   </td>
                 </tr>
               )
