@@ -96,6 +96,7 @@ export default function VisitReport({ project, visit, visits, itemsState, observ
       <header className="border-b-2 border-brand pb-2">
         <div className="text-[9px] text-muted">Logo de la empresa cliente</div>
         <h1 className="text-[17px] font-bold text-brand">INFORME DE VISITA DE SUPERVISOR DE OBRA</h1>
+        <p className="text-[11px] font-semibold text-muted">Supervisa360</p>
         <p className="font-semibold">{formName}</p>
         <p>
           {visitTypeLabel[visit.visitType]} · {project.name}
