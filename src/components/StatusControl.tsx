@@ -10,7 +10,8 @@ type Props = {
 
 export default function StatusControl({ status, onMark, size = 'sm', hint }: Props) {
   if (useReadOnly()) return null
-  const pad = size === 'sm' ? 'px-2.5 py-1 text-[11px]' : 'px-3.5 py-1.5 text-[12.5px]'
+  const touch = 'min-h-[44px] md:min-h-0'
+  const pad = `${touch} ${size === 'sm' ? 'px-2.5 py-1 text-[11px]' : 'px-3.5 py-1.5 text-[12.5px]'}`
 
   return (
     <div>
