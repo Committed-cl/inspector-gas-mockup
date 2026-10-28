@@ -162,6 +162,7 @@ export default function VisitReport({ project, visit, visits, itemsState, observ
               if (!list.length) return null
               const w = count('warn', list)
               const p = count('pending', list)
+              const allNa = count('na', list) === list.length
               return (
                 <tr key={s}>
                   <td className={td}>{s}</td>
@@ -169,8 +170,8 @@ export default function VisitReport({ project, visit, visits, itemsState, observ
                   <td className={td}>{count('ok', list)}</td>
                   <td className={td}>{w}</td>
                   <td className={td}>{count('na', list)}</td>
-                  <td className={`${td} font-semibold ${w ? 'text-danger' : p ? 'text-warn' : 'text-ok'}`}>
-                    {w ? 'No cumple' : p ? 'Pendiente' : 'Cumple'}
+                  <td className={`${td} font-semibold ${w ? 'text-danger' : p ? 'text-warn' : allNa ? 'text-muted' : 'text-ok'}`}>
+                    {w ? 'No cumple' : p ? 'Pendiente' : allNa ? 'No aplica' : 'Cumple'}
                   </td>
                 </tr>
               )
