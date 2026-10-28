@@ -233,6 +233,7 @@ export default function ChecklistProject() {
       itemsState={itemsState}
       observations={observations}
       supervisorName={auth?.user.name}
+      supervisorCompany={auth?.user.companyName}
       reportRef={reportRef}
     />
     </>

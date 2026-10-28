@@ -11,6 +11,7 @@ type Props = {
   itemsState: Record<string, ItemState>
   observations: string
   supervisorName?: string
+  supervisorCompany?: string
   reportRef?: React.Ref<HTMLDivElement>
 }
 
@@ -34,7 +35,7 @@ function Section({ n, title, children }: { n: number; title: string; children: R
 
 // Print-only visit report (the "Descargar PDF" action prints the page, see
 // ChecklistProject). Hidden on screen.
-export default function VisitReport({ project, visit, visits, itemsState, observations, supervisorName, reportRef }: Props) {
+export default function VisitReport({ project, visit, visits, itemsState, observations, supervisorName, supervisorCompany, reportRef }: Props) {
   const defs = checklistDef.filter((d) => itemsState[d.id])
   const statusOf = (id: string) => itemsState[id].status
   const count = (s: string, list = defs) => list.filter((d) => statusOf(d.id) === s).length
@@ -55,6 +56,7 @@ export default function VisitReport({ project, visit, visits, itemsState, observ
   const missingPhotos = photoReqs.length - photosLoaded
   const missingDeclarations = allReqs.filter((r) => r.type !== 'photo' && !r.fulfilled).length
 
+  const supervisorRole = supervisorCompany ? `Supervisor de ${supervisorCompany}` : 'Supervisor de obra'
   const sorted = [...visits].sort((a, b) => a.date.localeCompare(b.date))
   const idx = sorted.findIndex((v) => v.id === visit.id)
   const previous = idx > 0 ? sorted[idx - 1] : undefined
@@ -124,7 +126,11 @@ export default function VisitReport({ project, visit, visits, itemsState, observ
           {visitTypeLabel[visit.visitType]} · {project.name}
         </p>
         <p className="text-muted">
-          Fecha de visita: {formatDateCl(visit.date)} · Fecha de envío: {sentOn} · Supervisor: {supervisorName ?? '—'}
+          Fecha de visita: {formatDateCl(visit.date)} · Fecha de envío: {sentOn}
+        </p>
+        <p>
+          <span className="font-semibold">Supervisor de obra {supervisorName ?? '—'}</span> · {supervisorRole} · realizó la
+          visita y emite este informe
         </p>
       </header>
 
@@ -135,7 +141,7 @@ export default function VisitReport({ project, visit, visits, itemsState, observ
           ['Dirección', project.address],
           ['Constructora', project.builder],
           ['Instaladora', project.installer],
-          ['Supervisor de obra', supervisorName ?? '—'],
+          ['Supervisor de obra', supervisorCompany ? `${supervisorName ?? '—'} · ${supervisorRole}` : (supervisorName ?? '—')],
           ['Tipo de visita', `${visitTypeLabel[visit.visitType]} (${total} ítems)`],
           ['N° de visita', `${idx + 1}${previous ? ` — anterior (${formatDateCl(previous.date)}): ${previous.status === 'aprobada' ? 'Aprobada' : previous.status === 'rechazada' ? 'Rechazada' : 'En curso'}` : ''}`],
           ['Fecha de visita', formatDateCl(visit.date)],
