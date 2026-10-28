@@ -59,15 +59,24 @@ export default function VisitReport({ project, visit, visits, itemsState, observ
   const previous = idx > 0 ? sorted[idx - 1] : undefined
   const approved = visit.status === 'aprobada'
 
-  // Pending actions: items not in "Cumple"/"No aplica", plus items missing mandatory evidence.
-  const actions = defs.flatMap((d) => {
-    const s = statusOf(d.id)
-    const missing = reqs(d.id).filter((r) => !r.fulfilled).map((r) => r.label.toLowerCase())
-    if (s === 'warn') return [{ d, text: `Corregir: ${d.title}.`, section: d.section }]
-    if (s === 'pending') return [{ d, text: `Declarar el estado de: ${d.title}.`, section: d.section }]
-    if (s === 'ok' && missing.length) return [{ d, text: `Cargar ${missing.join(', ')} en: ${d.title}.`, section: d.section }]
-    return []
-  })
+  // Pending actions, grouped by cause (section + kind of problem) instead of one line per item:
+  // items in "No cumple" or "Pendiente", plus items missing mandatory evidence.
+  const actionKinds = [
+    { kind: 'warn', blocking: true, text: (titles: string[], section: string) => `Corregir en ${section}: ${titles.join('; ')}.` },
+    { kind: 'pending', blocking: false, text: (titles: string[], section: string) => `Declarar el estado en ${section}: ${titles.join('; ')}.` },
+    { kind: 'evidence', blocking: false, text: (titles: string[], section: string) => `Cargar la evidencia obligatoria faltante en ${section}: ${titles.join('; ')}.` },
+  ]
+  const kindOf = (id: string) => {
+    const s = statusOf(id)
+    if (s === 'warn' || s === 'pending') return s
+    return s === 'ok' && reqs(id).some((r) => !r.fulfilled) ? 'evidence' : null
+  }
+  const actions = SECTIONS.flatMap((section) =>
+    actionKinds.flatMap((k) => {
+      const titles = defs.filter((d) => d.section === section && kindOf(d.id) === k.kind).map((d) => d.title)
+      return titles.length ? [{ key: `${section}-${k.kind}`, text: k.text(titles, section), blocking: k.blocking }] : []
+    }),
+  )
 
   const qualityAlerts = detectQualityAlerts(defs, itemsState, {
     servicePressureKpa: project.servicePressureKpa,
@@ -193,10 +202,10 @@ export default function VisitReport({ project, visit, visits, itemsState, observ
           <p>Sin acciones pendientes.</p>
         ) : (
           <ol className="list-decimal pl-5 space-y-0.5">
-            {SECTIONS.flatMap((s) => actions.filter((a) => a.section === s)).map((a) => (
-              <li key={a.d.id}>
+            {actions.map((a) => (
+              <li key={a.key}>
                 {a.text}
-                {statusOf(a.d.id) === 'warn' && <span className="font-semibold text-danger"> (bloqueante)</span>}
+                {a.blocking && <span className="font-semibold text-danger"> (bloqueante)</span>}
               </li>
             ))}
           </ol>
