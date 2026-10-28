@@ -166,7 +166,7 @@ export default function VisitReport({ project, visit, visits, itemsState, observ
       </Section>
 
       <Section n={3} title="Indicadores">
-        <div className="grid grid-cols-3 gap-2">
+        <div className="grid grid-cols-6 gap-2">
           {indicators.map((i) => (
             <div key={i.label} className="border border-hairline rounded px-2 py-2 text-center">
               <div className={`text-[20px] font-extrabold ${i.color}`}>{i.value}</div>
