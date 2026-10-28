@@ -249,11 +249,13 @@ export default function VisitReport({ project, visit, visits, itemsState, observ
         )}
       </Section>
 
-      {observations && observations !== '<p></p>' && (
-        <Section n={7} title="Observaciones del supervisor">
+      <Section n={7} title="Observaciones del supervisor">
+        {observations && observations !== '<p></p>' ? (
           <div dangerouslySetInnerHTML={{ __html: observations }} />
-        </Section>
-      )}
+        ) : (
+          <p>Sin observaciones.</p>
+        )}
+      </Section>
 
       <Section n={8} title="Anexo de detalle del checklist">
         {SECTIONS.map((s) => {
