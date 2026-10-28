@@ -1,3 +1,4 @@
+import { Fragment } from 'react'
 import { checklistDef, requiredEvidenceState, SECTIONS, formName, type ItemState } from '../data/checklistMatrizInterior'
 import type { ProjectSummary, Visit } from '../state/ChecklistContext'
 import { formatDateCl } from '../utils/date'
@@ -84,12 +85,33 @@ export default function VisitReport({ project, visit, visits, itemsState, observ
   })
 
   const sentOn = visit.reportSentAt ? formatDateCl(visit.reportSentAt) : 'pendiente de envío'
-  const kv = (label: string, value: string) => (
-    <tr>
-      <td className={`${td} font-semibold w-1/3 bg-base`}>{label}</td>
-      <td className={td}>{value}</td>
-    </tr>
+  // Label/value pairs laid out two per row (4 columns) to use the page width.
+  const kvGrid = (pairs: [string, string][]) => (
+    <table className="w-full border-collapse table-fixed">
+      <tbody>
+        {Array.from({ length: Math.ceil(pairs.length / 2) }, (_, i) => pairs.slice(i * 2, i * 2 + 2)).map((row) => (
+          <tr key={row[0][0]}>
+            {row.map(([label, value]) => (
+              <Fragment key={label}>
+                <td className={`${td} font-semibold w-[17%] bg-base`}>{label}</td>
+                <td className={`${td} w-[33%]`}>{value}</td>
+              </Fragment>
+            ))}
+            {row.length < 2 && <td className={td} colSpan={2} />}
+          </tr>
+        ))}
+      </tbody>
+    </table>
   )
+
+  const indicators: { label: string; value: string; color: string }[] = [
+    { label: 'Total de ítems', value: String(total), color: 'text-ink' },
+    { label: 'Cumple', value: String(ok), color: 'text-ok' },
+    { label: 'No cumple', value: String(warn), color: 'text-danger' },
+    { label: 'No aplica', value: String(na), color: 'text-muted' },
+    { label: '% de cumplimiento (ítems aplicables)', value: `${compliance}%`, color: 'text-brand' },
+    { label: 'Fotos obligatorias cargadas', value: `${photosLoaded}/${photoReqs.length}`, color: 'text-ink' },
+  ]
 
   return (
     <div ref={reportRef} className="hidden print:block text-[10.5px] text-ink leading-snug">
@@ -107,24 +129,19 @@ export default function VisitReport({ project, visit, visits, itemsState, observ
       </header>
 
       <Section n={1} title="Datos de la visita">
-        <table className="w-full border-collapse">
-          <tbody>
-            {kv('Proyecto', project.name)}
-            {kv('Código de proyecto', project.projectCode ?? '—')}
-            {kv('Dirección', project.address)}
-            {kv('Constructora', project.builder)}
-            {kv('Instaladora', project.installer)}
-            {kv('Supervisor de obra', supervisorName ?? '—')}
-            {kv('Tipo de visita', `${visitTypeLabel[visit.visitType]} (${total} ítems)`)}
-            {kv('Fecha de visita', formatDateCl(visit.date))}
-            {kv('Fecha de envío', sentOn)}
-            {kv(
-              'N° de visita',
-              `${idx + 1}${previous ? ` — visita anterior (${formatDateCl(previous.date)}): ${previous.status === 'aprobada' ? 'Aprobada' : previous.status === 'rechazada' ? 'Rechazada' : 'En curso'}` : ''}`,
-            )}
-            {kv('ID de la visita', visit.id)}
-          </tbody>
-        </table>
+        {kvGrid([
+          ['Proyecto', project.name],
+          ['Código de proyecto', project.projectCode ?? '—'],
+          ['Dirección', project.address],
+          ['Constructora', project.builder],
+          ['Instaladora', project.installer],
+          ['Supervisor de obra', supervisorName ?? '—'],
+          ['Tipo de visita', `${visitTypeLabel[visit.visitType]} (${total} ítems)`],
+          ['N° de visita', `${idx + 1}${previous ? ` — anterior (${formatDateCl(previous.date)}): ${previous.status === 'aprobada' ? 'Aprobada' : previous.status === 'rechazada' ? 'Rechazada' : 'En curso'}` : ''}`],
+          ['Fecha de visita', formatDateCl(visit.date)],
+          ['Fecha de envío', sentOn],
+          ['ID de la visita', visit.id],
+        ])}
       </Section>
 
       <Section n={2} title="Resultado de la visita">
@@ -143,16 +160,14 @@ export default function VisitReport({ project, visit, visits, itemsState, observ
       </Section>
 
       <Section n={3} title="Indicadores">
-        <table className="w-full border-collapse">
-          <tbody>
-            {kv('Total de ítems', String(total))}
-            {kv('Cumple', String(ok))}
-            {kv('No cumple', String(warn))}
-            {kv('No aplica', String(na))}
-            {kv('% de cumplimiento (sobre ítems aplicables)', `${compliance}%`)}
-            {kv('Fotos obligatorias cargadas', `${photosLoaded}/${photoReqs.length}`)}
-          </tbody>
-        </table>
+        <div className="grid grid-cols-3 gap-2">
+          {indicators.map((i) => (
+            <div key={i.label} className="border border-hairline rounded px-2 py-2 text-center">
+              <div className={`text-[20px] font-extrabold ${i.color}`}>{i.value}</div>
+              <div className="text-muted">{i.label}</div>
+            </div>
+          ))}
+        </div>
       </Section>
 
       <Section n={4} title="Resultado por sección">
