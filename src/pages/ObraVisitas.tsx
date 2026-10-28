@@ -3,6 +3,7 @@ import { formName } from '../data/checklistMatrizInterior'
 import { useProject, useProjectVisits, type VisitType } from '../state/ChecklistContext'
 import { useAuth, useReadOnly } from '../lib/auth'
 import { formatDateCl } from '../utils/date'
+import { ROLES } from '../state/adminHooks'
 import CenteredMessage from '../components/CenteredMessage'
 
 export const visitTypeLabel: Record<VisitType, string> = { gas_prueba: 'Visita Gas de Prueba', gas_final: 'Visita Gas Final', visita_estandar: 'Visita Estándar' }
@@ -46,7 +47,7 @@ export default function ObraVisitas() {
             </p>
           </div>
           <p className="text-[12px] text-muted">
-            {auth?.user.name} · {auth?.user.role}
+            {auth?.user.name} · {ROLES.find((r) => r.value === auth?.user.role)?.label ?? auth?.user.role}
           </p>
         </div>
         <Link to="/checklist" className="inline-flex items-center gap-1.5 bg-brand hover:bg-brand-dark text-white font-semibold rounded-lg px-3.5 py-2 text-[12.5px] mt-3">

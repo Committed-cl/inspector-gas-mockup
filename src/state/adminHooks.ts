@@ -4,6 +4,12 @@ import type { ProjectSummary } from './ChecklistContext'
 
 export type UserRole = 'admin-general' | 'lider-supervisores' | 'supervisor-proyecto'
 
+export const ROLES: { value: UserRole; label: string }[] = [
+  { value: 'admin-general', label: 'Administrador General' },
+  { value: 'lider-supervisores', label: 'Líder de Supervisores' },
+  { value: 'supervisor-proyecto', label: 'Supervisor de Proyecto' },
+]
+
 export type Company = { id: string; name: string; logoUrl: string; additionalRecipients: string[]; builderName: string; installerName: string }
 export type Client = { id: string; companyId: string; name: string }
 export type AdminUser = {

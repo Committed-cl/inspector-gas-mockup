@@ -1,13 +1,7 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react'
 import Sidebar from '../components/Sidebar'
-import { useCompanies, useProjects, useUsers, type AdminUser, type UserRole } from '../state/adminHooks'
+import { useCompanies, useProjects, useUsers, ROLES, type AdminUser, type UserRole } from '../state/adminHooks'
 import { ApiError } from '../lib/api'
-
-const ROLES: { value: UserRole; label: string }[] = [
-  { value: 'admin-general', label: 'Administrador General' },
-  { value: 'lider-supervisores', label: 'Líder de Supervisores' },
-  { value: 'supervisor-proyecto', label: 'Supervisor de Proyecto' },
-]
 
 export default function AdminUsuarios() {
   const { companies } = useCompanies()
