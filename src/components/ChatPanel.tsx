@@ -113,7 +113,7 @@ export default function ChatPanel({ title, subtitle, chatId, messages, placehold
   return (
     <div className="flex flex-col h-full">
       <div className="px-4 py-3 border-b border-hairline">
-        <div className="flex items-center justify-between gap-2">
+        <div className="flex flex-col items-start gap-0.5 sm:flex-row sm:items-center sm:justify-between sm:gap-2">
           <p className="text-[13px] font-semibold text-ink">{title}</p>
           {chatId && <p className="font-mono text-[10px] text-muted shrink-0" title="Id de este chat — reportalo si algo falla">{chatId}</p>}
         </div>
