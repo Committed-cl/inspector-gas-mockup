@@ -10,7 +10,7 @@ import CenteredMessage from '../components/CenteredMessage'
 import MobilePanelTabs, { type MobilePanel } from '../components/MobilePanelTabs'
 import VisitReport from '../components/VisitReport'
 import { formatDateCl } from '../utils/date'
-import { visitReportToPdfBase64 } from '../utils/reportPdf'
+import { downloadVisitReportPdf, visitReportToPdfBase64 } from '../utils/reportPdf'
 
 const statusSortOrder: Record<ChecklistStatus, number> = { pending: 0, warn: 1, ok: 2, na: 2 }
 
@@ -99,7 +99,7 @@ export default function ChecklistProject() {
               <span className="hidden md:inline text-muted">· al Líder de Supervisores, con copia a quien lo emitió</span>
               <button
                 type="button"
-                onClick={() => window.print()}
+                onClick={() => reportRef.current && downloadVisitReportPdf(reportRef.current, visitId)}
                 className="font-semibold text-brand hover:underline"
               >
                 Descargar PDF
@@ -126,7 +126,7 @@ export default function ChecklistProject() {
               >
                 {sending ? 'Enviando...' : 'Enviar informe'}
               </button>
-              <button type="button" onClick={() => window.print()} className="font-semibold text-brand hover:underline">
+              <button type="button" onClick={() => reportRef.current && downloadVisitReportPdf(reportRef.current, visitId)} className="font-semibold text-brand hover:underline">
                 Descargar PDF
               </button>
               {sendError &&<span className="text-danger font-medium">{sendError}</span>}

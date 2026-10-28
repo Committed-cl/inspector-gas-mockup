@@ -1,7 +1,7 @@
 import html2pdf from 'html2pdf.js'
 
-// Renders the print-only visit report (hidden on screen) into a PDF and returns it as base64.
-export async function visitReportToPdfBase64(source: HTMLElement, visitId: string): Promise<string> {
+// Renders the print-only visit report (hidden on screen) into a jsPDF document with footer and page numbering.
+async function renderVisitReport<T>(source: HTMLElement, visitId: string, run: (pdf: any) => T): Promise<T> {
   const clone = source.cloneNode(true) as HTMLElement
   clone.classList.remove('hidden')
   clone.classList.add('block')
@@ -29,9 +29,19 @@ export async function visitReportToPdfBase64(source: HTMLElement, visitId: strin
       pdf.text(`Informe generado automáticamente por Supervisa360 al enviar la visita · ID ${visitId}`, 10, height - 6)
       pdf.text(`Página ${page} de ${total}`, width - 10, height - 6, { align: 'right' })
     }
-    const dataUri: string = pdf.output('datauristring')
-    return dataUri.slice(dataUri.indexOf('base64,') + 'base64,'.length)
+    return await run(pdf)
   } finally {
     host.remove()
   }
+}
+
+export function visitReportToPdfBase64(source: HTMLElement, visitId: string): Promise<string> {
+  return renderVisitReport(source, visitId, (pdf) => {
+    const dataUri: string = pdf.output('datauristring')
+    return dataUri.slice(dataUri.indexOf('base64,') + 'base64,'.length)
+  })
+}
+
+export async function downloadVisitReportPdf(source: HTMLElement, visitId: string): Promise<void> {
+  await renderVisitReport(source, visitId, (pdf) => pdf.save(`informe-${visitId}.pdf`))
 }
