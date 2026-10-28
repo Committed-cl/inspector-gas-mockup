@@ -182,8 +182,8 @@ export default function AdminEmpresas() {
           </p>
         </header>
 
-        <div className="mt-8 bg-white rounded-xl border border-hairline overflow-hidden">
-          <table className="w-full text-[13.5px]">
+        <div className="mt-8 bg-white rounded-xl border border-hairline overflow-x-auto">
+          <table className="w-full min-w-[640px] text-[13.5px]">
             <thead className="bg-brand-soft/60 text-brand text-[11.5px] uppercase tracking-wide">
               <tr>
                 <th className="text-left px-4 py-3">Logo</th>
