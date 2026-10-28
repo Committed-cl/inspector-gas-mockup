@@ -287,6 +287,12 @@ export default function VisitReport({ project, visit, visits, itemsState, observ
           Informe emitido por {supervisorName ?? 'el supervisor de obra'}
           {visit.reportSentAt ? ` el ${formatDateCl(visit.reportSentAt)}` : ''}.
         </p>
+        <p className="mt-1">
+          Distribución: Líder de Supervisores, con copia a {supervisorName ?? 'quien emite el informe'}.
+        </p>
+        <p className="text-muted mt-1">
+          El presente informe no reemplaza la certificación ante la Superintendencia de Electricidad y Combustibles (SEC).
+        </p>
         <p className="text-muted mt-1">
           El respaldo completo (fotos en resolución completa, documentos y la conversación de la visita) queda disponible en la
           plataforma bajo el ID de visita {visit.id}.
