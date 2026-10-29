@@ -23,9 +23,9 @@ export default function StatusControl({ status, onMark, size = 'sm', hint }: Pro
           Cumple
         </button>
         <button
-          onClick={() => onMark('pending')}
+          onClick={() => onMark('warn')}
           className={`${pad} font-medium border-l border-hairline transition-colors ${
-            status === 'pending' ? 'bg-danger text-white' : 'text-ink hover:bg-danger/10'
+            status === 'warn' ? 'bg-danger text-white' : 'text-ink hover:bg-danger/10'
           }`}
         >
           No cumple
