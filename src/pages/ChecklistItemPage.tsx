@@ -45,6 +45,11 @@ export default function ChecklistItemPage() {
   const state = itemsState[def.id]
   const requirements = requiredEvidenceState(def, state.evidence)
   const manualMark = state.evidence.find((e) => e.source === 'manual-mark')
+  const aiDeclaration =
+    !manualMark && state.status !== 'pending'
+      ? [...state.evidence].reverse().find((e) => e.type !== 'photo')
+      : undefined
+  const conclusionResult = manualMark?.result ?? (manualMark ? undefined : state.status !== 'pending' ? state.status : undefined)
 
   return (
     <div className="h-screen flex flex-col bg-base overflow-hidden">
@@ -119,12 +124,21 @@ export default function ChecklistItemPage() {
                   />
                 ))}
                 <div
-                  className={`border-l-2 ${manualMark && manualMark.result ? resultBorderClass[manualMark.result] : 'border-hairline'} pl-3`}
+                  className={`border-l-2 ${conclusionResult ? resultBorderClass[conclusionResult] : 'border-hairline'} pl-3`}
                 >
                   <p className="text-[12.5px] font-medium text-ink">Conclusión</p>
                   {manualMark ? (
                     <p className="mt-0.5 text-[12.5px] text-muted leading-snug">
                       <span className="font-mono text-[10.5px]">{manualMark.time}</span> — {manualMark.text}
+                    </p>
+                  ) : state.status !== 'pending' ? (
+                    <p className="mt-0.5 text-[12.5px] text-muted leading-snug">
+                      {statusLabel[state.status]} — registrado desde el chat
+                      {aiDeclaration && (
+                        <>
+                          : <span className="font-mono text-[10.5px]">{aiDeclaration.time}</span> {aiDeclaration.text}
+                        </>
+                      )}
                     </p>
                   ) : (
                     <p className="mt-0.5 text-[12.5px] text-muted italic">Pendiente — usa los botones Cumple/No cumple arriba.</p>
