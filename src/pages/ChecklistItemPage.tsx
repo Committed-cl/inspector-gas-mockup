@@ -8,7 +8,7 @@ import EvidenceField from '../components/EvidenceField'
 import CenteredMessage from '../components/CenteredMessage'
 import MobilePanelTabs, { type MobilePanel } from '../components/MobilePanelTabs'
 
-const statusLabel = { ok: 'Cumple', warn: 'Parcial', pending: 'Pendiente', na: 'No aplica' } as const
+const statusLabel = { ok: 'Cumple', warn: 'No cumple', pending: 'Pendiente', na: 'No aplica' } as const
 const statusColor = {
   ok: 'text-ok bg-ok/10',
   warn: 'text-warn bg-warn/10',

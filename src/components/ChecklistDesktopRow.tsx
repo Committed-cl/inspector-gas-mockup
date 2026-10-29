@@ -17,7 +17,7 @@ const dotClass: Record<ChecklistStatus, string> = {
 
 const badgeText: Record<ChecklistStatus, string> = {
   ok: 'Cumple',
-  warn: 'Parcial',
+  warn: 'No cumple',
   pending: 'Pendiente',
   na: 'No aplica',
 }
