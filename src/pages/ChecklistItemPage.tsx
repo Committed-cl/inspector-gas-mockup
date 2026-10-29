@@ -11,15 +11,15 @@ import MobilePanelTabs, { type MobilePanel } from '../components/MobilePanelTabs
 const statusLabel = { ok: 'Cumple', warn: 'No cumple', pending: 'Pendiente', na: 'No aplica' } as const
 const statusColor = {
   ok: 'text-ok bg-ok/10',
-  warn: 'text-warn bg-warn/10',
-  pending: 'text-danger bg-danger/10',
+  warn: 'text-danger bg-danger/10',
+  pending: 'text-warn bg-warn/10',
   na: 'text-muted bg-muted/10',
 } as const
 
 const resultBorderClass = {
   ok: 'border-ok',
-  warn: 'border-warn',
-  pending: 'border-danger',
+  warn: 'border-danger',
+  pending: 'border-warn',
   na: 'border-muted',
 } as const
 

@@ -10,8 +10,8 @@ import {
 
 const dotClass: Record<ChecklistStatus, string> = {
   ok: 'bg-ok shadow-[0_0_0_4px_rgba(34,197,94,0.18)]',
-  warn: 'bg-warn shadow-[0_0_0_4px_rgba(245,158,11,0.2)]',
-  pending: 'bg-danger shadow-[0_0_0_4px_rgba(220,38,38,0.18)]',
+  warn: 'bg-danger shadow-[0_0_0_4px_rgba(220,38,38,0.18)]',
+  pending: 'bg-warn shadow-[0_0_0_4px_rgba(245,158,11,0.2)]',
   na: 'bg-muted/50',
 }
 
@@ -24,15 +24,15 @@ const badgeText: Record<ChecklistStatus, string> = {
 
 const badgeClass: Record<ChecklistStatus, string> = {
   ok: 'text-ok bg-ok/10',
-  warn: 'text-warn bg-warn/10',
-  pending: 'text-danger bg-danger/10',
+  warn: 'text-danger bg-danger/10',
+  pending: 'text-warn bg-warn/10',
   na: 'text-muted bg-muted/10',
 }
 
 const resultDotClass: Record<ChecklistStatus, string> = {
   ok: 'bg-ok',
-  warn: 'bg-warn',
-  pending: 'bg-danger',
+  warn: 'bg-danger',
+  pending: 'bg-warn',
   na: 'bg-muted',
 }
 
