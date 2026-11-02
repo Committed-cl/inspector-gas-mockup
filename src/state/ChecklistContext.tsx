@@ -77,6 +77,7 @@ type Ctx = {
     text: string,
     previewUrl?: string,
   ) => Promise<void>
+  removeEvidence: (projectId: string, visitId: string, itemId: string, evidenceId: string) => Promise<void>
   sendGeneralMessage: (projectId: string, visitId: string, text: string, type?: EvidenceType, previewUrl?: string) => Promise<void>
   sendItemMessage: (projectId: string, visitId: string, itemId: string, text: string, type?: EvidenceType, previewUrl?: string) => Promise<void>
   resolveGeneralMessage: (projectId: string, visitId: string, messageId: string, itemId: string) => Promise<void>
@@ -223,6 +224,14 @@ export function ChecklistProvider({ children }: { children: ReactNode }) {
     [],
   )
 
+  const removeEvidence = useCallback(async (projectId: string, visitId: string, itemId: string, evidenceId: string) => {
+    adoptChecklist(
+      projectId,
+      visitId,
+      await api.delete<ChecklistState>(`/projects/${projectId}/visits/${visitId}/items/${itemId}/evidence/${evidenceId}`),
+    )
+  }, [])
+
   const sendGeneralMessage = useCallback(
     async (projectId: string, visitId: string, text: string, type: EvidenceType = 'text', previewUrl?: string) => {
       if (!text.trim()) return
@@ -271,6 +280,7 @@ export function ChecklistProvider({ children }: { children: ReactNode }) {
     setObservations,
     markManually,
     addEvidence,
+    removeEvidence,
     sendGeneralMessage,
     sendItemMessage,
     resolveGeneralMessage,
@@ -330,6 +340,7 @@ export function useProjectChecklist(projectId: string, visitId: string) {
     setObservations,
     markManually,
     addEvidence,
+    removeEvidence,
     sendGeneralMessage,
     sendItemMessage,
     resolveGeneralMessage,
@@ -349,6 +360,7 @@ export function useProjectChecklist(projectId: string, visitId: string) {
     markManually: (itemId: string, status: ChecklistStatus, reason?: string) => markManually(projectId, visitId, itemId, status, reason),
     addEvidence: (itemId: string, requirementIndex: number, type: EvidenceType, text: string, previewUrl?: string) =>
       addEvidence(projectId, visitId, itemId, requirementIndex, type, text, previewUrl),
+    removeEvidence: (itemId: string, evidenceId: string) => removeEvidence(projectId, visitId, itemId, evidenceId),
     sendGeneralMessage: (text: string, type?: EvidenceType, previewUrl?: string) => sendGeneralMessage(projectId, visitId, text, type, previewUrl),
     sendItemMessage: (itemId: string, text: string, type?: EvidenceType, previewUrl?: string) =>
       sendItemMessage(projectId, visitId, itemId, text, type, previewUrl),

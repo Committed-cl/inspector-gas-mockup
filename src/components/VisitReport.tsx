@@ -35,6 +35,19 @@ function Section({ n, title, children }: { n: number; title: string; children: R
 
 // Print-only visit report (the "Descargar PDF" action prints the page, see
 // ChecklistProject). Hidden on screen.
+// 1 photo: shown large. 2–4: compact 2-column grid so the row stays about as tall as a single large photo.
+function ReportPhotos({ photos }: { photos: { id: string; previewUrl?: string }[] }) {
+  if (photos.length === 0) return null
+  if (photos.length === 1) return <img src={photos[0].previewUrl} alt="" className="mt-1 max-h-40 w-auto max-w-full border border-hairline" />
+  return (
+    <div className="mt-1 grid grid-cols-2 gap-1">
+      {photos.map((p) => (
+        <img key={p.id} src={p.previewUrl} alt="" className="h-[4.5rem] w-full border border-hairline object-cover" />
+      ))}
+    </div>
+  )
+}
+
 export default function VisitReport({ project, visit, visits, itemsState, observations, supervisorName, supervisorCompany, reportRef }: Props) {
   const defs = checklistDef.filter((d) => itemsState[d.id])
   const statusOf = (id: string) => itemsState[id].status
@@ -296,9 +309,7 @@ export default function VisitReport({ project, visit, visits, itemsState, observ
                               ) : (
                                 'sin declaración'
                               )}
-                              {r.evidence?.previewUrl && (
-                                <img src={r.evidence.previewUrl} alt="" className="mt-1 h-16 w-auto border border-hairline" />
-                              )}
+                              <ReportPhotos photos={r.evidences.filter((e) => e.previewUrl)} />
                             </div>
                           ))}
                           {st.status === 'na' && <div className="text-muted">no aplica</div>}

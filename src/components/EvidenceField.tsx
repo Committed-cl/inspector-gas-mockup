@@ -1,7 +1,7 @@
 import { useRef, useState } from 'react'
 import { useReadOnly } from '../lib/auth'
 import { compressImageFile } from '../lib/compressImage'
-import type { RequirementState } from '../data/checklistMatrizInterior'
+import { MAX_PHOTOS_PER_ITEM, type RequirementState } from '../data/checklistMatrizInterior'
 
 const evidenceSourceLabel = {
   'general-chat': 'chat general',
@@ -13,9 +13,10 @@ const evidenceSourceLabel = {
 type Props = {
   requirement: RequirementState
   onAdd: (text: string, previewUrl?: string) => void
+  onRemove?: (evidenceId: string) => void
 }
 
-export default function EvidenceField({ requirement, onAdd }: Props) {
+export default function EvidenceField({ requirement, onAdd, onRemove }: Props) {
   const readOnly = useReadOnly()
   const [text, setText] = useState('')
   const [fileError, setFileError] = useState<string | null>(null)
@@ -46,7 +47,51 @@ export default function EvidenceField({ requirement, onAdd }: Props) {
         {requirement.label}
       </p>
 
-      {requirement.fulfilled && requirement.evidence ? (
+      {requirement.type === 'photo' ? (
+        <div className="mt-1.5">
+          {requirement.evidences.length > 0 && (
+            <ul className="flex flex-wrap gap-2 mb-1.5">
+              {requirement.evidences.map((ev) => (
+                <li key={ev.id} className="relative">
+                  {ev.previewUrl ? (
+                    <img src={ev.previewUrl} alt={ev.text} className="h-16 w-16 rounded-md object-cover border border-hairline" />
+                  ) : (
+                    <span className="block h-16 w-16 rounded-md border border-hairline text-[10px] text-muted p-1 overflow-hidden">{ev.text}</span>
+                  )}
+                  {!readOnly && onRemove && (
+                    <button
+                      onClick={() => onRemove(ev.id)}
+                      aria-label={`Quitar foto ${ev.text}`}
+                      className="absolute -top-1.5 -right-1.5 h-5 w-5 rounded-full bg-white border border-hairline text-[12px] leading-none text-danger shadow-sm"
+                    >
+                      ×
+                    </button>
+                  )}
+                </li>
+              ))}
+            </ul>
+          )}
+          {requirement.evidences.length === 0 && readOnly && <p className="text-[12px] text-muted italic">Sin evidencia cargada</p>}
+          {!readOnly &&
+            (requirement.evidences.length < MAX_PHOTOS_PER_ITEM ? (
+              <>
+                <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={onFileSelected} />
+                <button
+                  onClick={() => fileInputRef.current?.click()}
+                  className="text-[12px] font-semibold px-3 py-1.5 rounded-lg border border-hairline text-brand hover:bg-brand-soft"
+                >
+                  📷 {requirement.evidences.length === 0 ? 'Subir foto' : 'Agregar otra foto'}
+                </button>
+                <span className="ml-2 text-[11px] text-muted">
+                  {requirement.evidences.length}/{MAX_PHOTOS_PER_ITEM}
+                </span>
+              </>
+            ) : (
+              <p className="text-[11.5px] text-muted">Máximo de {MAX_PHOTOS_PER_ITEM} fotos alcanzado.</p>
+            ))}
+          {fileError && <p className="text-[11.5px] text-danger mt-1">{fileError}</p>}
+        </div>
+      ) : requirement.fulfilled && requirement.evidence ? (
         <div className="mt-1 flex items-start gap-2">
           {requirement.evidence.previewUrl && (
             <img
@@ -65,17 +110,6 @@ export default function EvidenceField({ requirement, onAdd }: Props) {
         </div>
       ) : readOnly ? (
         <p className="mt-1 text-[12px] text-muted italic">Sin evidencia cargada</p>
-      ) : requirement.type === 'photo' ? (
-        <div className="mt-1.5">
-          <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={onFileSelected} />
-          <button
-            onClick={() => fileInputRef.current?.click()}
-            className="text-[12px] font-semibold px-3 py-1.5 rounded-lg border border-hairline text-brand hover:bg-brand-soft"
-          >
-            📷 Subir foto
-          </button>
-          {fileError && <p className="text-[11.5px] text-danger mt-1">{fileError}</p>}
-        </div>
       ) : (
         <div className="mt-1 flex items-center gap-2">
           <input

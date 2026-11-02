@@ -27,7 +27,7 @@ export default function ChecklistItemPage() {
   const { projectId = '', visitId = '', itemId } = useParams()
   const [mobilePanel, setMobilePanel] = useState<MobilePanel>('primary')
   const project = useProject(projectId)
-  const { itemsState, markManually, addEvidence, sendItemMessage, loading: checklistLoading } = useProjectChecklist(projectId, visitId)
+  const { itemsState, markManually, addEvidence, removeEvidence, sendItemMessage, loading: checklistLoading } = useProjectChecklist(projectId, visitId)
   const def = checklistDef.find((d) => d.id === itemId)
 
   if (project.loading || checklistLoading) return <CenteredMessage text="Cargando..." />
@@ -121,6 +121,7 @@ export default function ChecklistItemPage() {
                     onAdd={(text, previewUrl) =>
                       addEvidence(def.id, i, req.type === 'photo' ? 'photo' : 'text', text, previewUrl)
                     }
+                    onRemove={(evidenceId) => removeEvidence(def.id, evidenceId)}
                   />
                 ))}
                 <div

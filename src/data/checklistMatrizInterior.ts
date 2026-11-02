@@ -416,7 +416,10 @@ export const checklistDef: ChecklistItemDef[] = [
   },
 ]
 
-export type RequirementState = RequiredEvidence & { fulfilled: boolean; evidence?: Evidence }
+// Photos a single item can hold (1 is enough to fulfill the requirement); enforced by the API too.
+export const MAX_PHOTOS_PER_ITEM = 4
+
+export type RequirementState = RequiredEvidence & { fulfilled: boolean; evidence?: Evidence; evidences: Evidence[] }
 
 // Each required field has its own slot for evidence — identified by its
 // position in requiredEvidence (requirementIndex). A "photo" field is only
@@ -425,10 +428,12 @@ export type RequirementState = RequiredEvidence & { fulfilled: boolean; evidence
 // "manual-mark") never fulfills a field, or a single click would justify itself.
 export function requiredEvidenceState(def: ChecklistItemDef, evidence: Evidence[]): RequirementState[] {
   return def.requiredEvidence.map((req, i) => {
-    const matched = evidence.find(
+    const matches = evidence.filter(
       (e) => e.source !== 'manual-mark' && e.requirementIndex === i && (req.type !== 'photo' || e.type === 'photo'),
     )
-    return { ...req, fulfilled: !!matched, evidence: matched }
+    // A photo requirement holds several photos (any one fulfills it); a declaration keeps its first entry.
+    const evidences = req.type === 'photo' ? matches : matches.slice(0, 1)
+    return { ...req, fulfilled: evidences.length > 0, evidence: evidences[0], evidences }
   })
 }
 
