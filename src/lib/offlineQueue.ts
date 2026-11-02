@@ -7,6 +7,7 @@ export type QueuedOpKind = 'mark' | 'evidence' | 'observations'
 
 export type QueuedOp = {
   seq?: number // autoincrement key — defines the sync order
+  userId: string // owner: only this user's session may sync, see or act on the op
   kind: QueuedOpKind
   projectId: string
   visitId: string
@@ -51,22 +52,36 @@ export function subscribeQueue(fn: () => void): () => void {
 }
 const notify = () => listeners.forEach((fn) => fn())
 
-export async function listOps(): Promise<QueuedOp[]> {
+async function allOps(): Promise<QueuedOp[]> {
   const all = await tx('readonly', (s) => s.getAll() as IDBRequest<QueuedOp[]>)
   return all.sort((a, b) => a.seq! - b.seq!)
+}
+
+// Only the given user's ops. Other users' ops stay untouched in the store
+// until that user signs in again.
+export async function listOps(userId: string): Promise<QueuedOp[]> {
+  return (await allOps()).filter((o) => o.userId === userId)
+}
+
+// Wipes the whole store (all users). For tests only.
+export async function clearQueue(): Promise<void> {
+  await tx('readwrite', (s) => s.clear())
+  notify()
 }
 
 export async function enqueueOp(op: Omit<QueuedOp, 'seq' | 'state'>): Promise<void> {
   // The editor autosaves the whole observations HTML: only the latest matters.
   if (op.kind === 'observations') {
-    const stale = (await listOps()).filter((o) => o.kind === 'observations' && o.visitId === op.visitId && o.state === 'pending')
+    const stale = (await listOps(op.userId)).filter((o) => o.kind === 'observations' && o.visitId === op.visitId && o.state === 'pending')
     for (const o of stale) await tx('readwrite', (s) => s.delete(o.seq!))
   }
   await tx('readwrite', (s) => s.add({ ...op, state: 'pending' }))
   notify()
 }
 
-export async function removeOp(seq: number): Promise<void> {
+export async function removeOp(seq: number, userId: string): Promise<void> {
+  const op = (await listOps(userId)).find((o) => o.seq === seq)
+  if (!op) return
   await tx('readwrite', (s) => s.delete(seq))
   notify()
 }
@@ -76,8 +91,8 @@ async function updateOp(op: QueuedOp): Promise<void> {
   notify()
 }
 
-export async function retryOp(seq: number): Promise<void> {
-  const op = (await listOps()).find((o) => o.seq === seq)
+export async function retryOp(seq: number, userId: string): Promise<void> {
+  const op = (await listOps(userId)).find((o) => o.seq === seq)
   if (op) await updateOp({ ...op, state: 'pending', error: undefined })
 }
 
@@ -100,16 +115,16 @@ export function isNetworkError(err: unknown): boolean {
 
 export type SyncResult = { sent: number; stopped: boolean; lastByVisit: Record<string, unknown> }
 
-// Sends pending ops one at a time, in order. A network error or 5xx stops the
+// Sends the user's pending ops one at a time, in order. A network error or 5xx stops the
 // run (retry later, order kept). A 4xx is definitive: the op is marked failed
 // and kept — never dropped — and the run continues with the next one.
-export async function processQueue(send: (req: ReturnType<typeof opRequest>) => Promise<unknown>): Promise<SyncResult> {
+export async function processQueue(userId: string, send: (req: ReturnType<typeof opRequest>) => Promise<unknown>): Promise<SyncResult> {
   const result: SyncResult = { sent: 0, stopped: false, lastByVisit: {} }
-  for (const op of await listOps()) {
+  for (const op of await listOps(userId)) {
     if (op.state !== 'pending') continue
     try {
       const res = await send(opRequest(op))
-      await removeOp(op.seq!)
+      await removeOp(op.seq!, userId)
       result.sent++
       result.lastByVisit[`${op.projectId}::${op.visitId}`] = res
     } catch (err) {

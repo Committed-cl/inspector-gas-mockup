@@ -1,6 +1,7 @@
 import { createContext, useCallback, useContext, useEffect, useRef, useState, type ReactNode } from 'react'
 import { Outlet } from 'react-router-dom'
 import { api } from '../lib/api'
+import { useAuth } from '../lib/auth'
 import { enqueueOp, isNetworkError, listOps, processQueue, removeOp, retryOp, subscribeQueue, type QueuedOp } from '../lib/offlineQueue'
 import { useOnline } from '../lib/useOnline'
 import SyncStatus from '../components/SyncStatus'
@@ -135,6 +136,8 @@ export function ChecklistProvider({ children }: { children: ReactNode }) {
   const observationsDebounce = useRef<Record<string, ReturnType<typeof setTimeout>>>({})
 
   const online = useOnline()
+  const { auth } = useAuth()
+  const userId = auth?.user.id ?? null
   const [queued, setQueued] = useState<QueuedOp[]>([])
   const [phase, setPhase] = useState<SyncInfo['phase']>('idle')
   const queuedRef = useRef<QueuedOp[]>([])
@@ -146,14 +149,14 @@ export function ChecklistProvider({ children }: { children: ReactNode }) {
     ops.filter((o) => o.projectId === projectId && o.visitId === visitId).reduce(applyOp, data)
 
   const refreshQueue = useCallback(async () => {
-    const ops = await listOps().catch(() => [])
+    const ops = userId ? await listOps(userId).catch(() => []) : []
     queuedRef.current = ops
     setQueued(ops)
     return ops
-  }, [])
+  }, [userId])
 
   const syncNow = useCallback(async () => {
-    if (syncing.current || !navigator.onLine) return
+    if (syncing.current || !navigator.onLine || !userId) return
     const pendingBefore = (await refreshQueue()).some((o) => o.state === 'pending')
     if (!pendingBefore) return
     syncing.current = true
@@ -161,7 +164,7 @@ export function ChecklistProvider({ children }: { children: ReactNode }) {
     if (doneTimer.current) clearTimeout(doneTimer.current)
     setPhase('syncing')
     try {
-      const result = await processQueue((req) =>
+      const result = await processQueue(userId, (req) =>
         req.method === 'PUT' ? api.put<ChecklistState>(req.path, req.body) : api.post<ChecklistState>(req.path, req.body),
       )
       const remaining = await refreshQueue()
@@ -181,7 +184,7 @@ export function ChecklistProvider({ children }: { children: ReactNode }) {
     } finally {
       syncing.current = false
     }
-  }, [refreshQueue])
+  }, [refreshQueue, userId])
 
   useEffect(() => {
     void refreshQueue().then(() => syncNow())
@@ -200,7 +203,7 @@ export function ChecklistProvider({ children }: { children: ReactNode }) {
   // Queued-aware write: send now when connected and nothing is waiting ahead
   // of it for this visit (order matters); otherwise — or if the request never
   // reached the server — store it locally and let the sync loop send it.
-  const mutate = async (op: Omit<QueuedOp, 'seq' | 'state'>, send: () => Promise<ChecklistState>) => {
+  const mutate = async (op: Omit<QueuedOp, 'seq' | 'state' | 'userId'>, send: () => Promise<ChecklistState>) => {
     const blocked = queuedRef.current.some((o) => o.visitId === op.visitId && o.state === 'pending')
     if (navigator.onLine && !blocked) {
       try {
@@ -210,7 +213,8 @@ export function ChecklistProvider({ children }: { children: ReactNode }) {
         if (!isNetworkError(err)) throw err
       }
     }
-    await enqueueOp(op)
+    if (!userId) throw new Error('Sesión no iniciada')
+    await enqueueOp({ ...op, userId })
     const ops = await refreshQueue()
     setChecklistByVisit((prev) => {
       const key = visitKey(op.projectId, op.visitId)
@@ -225,8 +229,8 @@ export function ChecklistProvider({ children }: { children: ReactNode }) {
     pendingCount: queued.filter((o) => o.state === 'pending').length,
     failed: queued.filter((o) => o.state === 'failed'),
     phase,
-    retry: (seq) => void retryOp(seq).then(() => syncNow()),
-    discard: (seq) => void removeOp(seq),
+    retry: (seq) => { if (userId) void retryOp(seq, userId).then(() => syncNow()) },
+    discard: (seq) => { if (userId) void removeOp(seq, userId) },
   }
 
   const fetchProjectsIfNeeded = useCallback(() => {
