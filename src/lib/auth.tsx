@@ -1,12 +1,13 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from 'react'
-import { api, clearToken, setToken, setUnauthorizedHandler } from './api'
+import { api, clearToken, setPasswordChangeRequiredHandler, setToken, setUnauthorizedHandler } from './api'
 
-export type AuthUser = { id: string; email: string; name: string; role: string; isAdmin: boolean; companyId: string; companyName?: string }
+export type AuthUser = { id: string; email: string; name: string; role: string; isAdmin: boolean; companyId: string; companyName?: string; mustChangePassword?: boolean }
 type AuthState = { token: string; user: AuthUser } | null
 
 type AuthContextValue = {
   auth: AuthState
   login: (email: string, password: string) => Promise<void>
+  changePassword: (currentPassword: string, newPassword: string) => Promise<void>
   logout: () => void
 }
 
@@ -32,18 +33,33 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     clearToken()
   }
 
-  useEffect(() => {
-    setUnauthorizedHandler(logout)
-  }, [])
-
-  const login = async (email: string, password: string) => {
-    const result = await api.post<{ token: string; user: AuthUser }>('/auth/login', { email, password })
+  const store = (result: NonNullable<AuthState>) => {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(result))
     setToken(result.token)
     setAuth(result)
   }
 
-  return <AuthContext.Provider value={{ auth, login, logout }}>{children}</AuthContext.Provider>
+  useEffect(() => {
+    setUnauthorizedHandler(logout)
+    setPasswordChangeRequiredHandler(() =>
+      setAuth((current) => {
+        if (!current || current.user.mustChangePassword) return current
+        const next = { ...current, user: { ...current.user, mustChangePassword: true } }
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(next))
+        return next
+      }),
+    )
+  }, [])
+
+  const login = async (email: string, password: string) => {
+    store(await api.post<NonNullable<AuthState>>('/auth/login', { email, password }))
+  }
+
+  const changePassword = async (currentPassword: string, newPassword: string) => {
+    store(await api.post<NonNullable<AuthState>>('/auth/change-password', { currentPassword, newPassword }))
+  }
+
+  return <AuthContext.Provider value={{ auth, login, changePassword, logout }}>{children}</AuthContext.Provider>
 }
 
 export function useAuth() {

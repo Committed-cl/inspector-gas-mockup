@@ -35,6 +35,13 @@ export function setUnauthorizedHandler(fn: () => void) {
   onUnauthorized = fn
 }
 
+// Same decoupling as onUnauthorized: fired when an admin reset the password
+// while this session was open (API answers 403 PASSWORD_CHANGE_REQUIRED).
+let onPasswordChangeRequired: (() => void) | null = null
+export function setPasswordChangeRequiredHandler(fn: () => void) {
+  onPasswordChangeRequired = fn
+}
+
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const token = getToken()
   const res = await fetch(`${BASE_URL}${path}`, {
@@ -52,6 +59,7 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
 
   if (!res.ok) {
     const body = await res.json().catch(() => ({}))
+    if (res.status === 403 && body.code === 'PASSWORD_CHANGE_REQUIRED') onPasswordChangeRequired?.()
     throw new ApiError(res.status, body.error ?? `Request failed: ${res.status}`, body.conflicts)
   }
 
