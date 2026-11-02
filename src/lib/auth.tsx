@@ -58,3 +58,22 @@ export function useReadOnly(): boolean {
   const { auth } = useAuth()
   return auth?.user.role === 'lider-supervisores' && !auth.user.isAdmin
 }
+
+// Admin-convenio manages the admin panel for their own company only; it is
+// never read-only (useReadOnly above only restricts lider-supervisores).
+export function useIsConvenioAdmin(): boolean {
+  const { auth } = useAuth()
+  return auth?.user.role === 'admin-convenio'
+}
+
+// Global admins (isAdmin, not scoped to one company) are the only ones who
+// see companies, AI config and imports.
+export function useIsGlobalAdmin(): boolean {
+  const { auth } = useAuth()
+  return !!auth?.user.isAdmin && auth.user.role !== 'admin-convenio'
+}
+
+export function useCanAccessAdmin(): boolean {
+  const { auth } = useAuth()
+  return !!auth && (auth.user.isAdmin || auth.user.role === 'admin-convenio')
+}

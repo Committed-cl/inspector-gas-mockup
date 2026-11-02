@@ -26,9 +26,23 @@ export default function App() {
         }
       >
         <Route path="/admin" element={<AdminDashboard />} />
-        <Route path="/admin/empresas" element={<AdminEmpresas />} />
+        <Route
+          path="/admin/empresas"
+          element={
+            <RequireAdmin globalOnly>
+              <AdminEmpresas />
+            </RequireAdmin>
+          }
+        />
         <Route path="/admin/usuarios" element={<AdminUsuarios />} />
-        <Route path="/admin/ia" element={<AdminIaConfig />} />
+        <Route
+          path="/admin/ia"
+          element={
+            <RequireAdmin globalOnly>
+              <AdminIaConfig />
+            </RequireAdmin>
+          }
+        />
       </Route>
       <Route
         element={

@@ -2,15 +2,23 @@ import { useEffect, useRef, useState, type FormEvent } from 'react'
 import Sidebar from '../components/Sidebar'
 import { useCompanies, useProjects, useUsers, ROLES, type AdminUser, type UserRole } from '../state/adminHooks'
 import { ApiError } from '../lib/api'
+import { useAuth, useIsGlobalAdmin } from '../lib/auth'
 
 export default function AdminUsuarios() {
-  const { companies } = useCompanies()
+  const { auth } = useAuth()
+  const isGlobalAdmin = useIsGlobalAdmin()
+  const ownCompanyId = auth?.user.companyId ?? ''
+  const { companies: allCompanies } = useCompanies()
   const { projects } = useProjects()
-  const { users, loading, createUser, updateUser, deleteUser, resetPassword } = useUsers()
+  const { users: allUsers, loading, createUser, updateUser, deleteUser, resetPassword } = useUsers()
+  // Administrador del convenio only sees and manages their own company.
+  const companies = isGlobalAdmin ? allCompanies : allCompanies.filter((c) => c.id === ownCompanyId)
+  const users = isGlobalAdmin ? allUsers : allUsers.filter((u) => u.companyId === ownCompanyId)
+  const roles = isGlobalAdmin ? ROLES : ROLES.filter((r) => r.value !== 'admin-general')
   const [email, setEmail] = useState('')
   const [name, setName] = useState('')
   const [role, setRole] = useState<UserRole>('supervisor-proyecto')
-  const [companyId, setCompanyId] = useState('')
+  const [companyId, setCompanyId] = useState(isGlobalAdmin ? '' : ownCompanyId)
   const [newProjectIds, setNewProjectIds] = useState<string[]>([])
   const [error, setError] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
@@ -238,6 +246,7 @@ export default function AdminUsuarios() {
                 user={editingUser}
                 companies={companies}
                 projects={projects}
+                roles={roles}
                 onCancel={() => setEditingId(null)}
                 onSave={async (input) => {
                   await updateUser(editingUser.id, input)
@@ -275,7 +284,7 @@ export default function AdminUsuarios() {
               onChange={(e) => setRole(e.target.value as UserRole)}
               className="rounded-lg border border-hairline px-3 py-2.5 text-[14px] focus:outline-none focus:ring-2 focus:ring-brand/30 focus:border-brand"
             >
-              {ROLES.map((r) => (
+              {roles.map((r) => (
                 <option key={r.value} value={r.value}>
                   {r.label}
                 </option>
@@ -339,12 +348,14 @@ function EditUserCard({
   user,
   companies,
   projects,
+  roles,
   onCancel,
   onSave,
 }: {
   user: AdminUser
   companies: { id: string; name: string }[]
   projects: { id: string; name: string }[]
+  roles: { value: UserRole; label: string }[]
   onCancel: () => void
   onSave: (input: EditUserInput) => Promise<void>
 }) {
@@ -390,7 +401,7 @@ function EditUserCard({
                 onChange={(e) => setRole(e.target.value as UserRole)}
                 className="rounded-lg border border-hairline px-2.5 py-2 text-[13px] focus:outline-none focus:ring-2 focus:ring-brand/30 focus:border-brand"
               >
-                {ROLES.map((r) => (
+                {roles.map((r) => (
                   <option key={r.value} value={r.value}>
                     {r.label}
                   </option>

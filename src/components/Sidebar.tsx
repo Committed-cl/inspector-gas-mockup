@@ -1,12 +1,13 @@
 import { useState } from 'react'
 import { Link, useLocation } from 'react-router-dom'
+import { useIsGlobalAdmin } from '../lib/auth'
 
 const items = [
   { to: '/admin', label: 'Dashboard' },
-  { to: '/admin/empresas', label: 'Empresa' },
+  { to: '/admin/empresas', label: 'Empresa', globalOnly: true },
   { to: '/admin/usuarios', label: 'Usuario' },
   { to: '/checklist/nueva-obra', label: 'Proyecto' },
-  { to: '/admin/ia', label: 'Configuración de IA' },
+  { to: '/admin/ia', label: 'Configuración de IA', globalOnly: true },
   { to: '/checklist', label: 'Ir a checklist' },
 ]
 
@@ -16,6 +17,8 @@ const items = [
 export default function Sidebar({ demoMode = true }: { demoMode?: boolean }) {
   const { pathname } = useLocation()
   const [open, setOpen] = useState(false)
+  const isGlobalAdmin = useIsGlobalAdmin()
+  const visibleItems = items.filter((i) => !('globalOnly' in i) || isGlobalAdmin)
 
   return (
     <>
@@ -47,7 +50,7 @@ export default function Sidebar({ demoMode = true }: { demoMode?: boolean }) {
           </button>
         </div>
         <nav className="flex flex-col gap-1">
-          {items.map((i) => {
+          {visibleItems.map((i) => {
             const active = i.to === '/admin' || i.to === '/checklist' ? pathname === i.to : pathname.startsWith(i.to)
             return (
               <Link

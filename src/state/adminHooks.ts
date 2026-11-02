@@ -2,10 +2,11 @@ import { useCallback, useEffect, useState } from 'react'
 import { api } from '../lib/api'
 import type { ProjectSummary } from './ChecklistContext'
 
-export type UserRole = 'admin-general' | 'lider-supervisores' | 'supervisor-proyecto'
+export type UserRole = 'admin-general' | 'admin-convenio' | 'lider-supervisores' | 'supervisor-proyecto'
 
 export const ROLES: { value: UserRole; label: string }[] = [
   { value: 'admin-general', label: 'Administrador General' },
+  { value: 'admin-convenio', label: 'Administrador del convenio' },
   { value: 'lider-supervisores', label: 'Líder de Supervisores' },
   { value: 'supervisor-proyecto', label: 'Supervisor de Proyecto' },
 ]

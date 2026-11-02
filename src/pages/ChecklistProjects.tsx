@@ -25,7 +25,7 @@ export default function ChecklistProjects() {
               {[auth?.user.name, 'Supervisor', auth?.user.companyName].filter(Boolean).join(' · ')}
             </p>
             <div className="mt-1 flex items-center gap-3 justify-end">
-              {auth?.user.isAdmin && (
+              {(auth?.user.isAdmin || auth?.user.role === 'admin-convenio') && (
                 <Link to="/admin" className="text-[11.5px] font-semibold text-brand hover:underline">
                   Panel admin
                 </Link>
