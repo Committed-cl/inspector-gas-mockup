@@ -177,8 +177,8 @@ export default function AdminEmpresas() {
           <p className="text-[12px] uppercase tracking-wide text-muted font-semibold">Administración</p>
           <h1 className="text-2xl font-bold text-ink mt-1">Empresas</h1>
           <p className="text-[13px] text-muted mt-1 max-w-xl">
-            Una empresa es un cliente de la plataforma (por ejemplo, Metrogas). Dentro de cada empresa existen clientes,
-            y cada cliente tiene sus obras.
+            Una empresa es un cliente de la plataforma (por ejemplo, Metrogas). Flujo de alta: empresa, luego sus
+            proyectos y finalmente sus usuarios.
           </p>
         </header>
 
