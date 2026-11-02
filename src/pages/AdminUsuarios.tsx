@@ -10,7 +10,6 @@ export default function AdminUsuarios() {
   const [email, setEmail] = useState('')
   const [name, setName] = useState('')
   const [role, setRole] = useState<UserRole>('supervisor-proyecto')
-  const [isAdmin, setIsAdmin] = useState(false)
   const [companyId, setCompanyId] = useState('')
   const [newProjectIds, setNewProjectIds] = useState<string[]>([])
   const [error, setError] = useState<string | null>(null)
@@ -49,11 +48,10 @@ export default function AdminUsuarios() {
     setError(null)
     setSubmitting(true)
     try {
-      const result = await createUser(email, name, role, isAdmin, companyId, newProjectIds)
+      const result = await createUser(email, name, role, false, companyId, newProjectIds)
       setPassword({ email: result.user.email, value: result.provisionalPassword })
       setEmail('')
       setName('')
-      setIsAdmin(false)
       setNewProjectIds([])
     } catch (err) {
       setError(err instanceof ApiError ? err.message : 'No se pudo crear el usuario.')
@@ -301,10 +299,6 @@ export default function AdminUsuarios() {
                 </option>
               ))}
             </select>
-          </label>
-          <label className="flex items-center gap-2 text-[12.5px] text-ink">
-            <input type="checkbox" checked={isAdmin} onChange={(e) => setIsAdmin(e.target.checked)} className="h-4 w-4 rounded accent-brand" />
-            Es administrador
           </label>
           <div className="flex flex-col gap-1.5">
             <span className="text-[12px] font-medium text-ink">Proyectos asignados</span>
