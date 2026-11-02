@@ -6,6 +6,7 @@ const items = [
   { to: '/admin', label: 'Dashboard' },
   { to: '/admin/empresas', label: 'Empresa', globalOnly: true },
   { to: '/admin/usuarios', label: 'Usuario' },
+  { to: '/admin/informes', label: 'Informes' },
   { to: '/checklist/nueva-obra', label: 'Proyecto' },
   { to: '/admin/ia', label: 'Configuración de IA', globalOnly: true },
   { to: '/checklist', label: 'Ir a checklist' },

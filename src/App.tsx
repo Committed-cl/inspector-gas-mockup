@@ -3,6 +3,7 @@ import Login from './pages/Login'
 import AdminDashboard from './pages/AdminDashboard'
 import AdminEmpresas from './pages/AdminEmpresas'
 import AdminUsuarios from './pages/AdminUsuarios'
+import AdminInformes from './pages/AdminInformes'
 import AdminIaConfig from './pages/AdminIaConfig'
 import ChecklistProjects from './pages/ChecklistProjects'
 import ChecklistNuevaObra from './pages/ChecklistNuevaObra'
@@ -35,6 +36,7 @@ export default function App() {
           }
         />
         <Route path="/admin/usuarios" element={<AdminUsuarios />} />
+        <Route path="/admin/informes" element={<AdminInformes />} />
         <Route
           path="/admin/ia"
           element={
