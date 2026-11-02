@@ -1,7 +1,9 @@
 import { useState, type FormEvent } from 'react'
 import Sidebar from '../components/Sidebar'
-import { useCompanies } from '../state/adminHooks'
+import { useCompanies, type Company } from '../state/adminHooks'
 import { ApiError } from '../lib/api'
+import CompanyLogo from '../components/CompanyLogo'
+import LogoUploader from '../components/LogoUploader'
 
 const parseEmails = (text: string) => text.split(/[\s,;]+/).filter(Boolean)
 
@@ -141,6 +143,30 @@ function NamesCell({
   )
 }
 
+function LogoCell({ company }: { company: Company }) {
+  const [editing, setEditing] = useState(false)
+  const [version, setVersion] = useState(0)
+  return (
+    <div className="flex flex-col gap-2 items-start">
+      <CompanyLogo companyId={company.id} fallbackUrl={company.logoUrl} alt={company.name} version={version} className="h-8 max-w-[120px] object-contain" />
+      {editing ? (
+        <LogoUploader
+          companyId={company.id}
+          onUploaded={() => {
+            setVersion((v) => v + 1)
+            setEditing(false)
+          }}
+          onCancel={() => setEditing(false)}
+        />
+      ) : (
+        <button type="button" onClick={() => setEditing(true)} className="text-brand font-semibold text-[12.5px]">
+          Subir archivo
+        </button>
+      )}
+    </div>
+  )
+}
+
 export default function AdminEmpresas() {
   const { companies, loading, createCompany, updateRecipients, updateCompanyNames } = useCompanies()
   const [recipientsText, setRecipientsText] = useState('')
@@ -210,7 +236,7 @@ export default function AdminEmpresas() {
               {companies.map((c) => (
                 <tr key={c.id}>
                   <td className="px-4 py-3">
-                    <img src={c.logoUrl} alt={c.name} className="h-8 max-w-[120px] object-contain" />
+                    <LogoCell company={c} />
                   </td>
                   <td className="px-4 py-3 font-semibold text-ink">{c.name}</td>
                   <td className="px-4 py-3">

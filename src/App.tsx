@@ -2,6 +2,7 @@ import { Navigate, Outlet, Route, Routes } from 'react-router-dom'
 import Login from './pages/Login'
 import AdminDashboard from './pages/AdminDashboard'
 import AdminEmpresas from './pages/AdminEmpresas'
+import AdminMiEmpresa from './pages/AdminMiEmpresa'
 import AdminUsuarios from './pages/AdminUsuarios'
 import AdminInformes from './pages/AdminInformes'
 import AdminIaConfig from './pages/AdminIaConfig'
@@ -35,6 +36,7 @@ export default function App() {
             </RequireAdmin>
           }
         />
+        <Route path="/admin/mi-empresa" element={<AdminMiEmpresa />} />
         <Route path="/admin/usuarios" element={<AdminUsuarios />} />
         <Route path="/admin/informes" element={<AdminInformes />} />
         <Route

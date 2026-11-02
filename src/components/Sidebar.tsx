@@ -5,6 +5,7 @@ import { useIsGlobalAdmin } from '../lib/auth'
 const items = [
   { to: '/admin', label: 'Dashboard' },
   { to: '/admin/empresas', label: 'Empresa', globalOnly: true },
+  { to: '/admin/mi-empresa', label: 'Mi empresa', convenioOnly: true },
   { to: '/admin/usuarios', label: 'Usuario' },
   { to: '/admin/informes', label: 'Informes' },
   { to: '/checklist/nueva-obra', label: 'Proyecto' },
@@ -19,7 +20,7 @@ export default function Sidebar({ demoMode = true }: { demoMode?: boolean }) {
   const { pathname } = useLocation()
   const [open, setOpen] = useState(false)
   const isGlobalAdmin = useIsGlobalAdmin()
-  const visibleItems = items.filter((i) => !('globalOnly' in i) || isGlobalAdmin)
+  const visibleItems = items.filter((i) => (!('globalOnly' in i) || isGlobalAdmin) && (!('convenioOnly' in i) || !isGlobalAdmin))
 
   return (
     <>

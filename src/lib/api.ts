@@ -80,6 +80,22 @@ export async function fetchBlob(path: string): Promise<Blob> {
   return res.blob()
 }
 
+// Authenticated raw-bytes upload (company logo): the body is the file itself,
+// not JSON; the API validates it by its bytes.
+export async function putFile(path: string, file: Blob): Promise<void> {
+  const token = getToken()
+  const res = await fetch(`${BASE_URL}${path}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': file.type || 'application/octet-stream', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+    body: file,
+  })
+  if (res.status === 401) onUnauthorized?.()
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}))
+    throw new ApiError(res.status, body.error ?? `Request failed: ${res.status}`)
+  }
+}
+
 export const api = {
   get: <T,>(path: string) => request<T>(path),
   post: <T,>(path: string, body?: unknown) => request<T>(path, { method: 'POST', body: body ? JSON.stringify(body) : undefined }),
