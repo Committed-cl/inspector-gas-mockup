@@ -3,6 +3,7 @@ import TranscriptBubble from './TranscriptBubble'
 import { useReadOnly } from '../lib/auth'
 import { ApiError } from '../lib/api'
 import { compressImageFile } from '../lib/compressImage'
+import { useOnline } from '../lib/useOnline'
 import { startRecording, type AudioRecorder } from '../lib/recordAudio'
 import type { ChatMessage, EvidenceType } from '../data/checklistMatrizInterior'
 
@@ -20,6 +21,7 @@ type Props = {
 
 export default function ChatPanel({ title, subtitle, chatId, messages, placeholder, onSend, onSelectOption }: Props) {
   const readOnly = useReadOnly()
+  const offline = !useOnline()
   const [draft, setDraft] = useState('')
   const [pendingType, setPendingType] = useState<EvidenceType>('text')
   const [pendingPhoto, setPendingPhoto] = useState<string | null>(null)
@@ -185,6 +187,7 @@ export default function ChatPanel({ title, subtitle, chatId, messages, placehold
             </button>
           </div>
         )}
+        {offline && <p className="text-[11.5px] text-warn mb-2">Sin conexión: el chat con IA y el audio requieren conexión.</p>}
         {photoError && <p className="text-[11.5px] text-danger mb-2">{photoError}</p>}
         {micError && <p className="text-[11.5px] text-danger mb-2">{micError}</p>}
         {sendError && <p className="text-[11.5px] text-danger mb-2">{sendError}</p>}
@@ -192,7 +195,7 @@ export default function ChatPanel({ title, subtitle, chatId, messages, placehold
           <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={onFileSelected} />
           <button
             onClick={() => fileInputRef.current?.click()}
-            disabled={compressing || !!outgoing || recording || !!pendingAudio}
+            disabled={offline || compressing || !!outgoing || recording || !!pendingAudio}
             className="shrink-0 h-9 w-9 grid place-items-center rounded-lg border border-hairline text-muted hover:bg-brand-soft hover:text-brand transition-colors disabled:opacity-50"
             title="Adjuntar foto"
             aria-label="Adjuntar foto"
@@ -201,7 +204,7 @@ export default function ChatPanel({ title, subtitle, chatId, messages, placehold
           </button>
           <button
             onClick={toggleRecording}
-            disabled={!!outgoing || !!pendingPhoto || compressing || (!recording && !!pendingAudio)}
+            disabled={offline || !!outgoing || !!pendingPhoto || compressing || (!recording && !!pendingAudio)}
             className={`shrink-0 h-9 w-9 grid place-items-center rounded-lg border transition-colors disabled:opacity-50 ${
               recording ? 'border-danger bg-danger/10 text-danger animate-pulse' : 'border-hairline text-muted hover:bg-brand-soft hover:text-brand'
             }`}
@@ -219,13 +222,13 @@ export default function ChatPanel({ title, subtitle, chatId, messages, placehold
             onKeyDown={(e) => {
               if (e.key === 'Enter') submit()
             }}
-            disabled={!!outgoing}
+            disabled={offline || !!outgoing}
             placeholder={pendingPhoto || pendingAudio ? 'Descripción (opcional)...' : recording ? 'Grabando...' : placeholder}
             className="flex-1 min-w-0 text-[13px] px-3 py-2 rounded-lg border border-hairline focus:outline-none focus:ring-2 focus:ring-brand/30 disabled:bg-base disabled:text-muted"
           />
           <button
             onClick={submit}
-            disabled={!!outgoing || recording || (!pendingPhoto && !pendingAudio && !draft.trim())}
+            disabled={offline || !!outgoing || recording || (!pendingPhoto && !pendingAudio && !draft.trim())}
             className={`shrink-0 h-9 w-9 grid place-items-center rounded-lg font-semibold transition-colors ${
               !outgoing && !recording && (pendingPhoto || pendingAudio || draft.trim()) ? 'bg-brand text-white hover:bg-brand-dark' : 'bg-hairline text-muted cursor-not-allowed'
             }`}

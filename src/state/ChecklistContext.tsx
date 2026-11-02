@@ -1,6 +1,9 @@
 import { createContext, useCallback, useContext, useEffect, useRef, useState, type ReactNode } from 'react'
 import { Outlet } from 'react-router-dom'
 import { api } from '../lib/api'
+import { enqueueOp, isNetworkError, listOps, processQueue, removeOp, retryOp, subscribeQueue, type QueuedOp } from '../lib/offlineQueue'
+import { useOnline } from '../lib/useOnline'
+import SyncStatus from '../components/SyncStatus'
 import type { ChatMessage, ChecklistStatus, EvidenceType, ItemState } from '../data/checklistMatrizInterior'
 
 export type VisitStatus = 'en_curso' | 'aprobada' | 'rechazada'
@@ -53,7 +56,43 @@ function isPending<T>(a: Async<T>): boolean {
 
 const visitKey = (projectId: string, visitId: string) => `${projectId}::${visitId}`
 
+export type SyncInfo = {
+  online: boolean
+  pendingCount: number
+  failed: QueuedOp[]
+  phase: 'idle' | 'syncing' | 'done'
+  retry: (seq: number) => void
+  discard: (seq: number) => void
+}
+
+// Shows a queued change on top of server state so it stays visible locally
+// until it is synced (or decided on, if it failed).
+function applyOp(state: ChecklistState, op: QueuedOp): ChecklistState {
+  if (op.kind === 'observations') return { ...state, observations: String(op.body.observations ?? '') }
+  const item = op.itemId ? state.itemsState[op.itemId] : undefined
+  if (!item) return state
+  if (op.kind === 'mark') {
+    const status = op.body.status as ChecklistStatus
+    return { ...state, itemsState: { ...state.itemsState, [op.itemId!]: { ...item, status, source: 'manual', notApplicableReason: op.body.reason as string | undefined } } }
+  }
+  const clientId = String(op.body.clientId)
+  if (item.evidence.some((e) => (e as { clientId?: string }).clientId === clientId)) return state
+  const entry = {
+    id: `local-${clientId}`,
+    clientId,
+    type: op.body.type as EvidenceType,
+    source: 'manual' as const,
+    text: String(op.body.text),
+    time: new Date().toLocaleTimeString('es-CL', { hour: '2-digit', minute: '2-digit' }),
+    requirementIndex: op.body.requirementIndex as number,
+    previewUrl: op.body.previewUrl as string | undefined,
+  }
+  const status = item.status === 'pending' ? 'warn' : item.status
+  return { ...state, itemsState: { ...state.itemsState, [op.itemId!]: { ...item, status, evidence: [...item.evidence, entry] } } }
+}
+
 type Ctx = {
+  sync: SyncInfo
   projects: Async<ProjectSummary[]>
   fetchProjectsIfNeeded: () => void
   getProject: (projectId: string) => Async<ProjectSummary>
@@ -94,6 +133,101 @@ export function ChecklistProvider({ children }: { children: ReactNode }) {
   // save so it doesn't send one PUT per character (and so out-of-order
   // responses to overlapping requests can't clobber a newer local edit).
   const observationsDebounce = useRef<Record<string, ReturnType<typeof setTimeout>>>({})
+
+  const online = useOnline()
+  const [queued, setQueued] = useState<QueuedOp[]>([])
+  const [phase, setPhase] = useState<SyncInfo['phase']>('idle')
+  const queuedRef = useRef<QueuedOp[]>([])
+  const syncing = useRef(false)
+  const retryTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const doneTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  const withQueued = (projectId: string, visitId: string, data: ChecklistState, ops: QueuedOp[] = queuedRef.current) =>
+    ops.filter((o) => o.projectId === projectId && o.visitId === visitId).reduce(applyOp, data)
+
+  const refreshQueue = useCallback(async () => {
+    const ops = await listOps().catch(() => [])
+    queuedRef.current = ops
+    setQueued(ops)
+    return ops
+  }, [])
+
+  const syncNow = useCallback(async () => {
+    if (syncing.current || !navigator.onLine) return
+    const pendingBefore = (await refreshQueue()).some((o) => o.state === 'pending')
+    if (!pendingBefore) return
+    syncing.current = true
+    if (retryTimer.current) clearTimeout(retryTimer.current)
+    if (doneTimer.current) clearTimeout(doneTimer.current)
+    setPhase('syncing')
+    try {
+      const result = await processQueue((req) =>
+        req.method === 'PUT' ? api.put<ChecklistState>(req.path, req.body) : api.post<ChecklistState>(req.path, req.body),
+      )
+      const remaining = await refreshQueue()
+      // The last server response per visit is authoritative; still-queued or
+      // failed ops are re-applied on top so nothing local disappears.
+      for (const [key, data] of Object.entries(result.lastByVisit)) {
+        const [pid, vid] = key.split('::')
+        setChecklistByVisit((prev) => ({ ...prev, [key]: { data: withQueued(pid, vid, data as ChecklistState, remaining), loading: false, error: null } }))
+      }
+      if (result.stopped) {
+        setPhase('idle')
+        retryTimer.current = setTimeout(() => void syncNow(), 5000)
+      } else if (result.sent > 0) {
+        setPhase('done')
+        doneTimer.current = setTimeout(() => setPhase('idle'), 4000)
+      } else setPhase('idle')
+    } finally {
+      syncing.current = false
+    }
+  }, [refreshQueue])
+
+  useEffect(() => {
+    void refreshQueue().then(() => syncNow())
+    const unsub = subscribeQueue(() => void refreshQueue())
+    return () => {
+      unsub()
+      if (retryTimer.current) clearTimeout(retryTimer.current)
+      if (doneTimer.current) clearTimeout(doneTimer.current)
+    }
+  }, [refreshQueue, syncNow])
+
+  useEffect(() => {
+    if (online) void syncNow()
+  }, [online, syncNow])
+
+  // Queued-aware write: send now when connected and nothing is waiting ahead
+  // of it for this visit (order matters); otherwise — or if the request never
+  // reached the server — store it locally and let the sync loop send it.
+  const mutate = async (op: Omit<QueuedOp, 'seq' | 'state'>, send: () => Promise<ChecklistState>) => {
+    const blocked = queuedRef.current.some((o) => o.visitId === op.visitId && o.state === 'pending')
+    if (navigator.onLine && !blocked) {
+      try {
+        adoptChecklist(op.projectId, op.visitId, await send())
+        return
+      } catch (err) {
+        if (!isNetworkError(err)) throw err
+      }
+    }
+    await enqueueOp(op)
+    const ops = await refreshQueue()
+    setChecklistByVisit((prev) => {
+      const key = visitKey(op.projectId, op.visitId)
+      const cur = prev[key]?.data
+      return cur ? { ...prev, [key]: { data: withQueued(op.projectId, op.visitId, cur, ops.slice(-1)), loading: false, error: null } } : prev
+    })
+    void syncNow()
+  }
+
+  const sync: SyncInfo = {
+    online,
+    pendingCount: queued.filter((o) => o.state === 'pending').length,
+    failed: queued.filter((o) => o.state === 'failed'),
+    phase,
+    retry: (seq) => void retryOp(seq).then(() => syncNow()),
+    discard: (seq) => void removeOp(seq),
+  }
 
   const fetchProjectsIfNeeded = useCallback(() => {
     setProjects((prev) => {
@@ -139,7 +273,7 @@ export function ChecklistProvider({ children }: { children: ReactNode }) {
     setChecklistByVisit((prev) => {
       if (prev[key]?.data || prev[key]?.loading) return prev
       api.get<ChecklistState>(`/projects/${projectId}/visits/${visitId}/checklist`).then(
-        (data) => setChecklistByVisit((c) => ({ ...c, [key]: { data, loading: false, error: null } })),
+        (data) => setChecklistByVisit((c) => ({ ...c, [key]: { data: withQueued(projectId, visitId, data), loading: false, error: null } })),
         (err) => setChecklistByVisit((c) => ({ ...c, [key]: { data: null, loading: false, error: String(err) } })),
       )
       return { ...prev, [key]: { data: null, loading: true, error: null } }
@@ -147,7 +281,7 @@ export function ChecklistProvider({ children }: { children: ReactNode }) {
   }, [])
 
   const adoptChecklist = (projectId: string, visitId: string, data: ChecklistState) => {
-    setChecklistByVisit((prev) => ({ ...prev, [visitKey(projectId, visitId)]: { data, loading: false, error: null } }))
+    setChecklistByVisit((prev) => ({ ...prev, [visitKey(projectId, visitId)]: { data: withQueued(projectId, visitId, data), loading: false, error: null } }))
   }
 
   const adoptVisit = (projectId: string, visit: Visit) => {
@@ -195,30 +329,28 @@ export function ChecklistProvider({ children }: { children: ReactNode }) {
     if (observationsDebounce.current[key]) clearTimeout(observationsDebounce.current[key])
     observationsDebounce.current[key] = setTimeout(async () => {
       delete observationsDebounce.current[key]
-      adoptChecklist(projectId, visitId, await api.put<ChecklistState>(`/projects/${projectId}/visits/${visitId}/observations`, { observations: html }))
+      await mutate(
+        { kind: 'observations', projectId, visitId, body: { observations: html }, label: 'Observaciones generales' },
+        () => api.put<ChecklistState>(`/projects/${projectId}/visits/${visitId}/observations`, { observations: html }),
+      )
     }, 400)
   }, [])
 
   const markManually = useCallback(async (projectId: string, visitId: string, itemId: string, status: ChecklistStatus, reason?: string) => {
-    adoptChecklist(
-      projectId,
-      visitId,
-      await api.post<ChecklistState>(`/projects/${projectId}/visits/${visitId}/items/${itemId}/mark`, { status, reason }),
+    await mutate(
+      { kind: 'mark', projectId, visitId, itemId, body: { status, reason }, label: `Estado «${status}» del ítem ${itemId}` },
+      () => api.post<ChecklistState>(`/projects/${projectId}/visits/${visitId}/items/${itemId}/mark`, { status, reason }),
     )
   }, [])
 
   const addEvidence = useCallback(
     async (projectId: string, visitId: string, itemId: string, requirementIndex: number, type: EvidenceType, text: string, previewUrl?: string) => {
       if (!text.trim()) return
-      adoptChecklist(
-        projectId,
-        visitId,
-        await api.post<ChecklistState>(`/projects/${projectId}/visits/${visitId}/items/${itemId}/evidence`, {
-          requirementIndex,
-          type,
-          text,
-          previewUrl,
-        }),
+      // clientId makes retries idempotent: the API ignores one it already stored.
+      const body = { requirementIndex, type, text, previewUrl, clientId: crypto.randomUUID() }
+      await mutate(
+        { kind: 'evidence', projectId, visitId, itemId, body, label: `${type === 'photo' ? 'Foto' : 'Declaración'} «${text}» en el ítem ${itemId}` },
+        () => api.post<ChecklistState>(`/projects/${projectId}/visits/${visitId}/items/${itemId}/evidence`, body),
       )
     },
     [],
@@ -265,6 +397,7 @@ export function ChecklistProvider({ children }: { children: ReactNode }) {
   }, [])
 
   const value: Ctx = {
+    sync,
     projects,
     fetchProjectsIfNeeded,
     getProject,
@@ -372,6 +505,7 @@ export function ChecklistLayout() {
   return (
     <ChecklistProvider>
       <Outlet />
+      <SyncStatus />
     </ChecklistProvider>
   )
 }

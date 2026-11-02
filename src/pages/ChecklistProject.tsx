@@ -1,4 +1,5 @@
 import { useRef, useState } from 'react'
+import { useOnline } from '../lib/useOnline'
 import { Link, useParams } from 'react-router-dom'
 import { checklistDef, SECTIONS, formName, type ChecklistStatus } from '../data/checklistMatrizInterior'
 import { useProject, useProjectChecklist, useProjectVisits } from '../state/ChecklistContext'
@@ -35,6 +36,7 @@ export default function ChecklistProject() {
   const [mobilePanel, setMobilePanel] = useState<MobilePanel>('primary')
   const reportRef = useRef<HTMLDivElement>(null)
   const [sending, setSending] = useState(false)
+  const online = useOnline()
   const [sendError, setSendError] = useState<string | null>(null)
 
   if (project.loading || checklistLoading || visitsLoading) return <CenteredMessage text="Cargando..." />
@@ -89,6 +91,8 @@ export default function ChecklistProject() {
           {readOnly ? null : visit.status === 'en_curso' ? (
             <button
               type="button"
+              disabled={!online}
+              title={online ? undefined : 'Requiere conexión'}
               onClick={() => closeVisit(visitId)}
               className={actionButtonPrimary}
             >
@@ -110,7 +114,8 @@ export default function ChecklistProject() {
             <>
               <button
                 type="button"
-                disabled={sending}
+                disabled={sending || !online}
+                title={online ? undefined : 'Requiere conexión'}
                 onClick={async () => {
                   if (!reportRef.current) return
                   setSending(true)
