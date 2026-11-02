@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react'
 import Sidebar from '../components/Sidebar'
 import { useCompanies, useProjects, useUsers, ROLES, type AdminUser, type UserRole } from '../state/adminHooks'
-import { ApiError } from '../lib/api'
+import { ApiError, type SupervisorConflict } from '../lib/api'
 import { useAuth, useIsGlobalAdmin } from '../lib/auth'
 
 export default function AdminUsuarios() {
@@ -25,6 +25,7 @@ export default function AdminUsuarios() {
   const [newProjectIds, setNewProjectIds] = useState<string[]>([])
   const [error, setError] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
+  const [conflicts, setConflicts] = useState<SupervisorConflict[] | null>(null)
   const [password, setPassword] = useState<{ email: string; value: string } | null>(null)
   const [editingId, setEditingId] = useState<string | null>(null)
 
@@ -54,18 +55,20 @@ export default function AdminUsuarios() {
     if (tableWrapRef.current) tableWrapRef.current.scrollLeft = 0
   }, [editingId])
 
-  const submit = async (e: FormEvent) => {
-    e.preventDefault()
+  const submit = async (e?: FormEvent, replaceSupervisor = false) => {
+    e?.preventDefault()
     setError(null)
+    setConflicts(null)
     setSubmitting(true)
     try {
-      const result = await createUser(email, name, role, false, companyId, newProjectIds)
+      const result = await createUser(email, name, role, false, companyId, newProjectIds, replaceSupervisor)
       setPassword({ email: result.user.email, value: result.provisionalPassword })
       setEmail('')
       setName('')
       setNewProjectIds([])
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'No se pudo crear el usuario.')
+      if (err instanceof ApiError && err.status === 409 && err.conflicts?.length) setConflicts(err.conflicts)
+      else setError(err instanceof ApiError ? err.message : 'No se pudo crear el usuario.')
     } finally {
       setSubmitting(false)
     }
@@ -332,6 +335,7 @@ export default function AdminUsuarios() {
             </div>
           </div>
           {error && <p className="text-[12.5px] text-danger">{error}</p>}
+          {conflicts && <ReplaceSupervisorPrompt conflicts={conflicts} busy={submitting} onConfirm={() => submit(undefined, true)} onCancel={() => setConflicts(null)} />}
           <button
             type="submit"
             disabled={submitting}
@@ -345,7 +349,7 @@ export default function AdminUsuarios() {
   )
 }
 
-type EditUserInput = { name: string; role: UserRole; isAdmin: boolean; companyId: string; projectIds: string[] }
+type EditUserInput = { name: string; role: UserRole; isAdmin: boolean; companyId: string; projectIds: string[]; replaceSupervisor?: boolean }
 
 function EditUserCard({
   user,
@@ -369,18 +373,21 @@ function EditUserCard({
   const [projectIds, setProjectIds] = useState<string[]>(user.projectIds ?? [])
   const [error, setError] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
+  const [conflicts, setConflicts] = useState<SupervisorConflict[] | null>(null)
 
   const toggleProject = (id: string) => {
     setProjectIds((prev) => (prev.includes(id) ? prev.filter((p) => p !== id) : [...prev, id]))
   }
 
-  const save = async () => {
+  const save = async (replaceSupervisor = false) => {
     setError(null)
+    setConflicts(null)
     setSaving(true)
     try {
-      await onSave({ name, role, isAdmin, companyId, projectIds })
+      await onSave({ name, role, isAdmin, companyId, projectIds, ...(replaceSupervisor && { replaceSupervisor }) })
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'No se pudo guardar el usuario.')
+      if (err instanceof ApiError && err.status === 409 && err.conflicts?.length) setConflicts(err.conflicts)
+      else setError(err instanceof ApiError ? err.message : 'No se pudo guardar el usuario.')
       setSaving(false)
     }
   }
@@ -450,11 +457,12 @@ function EditUserCard({
           </div>
 
           {error && <p className="text-[12.5px] text-danger">{error}</p>}
+          {conflicts && <ReplaceSupervisorPrompt conflicts={conflicts} busy={saving} onConfirm={() => save(true)} onCancel={() => setConflicts(null)} />}
 
           <div className="flex items-center gap-3">
             <button
               type="button"
-              onClick={save}
+              onClick={() => save()}
               disabled={saving}
               className="bg-brand hover:bg-brand-dark text-white font-semibold px-3.5 py-1.5 rounded-lg text-[12.5px] disabled:opacity-60"
             >
@@ -464,6 +472,41 @@ function EditUserCard({
               Cancelar
             </button>
           </div>
+    </div>
+  )
+}
+
+// Shown on a 409: a project can only have one supervisor, so the admin must
+// confirm before the previous one is removed from it.
+function ReplaceSupervisorPrompt({
+  conflicts,
+  busy,
+  onConfirm,
+  onCancel,
+}: {
+  conflicts: SupervisorConflict[]
+  busy: boolean
+  onConfirm: () => void
+  onCancel: () => void
+}) {
+  return (
+    <div role="alertdialog" className="bg-warn/10 border border-warn/40 rounded-lg p-3 flex flex-col gap-2">
+      <ul className="text-[12.5px] text-ink list-disc pl-4">
+        {conflicts.map((c) => (
+          <li key={`${c.projectId}-${c.supervisorId}`}>
+            <span className="font-semibold">{c.supervisorName}</span> será reemplazado en proyecto{' '}
+            <span className="font-semibold">{c.projectName}</span>
+          </li>
+        ))}
+      </ul>
+      <div className="flex items-center gap-3">
+        <button type="button" onClick={onConfirm} disabled={busy} className="bg-brand hover:bg-brand-dark text-white font-semibold px-3 py-1.5 rounded-lg text-[12.5px] disabled:opacity-60">
+          Confirmar
+        </button>
+        <button type="button" onClick={onCancel} disabled={busy} className="text-[12.5px] text-muted hover:underline">
+          Cancelar
+        </button>
+      </div>
     </div>
   )
 }

@@ -23,7 +23,7 @@ export type AdminUser = {
   projectIds?: string[]
 }
 export type CreateUserResult = { user: AdminUser; provisionalPassword: string }
-export type UpdateUserInput = Partial<{ name: string; role: UserRole; isAdmin: boolean; companyId: string; projectIds: string[] }>
+export type UpdateUserInput = Partial<{ name: string; role: UserRole; isAdmin: boolean; companyId: string; projectIds: string[]; replaceSupervisor: boolean }>
 export type ResetPasswordResult = { provisionalPassword: string }
 
 type Async<T> = { data: T | null; loading: boolean; error: string | null }
@@ -92,18 +92,29 @@ export function useClients(companyId?: string) {
   return { clients: data ?? [], loading, error, createClient }
 }
 
+// After a confirmed reassignment the API strips the projects from the previous
+// supervisors; mirror that locally instead of refetching (see useAsyncList.mutate).
+function withoutProjects(list: AdminUser[], keepUserId: string, projectIds: string[]): AdminUser[] {
+  if (!projectIds.length) return list
+  return list.map((u) =>
+    u.id !== keepUserId && u.role === 'supervisor-proyecto' && u.projectIds?.some((p) => projectIds.includes(p))
+      ? { ...u, projectIds: u.projectIds.filter((p) => !projectIds.includes(p)) }
+      : u,
+  )
+}
+
 export function useUsers() {
   const { data, loading, error, mutate } = useAsyncList<AdminUser>('/users')
 
-  const createUser = async (email: string, name: string, role: UserRole, isAdmin: boolean, companyId: string, projectIds: string[] = []) => {
-    const result = await api.post<CreateUserResult>('/users', { email, name, role, isAdmin, companyId, projectIds })
-    mutate((list) => [...list, result.user])
+  const createUser = async (email: string, name: string, role: UserRole, isAdmin: boolean, companyId: string, projectIds: string[] = [], replaceSupervisor = false) => {
+    const result = await api.post<CreateUserResult>('/users', { email, name, role, isAdmin, companyId, projectIds, ...(replaceSupervisor && { replaceSupervisor }) })
+    mutate((list) => [...withoutProjects(list, result.user.id, replaceSupervisor ? projectIds : []), result.user])
     return result
   }
 
   const updateUser = async (id: string, input: UpdateUserInput) => {
     const user = await api.patch<AdminUser>(`/users/${encodeURIComponent(id)}`, input)
-    mutate((list) => list.map((u) => (u.id === id ? user : u)))
+    mutate((list) => withoutProjects(list, id, input.replaceSupervisor ? (user.projectIds ?? []) : []).map((u) => (u.id === id ? user : u)))
     return user
   }
 

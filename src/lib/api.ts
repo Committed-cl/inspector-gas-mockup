@@ -1,11 +1,16 @@
 const BASE_URL = import.meta.env.VITE_API_URL
 const TOKEN_KEY = 'ig_token'
 
+export type SupervisorConflict = { projectId: string; projectName: string; supervisorId: string; supervisorName: string }
+
 export class ApiError extends Error {
   status: number
-  constructor(status: number, message: string) {
+  // Present on a 409 when a project already has a supervisor (see AdminUsuarios).
+  conflicts?: SupervisorConflict[]
+  constructor(status: number, message: string, conflicts?: SupervisorConflict[]) {
     super(message)
     this.status = status
+    this.conflicts = conflicts
   }
 }
 
@@ -47,7 +52,7 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
 
   if (!res.ok) {
     const body = await res.json().catch(() => ({}))
-    throw new ApiError(res.status, body.error ?? `Request failed: ${res.status}`)
+    throw new ApiError(res.status, body.error ?? `Request failed: ${res.status}`, body.conflicts)
   }
 
   if (res.status === 204) return undefined as T
