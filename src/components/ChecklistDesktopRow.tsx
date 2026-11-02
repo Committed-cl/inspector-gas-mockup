@@ -1,4 +1,5 @@
 import { Link } from 'react-router-dom'
+import { actionButtonSecondary } from '../lib/actionButton'
 import StatusControl from './StatusControl'
 import {
   requiredEvidenceState,
@@ -116,8 +117,8 @@ export default function ChecklistDesktopRow({ def, state, projectId, visitId, on
                   <span>Conclusión (pendiente)</span>
                 </div>
               )}
-              <Link to={itemHref} className="text-[11px] text-brand/80 hover:underline self-start mt-0.5">
-                abrir ítem →
+              <Link to={itemHref} className={`${actionButtonSecondary} self-start mt-1`}>
+                Abrir ítem →
               </Link>
             </div>
           )}

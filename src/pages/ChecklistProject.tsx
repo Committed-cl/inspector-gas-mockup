@@ -10,6 +10,7 @@ import CenteredMessage from '../components/CenteredMessage'
 import MobilePanelTabs, { type MobilePanel } from '../components/MobilePanelTabs'
 import VisitReport from '../components/VisitReport'
 import { formatDateCl } from '../utils/date'
+import { actionButtonPrimary, actionButtonSecondary } from '../lib/actionButton'
 import { downloadVisitReportPdf, visitReportToPdfBase64 } from '../utils/reportPdf'
 
 const statusSortOrder: Record<ChecklistStatus, number> = { pending: 0, warn: 1, ok: 2, na: 2 }
@@ -84,12 +85,12 @@ export default function ChecklistProject() {
             </div>
           </div>
         </div>
-        <div className="mt-1.5 text-[11px] flex items-center gap-1.5 flex-wrap">
+        <div className="mt-2 text-[11px] flex items-center gap-2 flex-wrap">
           {readOnly ? null : visit.status === 'en_curso' ? (
             <button
               type="button"
               onClick={() => closeVisit(visitId)}
-              className="text-[11.5px] font-semibold text-brand hover:underline"
+              className={actionButtonPrimary}
             >
               Cerrar visita
             </button>
@@ -100,9 +101,9 @@ export default function ChecklistProject() {
               <button
                 type="button"
                 onClick={() => reportRef.current && downloadVisitReportPdf(reportRef.current, visitId)}
-                className="font-semibold text-brand hover:underline"
+                className={actionButtonSecondary}
               >
-                Descargar PDF
+                Descargar informe
               </button>
             </>
           ) : (
@@ -122,12 +123,12 @@ export default function ChecklistProject() {
                     setSending(false)
                   }
                 }}
-                className="text-[11.5px] font-semibold text-ok hover:underline disabled:opacity-50"
+                className={actionButtonPrimary}
               >
                 {sending ? 'Enviando...' : 'Enviar informe'}
               </button>
-              <button type="button" onClick={() => reportRef.current && downloadVisitReportPdf(reportRef.current, visitId)} className="font-semibold text-brand hover:underline">
-                Descargar PDF
+              <button type="button" onClick={() => reportRef.current && downloadVisitReportPdf(reportRef.current, visitId)} className={actionButtonSecondary}>
+                Descargar informe
               </button>
               {sendError &&<span className="text-danger font-medium">{sendError}</span>}
             </>
