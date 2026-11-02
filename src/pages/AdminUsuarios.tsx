@@ -8,11 +8,14 @@ export default function AdminUsuarios() {
   const { auth } = useAuth()
   const isGlobalAdmin = useIsGlobalAdmin()
   const ownCompanyId = auth?.user.companyId ?? ''
-  const { companies: allCompanies } = useCompanies()
+  const { companies: allCompanies } = useCompanies(isGlobalAdmin)
   const { projects } = useProjects()
   const { users: allUsers, loading, createUser, updateUser, deleteUser, resetPassword } = useUsers()
   // Administrador del convenio only sees and manages their own company.
-  const companies = isGlobalAdmin ? allCompanies : allCompanies.filter((c) => c.id === ownCompanyId)
+  // /companies is admin-global only, so the convenio admin's single company comes from the login payload.
+  const companies = isGlobalAdmin
+    ? allCompanies
+    : [{ id: ownCompanyId, name: auth?.user.companyName ?? ownCompanyId }]
   const users = isGlobalAdmin ? allUsers : allUsers.filter((u) => u.companyId === ownCompanyId)
   const roles = isGlobalAdmin ? ROLES : ROLES.filter((r) => r.value !== 'admin-general')
   const [email, setEmail] = useState('')

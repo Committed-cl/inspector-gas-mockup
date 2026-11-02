@@ -28,16 +28,17 @@ export type ResetPasswordResult = { provisionalPassword: string }
 
 type Async<T> = { data: T | null; loading: boolean; error: string | null }
 
-function useAsyncList<T>(path: string) {
-  const [state, setState] = useState<Async<T[]>>({ data: null, loading: true, error: null })
+function useAsyncList<T>(path: string, enabled = true) {
+  const [state, setState] = useState<Async<T[]>>({ data: null, loading: enabled, error: null })
 
   const refetch = useCallback(() => {
+    if (!enabled) return
     setState({ data: null, loading: true, error: null })
     api.get<T[]>(path).then(
       (data) => setState({ data, loading: false, error: null }),
       (err) => setState({ data: null, loading: false, error: String(err) }),
     )
-  }, [path])
+  }, [path, enabled])
 
   useEffect(refetch, [refetch])
 
@@ -53,8 +54,9 @@ function useAsyncList<T>(path: string) {
   return { ...state, refetch, mutate }
 }
 
-export function useCompanies() {
-  const { data, loading, error, refetch, mutate } = useAsyncList<Company>('/companies')
+// GET /companies is admin-global only; pass enabled=false to skip it (403 otherwise).
+export function useCompanies(enabled = true) {
+  const { data, loading, error, refetch, mutate } = useAsyncList<Company>('/companies', enabled)
 
   const createCompany = async (name: string, logoUrl: string, additionalRecipients: string[], builderName: string, installerName: string) => {
     const company = await api.post<Company>('/companies', { name, logoUrl, additionalRecipients, builderName, installerName })

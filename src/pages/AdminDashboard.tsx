@@ -13,7 +13,7 @@ export default function AdminDashboard() {
   const { auth } = useAuth()
   const isGlobalAdmin = useIsGlobalAdmin()
   const companyId = auth?.user.companyId
-  const { companies, loading: companiesLoading } = useCompanies()
+  const { companies, loading: companiesLoading } = useCompanies(isGlobalAdmin)
   const { users, loading: usersLoading } = useUsers()
   const { count: obrasCount, loading: obrasLoading } = useObrasCount()
 
