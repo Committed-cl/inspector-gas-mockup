@@ -1,7 +1,7 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from 'react'
 import { api, clearToken, setPasswordChangeRequiredHandler, setToken, setUnauthorizedHandler } from './api'
 
-export type AuthUser = { id: string; email: string; name: string; role: string; isAdmin: boolean; companyId: string; companyName?: string; mustChangePassword?: boolean }
+export type AuthUser = { id: string; email: string; name: string; role: string; isAdmin: boolean; companyId: string; companyName?: string; companyLogoUrl?: string; mustChangePassword?: boolean }
 type AuthState = { token: string; user: AuthUser } | null
 
 type AuthContextValue = {

@@ -134,7 +134,7 @@ export default function VisitReport({ project, visit, visits, itemsState, observ
   return (
     <div ref={reportRef} className="hidden print:block text-[10.5px] text-ink leading-snug">
       <header className="border-b-2 border-brand pb-2">
-        {auth && <CompanyLogo companyId={auth.user.companyId} alt={auth.user.companyName ?? 'Empresa'} className="h-10 max-w-[180px] object-contain mb-1" />}
+        {auth && <CompanyLogo companyId={auth.user.companyId} alt={auth.user.companyName ?? 'Empresa'} fallbackUrl={auth.user.companyLogoUrl || undefined} hideWhenEmpty className="h-10 max-w-[180px] object-contain mb-1" />}
         <h1 className="text-[17px] font-bold text-brand">INFORME DE VISITA DE SUPERVISOR DE OBRA</h1>
         <p className="text-[11px] font-semibold text-muted">Supervisa360</p>
         <p className="font-semibold">{formName}</p>
