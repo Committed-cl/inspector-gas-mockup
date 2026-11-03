@@ -30,13 +30,16 @@ export default function ChecklistProject() {
   const project = useProject(projectId)
   const { itemsState, markManually, generalChat, sendGeneralMessage, resolveGeneralMessage, observations, setObservations, loading: checklistLoading, error: checklistError } =
     useProjectChecklist(projectId, visitId)
-  const { visits, loading: visitsLoading, closeVisit, sendReport } = useProjectVisits(projectId)
+  const { visits, loading: visitsLoading, closeVisit, reopenVisit, sendReport } = useProjectVisits(projectId)
   const visit = visits.find((v) => v.id === visitId)
   const [expandedOverride, setExpandedOverride] = useState<Record<string, boolean>>({})
   const [mobilePanel, setMobilePanel] = useState<MobilePanel>('primary')
   const reportRef = useRef<HTMLDivElement>(null)
   const [sending, setSending] = useState(false)
   const online = useOnline()
+  const canReopen = !!auth && (auth.user.isAdmin || auth.user.role === 'admin-convenio')
+  const [reopening, setReopening] = useState(false)
+  const [reopenError, setReopenError] = useState<string | null>(null)
   const [sendError, setSendError] = useState<string | null>(null)
 
   if (project.loading || checklistLoading || visitsLoading) return <CenteredMessage text="Cargando..." />
@@ -98,7 +101,7 @@ export default function ChecklistProject() {
             >
               Cerrar visita
             </button>
-          ) : visit.reportSentAt ? (
+          ) : visit.reportSentAt && !(visit.reopenedAt && visit.reopenedAt > visit.reportSentAt) ? (
             <>
               <span className="text-ok font-medium">Informe enviado el {formatDateCl(visit.reportSentAt)}</span>
               <span className="hidden md:inline text-muted">· al Líder de Supervisores, con copia a quien lo emitió</span>
@@ -138,6 +141,32 @@ export default function ChecklistProject() {
               {sendError &&<span className="text-danger font-medium">{sendError}</span>}
             </>
           )}
+          {visit.status === 'en_curso' && visit.reopenedAt && (
+            <span className="text-muted">Reabierta por {visit.reopenedBy?.name ?? 'un administrador'} el {formatDateCl(visit.reopenedAt)}</span>
+          )}
+          {canReopen && visit.status !== 'en_curso' && (
+            <button
+              type="button"
+              disabled={reopening || !online}
+              title={online ? undefined : 'Requiere conexión'}
+              onClick={async () => {
+                if (!window.confirm('¿Reabrir esta visita? Volverá a estar en curso y podrá editarse. El informe ya enviado se conserva; al volver a cerrarla se podrá enviar uno nuevo.')) return
+                setReopening(true)
+                setReopenError(null)
+                try {
+                  await reopenVisit(visitId)
+                } catch (err) {
+                  setReopenError(err instanceof Error && err.message ? err.message : 'No se pudo reabrir la visita')
+                } finally {
+                  setReopening(false)
+                }
+              }}
+              className={actionButtonSecondary}
+            >
+              {reopening ? 'Reabriendo...' : 'Reabrir visita'}
+            </button>
+          )}
+          {reopenError && <span className="text-danger font-medium">{reopenError}</span>}
         </div>
       </header>
 
