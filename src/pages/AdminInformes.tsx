@@ -47,7 +47,10 @@ export default function AdminInformes() {
     setError(null)
     try {
       const url = URL.createObjectURL(await fetchBlob(report.reportUrl))
-      window.open(url, '_blank')
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `informe-${report.visitId}.pdf`
+      a.click()
       setTimeout(() => URL.revokeObjectURL(url), 60_000)
     } catch (err) {
       setError(err instanceof ApiError ? err.message : 'No se pudo descargar el informe.')
