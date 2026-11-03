@@ -7,6 +7,7 @@ type AuthState = { token: string; user: AuthUser } | null
 type AuthContextValue = {
   auth: AuthState
   login: (email: string, password: string) => Promise<void>
+  redeemMagicLink: (email: string, token: string) => Promise<void>
   changePassword: (currentPassword: string, newPassword: string) => Promise<void>
   logout: () => void
 }
@@ -55,11 +56,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     store(await api.post<NonNullable<AuthState>>('/auth/login', { email, password }))
   }
 
+  const redeemMagicLink = async (email: string, token: string) => {
+    store(await api.post<NonNullable<AuthState>>('/auth/magic-link/redeem', { email, token }))
+  }
+
   const changePassword = async (currentPassword: string, newPassword: string) => {
     store(await api.post<NonNullable<AuthState>>('/auth/change-password', { currentPassword, newPassword }))
   }
 
-  return <AuthContext.Provider value={{ auth, login, changePassword, logout }}>{children}</AuthContext.Provider>
+  return <AuthContext.Provider value={{ auth, login, redeemMagicLink, changePassword, logout }}>{children}</AuthContext.Provider>
 }
 
 export function useAuth() {

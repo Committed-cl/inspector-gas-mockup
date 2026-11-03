@@ -2,7 +2,7 @@ import { useNavigate } from 'react-router-dom'
 import { useState, type FormEvent } from 'react'
 import PhoneFrame from '../components/PhoneFrame'
 import { useAuth } from '../lib/auth'
-import { ApiError } from '../lib/api'
+import { api, ApiError } from '../lib/api'
 
 export default function Login() {
   const nav = useNavigate()
@@ -12,6 +12,7 @@ export default function Login() {
   const [remember, setRemember] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
+  const [linkSent, setLinkSent] = useState(false)
 
   const submit = async (e: FormEvent) => {
     e.preventDefault()
@@ -22,6 +23,23 @@ export default function Login() {
       nav('/checklist')
     } catch (err) {
       setError(err instanceof ApiError && err.status === 401 ? 'Email o contraseña incorrectos.' : 'No se pudo iniciar sesión. Intenta de nuevo.')
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
+  const sendMagicLink = async () => {
+    setError(null)
+    if (!email.trim()) {
+      setError('Ingresa tu email para recibir el enlace.')
+      return
+    }
+    setSubmitting(true)
+    try {
+      await api.post('/auth/magic-link', { email })
+      setLinkSent(true)
+    } catch (err) {
+      setError(err instanceof ApiError && err.status === 429 ? 'Demasiados intentos. Espera un momento e intenta de nuevo.' : 'No se pudo enviar el enlace. Intenta de nuevo.')
     } finally {
       setSubmitting(false)
     }
@@ -76,8 +94,10 @@ export default function Login() {
             {submitting ? 'Ingresando...' : 'Ingresar'}
           </button>
 
-          <button type="button" className="text-[12.5px] text-brand/80 hover:underline">
-            ¿Olvidaste tu contraseña?
+          {linkSent && <p className="text-[12.5px] text-ink">Si el email está registrado, te enviamos un enlace de acceso (vale 15 minutos).</p>}
+
+          <button type="button" onClick={sendMagicLink} disabled={submitting} className="text-[12.5px] text-brand/80 hover:underline disabled:opacity-60">
+            Enviar enlace de acceso por correo (también si olvidaste tu contraseña)
           </button>
         </form>
       </div>

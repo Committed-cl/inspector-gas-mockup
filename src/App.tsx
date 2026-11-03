@@ -1,5 +1,6 @@
 import { Navigate, Outlet, Route, Routes } from 'react-router-dom'
 import Login from './pages/Login'
+import MagicLogin from './pages/MagicLogin'
 import AdminDashboard from './pages/AdminDashboard'
 import AdminEmpresas from './pages/AdminEmpresas'
 import AdminMiEmpresa from './pages/AdminMiEmpresa'
@@ -20,6 +21,7 @@ export default function App() {
     <Routes>
       <Route path="/" element={<Navigate to="/checklist" replace />} />
       <Route path="/login" element={<Login />} />
+      <Route path="/magic-login" element={<MagicLogin />} />
       <Route
         element={
           <RequireAdmin>
