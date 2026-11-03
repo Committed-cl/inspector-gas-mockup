@@ -253,6 +253,7 @@ export default function AdminUsuarios() {
                 companies={companies}
                 projects={projects}
                 roles={roles}
+                canGrantAdmin={isGlobalAdmin}
                 onCancel={() => setEditingId(null)}
                 onSave={async (input) => {
                   await updateUser(editingUser.id, input)
@@ -349,13 +350,14 @@ export default function AdminUsuarios() {
   )
 }
 
-type EditUserInput = { name: string; role: UserRole; isAdmin: boolean; companyId: string; projectIds: string[]; replaceSupervisor?: boolean }
+type EditUserInput = { name: string; role: UserRole; isAdmin?: boolean; companyId: string; projectIds: string[]; replaceSupervisor?: boolean }
 
 function EditUserCard({
   user,
   companies,
   projects,
   roles,
+  canGrantAdmin,
   onCancel,
   onSave,
 }: {
@@ -363,6 +365,8 @@ function EditUserCard({
   companies: { id: string; name: string }[]
   projects: { id: string; name: string }[]
   roles: { value: UserRole; label: string }[]
+  // The API rejects (403) isAdmin changes from a convenio admin.
+  canGrantAdmin: boolean
   onCancel: () => void
   onSave: (input: EditUserInput) => Promise<void>
 }) {
@@ -384,7 +388,7 @@ function EditUserCard({
     setConflicts(null)
     setSaving(true)
     try {
-      await onSave({ name, role, isAdmin, companyId, projectIds, ...(replaceSupervisor && { replaceSupervisor }) })
+      await onSave({ name, role, ...(canGrantAdmin && { isAdmin }), companyId, projectIds, ...(replaceSupervisor && { replaceSupervisor }) })
     } catch (err) {
       if (err instanceof ApiError && err.status === 409 && err.conflicts?.length) setConflicts(err.conflicts)
       else setError(err instanceof ApiError ? err.message : 'No se pudo guardar el usuario.')
@@ -432,10 +436,12 @@ function EditUserCard({
                 ))}
               </select>
             </label>
-            <label className="flex items-center gap-2 text-[12.5px] text-ink self-end pb-2">
-              <input type="checkbox" checked={isAdmin} onChange={(e) => setIsAdmin(e.target.checked)} className="h-4 w-4 rounded accent-brand" />
-              Es administrador
-            </label>
+            {canGrantAdmin && (
+              <label className="flex items-center gap-2 text-[12.5px] text-ink self-end pb-2">
+                <input type="checkbox" checked={isAdmin} onChange={(e) => setIsAdmin(e.target.checked)} className="h-4 w-4 rounded accent-brand" />
+                Es administrador
+              </label>
+            )}
           </div>
 
           <div className="flex flex-col gap-1.5">
