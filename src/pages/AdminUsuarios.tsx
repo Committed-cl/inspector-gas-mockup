@@ -2,6 +2,7 @@ import { useEffect, useRef, useState, type FormEvent } from 'react'
 import { useCompanies, useProjects, useUsers, ROLES, type AdminUser, type UserRole } from '../state/adminHooks'
 import { ApiError, type SupervisorConflict } from '../lib/api'
 import { useAuth, useIsGlobalAdmin } from '../lib/auth'
+import Modal from '../components/Modal'
 
 export default function AdminUsuarios() {
   const { auth } = useAuth()
@@ -395,8 +396,9 @@ function EditUserCard({
   }
 
   return (
-    <div className="mt-6 bg-white border border-hairline rounded-xl p-5 flex flex-col gap-3 max-w-2xl">
-      <h2 className="text-[13px] font-semibold text-ink">Editando a {user.name}</h2>
+    <Modal labelledBy="edit-user-title" onClose={onCancel}>
+    <div className="p-5 flex flex-col gap-3">
+      <h2 id="edit-user-title" className="text-[13px] font-semibold text-ink">Editando a {user.name}</h2>
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <label className="flex flex-col gap-1.5">
               <span className="text-[11.5px] font-medium text-ink">Nombre</span>
@@ -477,6 +479,7 @@ function EditUserCard({
             </button>
           </div>
     </div>
+    </Modal>
   )
 }
 
