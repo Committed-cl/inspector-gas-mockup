@@ -42,7 +42,7 @@ type Props = {
   state: ItemState
   projectId: string
   visitId: string
-  onMark: (status: ChecklistStatus, reason?: string) => Promise<void>
+  onMark: (status: ChecklistStatus, reason?: string) => void
 }
 
 export default function ChecklistDesktopRow({ def, state, projectId, visitId, onMark }: Props) {

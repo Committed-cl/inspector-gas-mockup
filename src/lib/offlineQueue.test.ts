@@ -14,6 +14,15 @@ beforeEach(async () => {
 })
 
 describe('offline queue', () => {
+  it('replaces a pending mark of the same item and keeps marks of other items', async () => {
+    const mark = (itemId: string, status: string) => enqueueOp({ ...base, kind: 'mark', itemId, body: { status } })
+    await mark('i1', 'ok')
+    await mark('i2', 'na')
+    for (const st of ['warn', 'ok', 'warn', 'na']) await mark('i1', st)
+    const ops = await listOps(U)
+    expect(ops.map((o) => `${o.itemId}:${o.body.status}`)).toEqual(['i2:na', 'i1:na'])
+  })
+
   it('persists ops (photo included) and replays them in enqueue order', async () => {
     await enqueueOp(ev('a'))
     await enqueueOp({ ...base, kind: 'mark', itemId: 'i1', body: { status: 'ok' } })

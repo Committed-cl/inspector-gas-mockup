@@ -75,6 +75,13 @@ export async function enqueueOp(op: Omit<QueuedOp, 'seq' | 'state'>): Promise<vo
     const stale = (await listOps(op.userId)).filter((o) => o.kind === 'observations' && o.visitId === op.visitId && o.state === 'pending')
     for (const o of stale) await tx('readwrite', (s) => s.delete(o.seq!))
   }
+  // Only the latest mark of an item matters: replace a pending one for the same item and visit.
+  if (op.kind === 'mark') {
+    const stale = (await listOps(op.userId)).filter(
+      (o) => o.kind === 'mark' && o.visitId === op.visitId && o.projectId === op.projectId && o.itemId === op.itemId && o.state === 'pending',
+    )
+    for (const o of stale) await tx('readwrite', (s) => s.delete(o.seq!))
+  }
   await tx('readwrite', (s) => s.add({ ...op, state: 'pending' }))
   notify()
 }

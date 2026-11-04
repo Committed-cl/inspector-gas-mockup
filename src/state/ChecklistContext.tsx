@@ -147,7 +147,8 @@ export function ChecklistProvider({ children }: { children: ReactNode }) {
   const doneTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   const withQueued = (projectId: string, visitId: string, data: ChecklistState, ops: QueuedOp[] = queuedRef.current) =>
-    ops.filter((o) => o.projectId === projectId && o.visitId === visitId).reduce(applyOp, data)
+    // A rejected mark is not shown: the item goes back to its real state (the op stays in sync.failed).
+    ops.filter((o) => o.projectId === projectId && o.visitId === visitId && !(o.kind === 'mark' && o.state === 'failed')).reduce(applyOp, data)
 
   const refreshQueue = useCallback(async () => {
     const ops = userId ? await listOps(userId).catch(() => []) : []
@@ -164,6 +165,7 @@ export function ChecklistProvider({ children }: { children: ReactNode }) {
     if (retryTimer.current) clearTimeout(retryTimer.current)
     if (doneTimer.current) clearTimeout(doneTimer.current)
     setPhase('syncing')
+    let stopped = false
     try {
       const result = await processQueue(userId, (req) =>
         req.method === 'PUT' ? api.put<ChecklistState>(req.path, req.body) : api.post<ChecklistState>(req.path, req.body),
@@ -175,6 +177,17 @@ export function ChecklistProvider({ children }: { children: ReactNode }) {
         const [pid, vid] = key.split('::')
         setChecklistByVisit((prev) => ({ ...prev, [key]: { data: withQueued(pid, vid, data as ChecklistState, remaining), loading: false, error: null } }))
       }
+      // A rejected mark leaves optimistic state behind: reload visits that failed without a fresh server response.
+      const failedVisits = new Set(remaining.filter((o) => o.kind === 'mark' && o.state === 'failed').map((o) => visitKey(o.projectId, o.visitId)))
+      for (const key of failedVisits) {
+        if (key in result.lastByVisit) continue
+        const [pid, vid] = key.split('::')
+        try {
+          const data = await api.get<ChecklistState>(`/projects/${pid}/visits/${vid}/checklist`)
+          setChecklistByVisit((prev) => ({ ...prev, [key]: { data: withQueued(pid, vid, data), loading: false, error: null } }))
+        } catch { /* keep what is shown; the next sync retries */ }
+      }
+      stopped = result.stopped
       if (result.stopped) {
         setPhase('idle')
         retryTimer.current = setTimeout(() => void syncNow(), 5000)
@@ -185,6 +198,8 @@ export function ChecklistProvider({ children }: { children: ReactNode }) {
     } finally {
       syncing.current = false
     }
+    // Ops queued while this run was in flight are not in its snapshot: send them now.
+    if (queuedRef.current.some((o) => o.state === 'pending') && !stopped) void syncNow()
   }, [refreshQueue, userId])
 
   useEffect(() => {
@@ -345,12 +360,19 @@ export function ChecklistProvider({ children }: { children: ReactNode }) {
     }, 400)
   }, [])
 
+  // Marks never wait for the network: they are queued (replacing a pending mark
+  // of the same item), shown at once, and sent in the background by syncNow.
   const markManually = useCallback(async (projectId: string, visitId: string, itemId: string, status: ChecklistStatus, reason?: string) => {
-    await mutate(
-      { kind: 'mark', projectId, visitId, itemId, body: { status, reason }, label: `Estado «${status}» del ítem ${itemId}` },
-      () => api.post<ChecklistState>(`/projects/${projectId}/visits/${visitId}/items/${itemId}/mark`, { status, reason }),
-    )
-  }, [])
+    if (!userId) throw new Error('Sesión no iniciada')
+    await enqueueOp({ kind: 'mark', projectId, visitId, itemId, body: { status, reason }, label: `Estado «${status}» del ítem ${itemId}`, userId })
+    const ops = await refreshQueue()
+    setChecklistByVisit((prev) => {
+      const key = visitKey(projectId, visitId)
+      const cur = prev[key]?.data
+      return cur ? { ...prev, [key]: { data: withQueued(projectId, visitId, cur, ops.filter((o) => o.kind === 'mark' && o.itemId === itemId).slice(-1)), loading: false, error: null } } : prev
+    })
+    void syncNow()
+  }, [userId, refreshQueue, syncNow])
 
   const addEvidence = useCallback(
     async (projectId: string, visitId: string, itemId: string, requirementIndex: number, type: EvidenceType, text: string, previewUrl?: string) => {

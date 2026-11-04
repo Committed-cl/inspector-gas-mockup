@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { describe, expect, it, vi, afterEach } from 'vitest'
-import { render, screen, fireEvent, cleanup, act } from '@testing-library/react'
+import { render, screen, fireEvent, cleanup } from '@testing-library/react'
 import StatusControl from './StatusControl'
 
 vi.mock('../lib/auth', () => ({ useReadOnly: () => false }))
@@ -8,37 +8,22 @@ vi.mock('../lib/auth', () => ({ useReadOnly: () => false }))
 afterEach(cleanup)
 
 describe('StatusControl', () => {
-  it('disables all buttons while the mark promise is pending and sends one call', async () => {
-    let resolve!: () => void
-    const onMark = vi.fn(() => new Promise<void>((r) => { resolve = r }))
+  it('reports every press on a different status immediately, with no spinner or disabled buttons', () => {
+    const onMark = vi.fn()
     render(<StatusControl status="pending" onMark={onMark} />)
+    const seq = ['Cumple', 'No cumple', 'No aplica', 'Cumple', 'No cumple']
+    for (const name of seq) fireEvent.click(screen.getByRole('button', { name }))
 
-    const ok = screen.getByRole('button', { name: 'Cumple' })
-    for (let i = 0; i < 10; i++) fireEvent.click(ok)
-
-    expect(onMark).toHaveBeenCalledTimes(1)
-    const buttons = screen.getAllByRole('button')
-    expect(buttons).toHaveLength(3)
-    buttons.forEach((b) => {
-      expect(b).toHaveProperty('disabled', true)
-      expect(b.getAttribute('aria-busy')).toBe('true')
+    expect(onMark.mock.calls.map((c) => c[0])).toEqual(['ok', 'warn', 'na', 'ok', 'warn'])
+    screen.getAllByRole('button').forEach((b) => {
+      expect(b).toHaveProperty('disabled', false)
+      expect(b.getAttribute('aria-busy')).toBeNull()
     })
-    expect(screen.getByTestId('status-spinner')).toBeTruthy()
-
-    await act(async () => { resolve() })
-    screen.getAllByRole('button').forEach((b) => expect(b).toHaveProperty('disabled', false))
     expect(screen.queryByTestId('status-spinner')).toBeNull()
   })
 
-  it('releases the buttons when the mark fails', async () => {
-    const onMark = vi.fn(() => Promise.reject(new Error('boom')))
-    render(<StatusControl status="pending" onMark={onMark} />)
-    await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'No cumple' })) })
-    screen.getAllByRole('button').forEach((b) => expect(b).toHaveProperty('disabled', false))
-  })
-
   it('ignores a press on the already active status', () => {
-    const onMark = vi.fn(() => Promise.resolve())
+    const onMark = vi.fn()
     render(<StatusControl status="ok" onMark={onMark} />)
     fireEvent.click(screen.getByRole('button', { name: 'Cumple' }))
     expect(onMark).not.toHaveBeenCalled()
