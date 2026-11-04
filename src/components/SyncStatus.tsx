@@ -22,7 +22,7 @@ export default function SyncStatus() {
   if (!text && failed.length === 0) return null
 
   return (
-    <div className="fixed bottom-3 right-3 z-50 flex flex-col items-end gap-2 max-w-[90vw]" data-testid="sync-status">
+    <div className="fixed top-[calc(3.5rem+env(safe-area-inset-top)+0.25rem)] right-2 md:top-auto md:bottom-3 md:right-3 z-50 flex flex-col items-end gap-2 max-w-[90vw]" data-testid="sync-status">
       {open && failed.length > 0 && (
         <div className="bg-white border border-danger/40 rounded-xl shadow-lg p-3 w-80 max-h-72 overflow-y-auto text-[12px]">
           <p className="font-semibold text-danger mb-2">Cambios que no se pudieron enviar</p>

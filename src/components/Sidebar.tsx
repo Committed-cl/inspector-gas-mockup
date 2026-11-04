@@ -41,8 +41,8 @@ export default function Sidebar() {
 
   return (
     <>
-      <div className="md:hidden h-11 flex items-center gap-2 px-3 border-b border-hairline bg-white print:hidden">
-        <button type="button" onClick={() => setOpen(true)} aria-label="Abrir menú" className="p-1.5 -ml-1 rounded-lg text-ink hover:bg-brand/5">
+      <div className="md:hidden sticky top-0 z-30 h-14 flex items-center gap-1 pl-1 pr-3 pt-[env(safe-area-inset-top)] box-content border-b border-hairline bg-white print:hidden">
+        <button type="button" onClick={() => setOpen(true)} aria-label="Abrir menú" className="w-11 h-11 grid place-items-center rounded-lg text-ink hover:bg-brand/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand">
           <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round">
             <path d="M3 5.5h14M3 10h14M3 14.5h14" />
           </svg>
