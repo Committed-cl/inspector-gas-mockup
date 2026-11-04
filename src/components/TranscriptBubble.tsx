@@ -1,12 +1,15 @@
+import Icon, { type IconName } from './Icon'
+
 type Props = {
   role: 'inspector' | 'ai'
   text: string
   previewUrl?: string
+  leadingIcon?: IconName
   options?: { itemId: string; title: string }[]
   onSelectOption?: (itemId: string) => void
 }
 
-export default function TranscriptBubble({ role, text, previewUrl, options, onSelectOption }: Props) {
+export default function TranscriptBubble({ role, text, previewUrl, leadingIcon, options, onSelectOption }: Props) {
   const isInspector = role === 'inspector'
   return (
     <div className={`flex ${isInspector ? 'justify-end' : 'justify-start'}`}>
@@ -19,7 +22,10 @@ export default function TranscriptBubble({ role, text, previewUrl, options, onSe
           <p className="text-[10px] font-semibold uppercase tracking-wide text-brand/70 mb-0.5">Asistente IA</p>
         )}
         {previewUrl && <img src={previewUrl} alt="Foto adjunta" className="mb-1.5 max-h-40 rounded-lg object-cover" />}
-        <p>{text}</p>
+        <p>
+          {leadingIcon && <Icon name={leadingIcon} size={14} className="mr-1 -mt-0.5" />}
+          {text}
+        </p>
         {options && options.length > 0 && (
           <div className="mt-2 flex flex-col gap-1.5">
             {options.map((opt) => (

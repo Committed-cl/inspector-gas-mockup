@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useProjects, useChecklist } from '../state/ChecklistContext'
 import { formatDateCl } from '../utils/date'
+import Icon from '../components/Icon'
 
 const SEARCH_THRESHOLD = 6
 
@@ -113,7 +114,7 @@ export default function ChecklistProjects() {
                         <span aria-hidden className="md:hidden">○ </span>Sin visita en curso
                       </p>
                     )}
-                    <span aria-hidden className="md:hidden text-brand text-xl leading-none">›</span>
+                    <Icon name="chevron-right" size={22} className="md:hidden text-brand" />
                   </div>
                 </div>
               </Link>

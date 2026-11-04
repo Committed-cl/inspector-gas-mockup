@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { useAuth, useIsGlobalAdmin } from '../lib/auth'
 import { ROLES } from '../state/adminHooks'
+import Icon from './Icon'
 
 type Item = { to: string; label: string; adminOnly?: boolean; globalOnly?: boolean; convenioOnly?: boolean }
 
@@ -63,7 +64,7 @@ export default function Sidebar() {
             <p className="text-muted text-xs mt-1">{isAdminUser ? 'Backoffice' : 'Checklist'}</p>
           </Link>
           <button type="button" onClick={() => setOpen(false)} aria-label="Cerrar menú" className="md:hidden text-muted w-11 h-11 -mt-2 -mr-2 grid place-items-center">
-            ✕
+            <Icon name="close" />
           </button>
         </div>
         <nav className="flex flex-col gap-1">

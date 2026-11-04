@@ -8,6 +8,7 @@ import {
   type ChecklistStatus,
   type ItemState,
 } from '../data/checklistMatrizInterior'
+import Icon from './Icon'
 
 const dotClass: Record<ChecklistStatus, string> = {
   ok: 'bg-ok shadow-[0_0_0_4px_rgba(34,197,94,0.18)]',
@@ -98,7 +99,7 @@ export default function ChecklistDesktopRow({ def, state, projectId, visitId, on
                     aria-hidden
                   />
                   <span className={`truncate ${req.fulfilled ? 'text-ink' : 'text-muted'}`}>
-                    {req.type === 'photo' ? '📷 ' : ''}
+                    {req.type === 'photo' && <Icon name="camera" size={13} className="mr-1 -mt-0.5" />}
                     {req.label}
                     {req.fulfilled && req.evidence ? `: ${req.evidence.text}` : ' (pendiente)'}
                   </span>
@@ -121,7 +122,7 @@ export default function ChecklistDesktopRow({ def, state, projectId, visitId, on
                 </div>
               )}
               <Link to={itemHref} className={`${actionButtonSecondary} self-start mt-1`}>
-                Abrir ítem →
+                Abrir ítem <Icon name="arrow-right" size={14} className="ml-1 -mt-0.5" />
               </Link>
             </div>
           )}

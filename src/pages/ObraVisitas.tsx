@@ -5,6 +5,7 @@ import { useProject, useProjectVisits, useUpdateProjectTechnicalData, type Proje
 import { useReadOnly } from '../lib/auth'
 import { formatDateCl } from '../utils/date'
 import CenteredMessage from '../components/CenteredMessage'
+import Icon from '../components/Icon'
 
 export const visitTypeLabel: Record<VisitType, string> = { gas_prueba: 'Visita Gas de Prueba', gas_final: 'Visita Gas Final', visita_estandar: 'Visita Estándar' }
 const statusLabel = { en_curso: 'En curso', aprobada: 'Aprobada', rechazada: 'Rechazada' } as const
@@ -85,7 +86,7 @@ export default function ObraVisitas() {
 
   if (project.loading || loading) return <CenteredMessage text="Cargando..." />
   if (error || !project.data) {
-    return <CenteredMessage text="Proyecto no encontrado" linkTo="/checklist" linkLabel="← Volver al listado de proyectos" />
+    return <CenteredMessage text="Proyecto no encontrado" linkTo="/checklist" linkLabel="Volver al listado de proyectos" />
   }
   const projectData = project.data
 
@@ -122,7 +123,7 @@ export default function ObraVisitas() {
             to="/checklist"
             className="inline-flex items-center gap-1 min-h-[44px] -ml-2 px-2 text-[14px] md:text-[12.5px] font-semibold text-brand hover:underline md:min-h-0 md:ml-0 md:px-0"
           >
-            ← Proyectos
+            <Icon name="arrow-left" size={15} />Proyectos
           </Link>
           <h1 className="text-2xl font-bold text-ink md:mt-2">{projectData.name}</h1>
           <p className="text-[14px] md:text-[13px] text-muted mt-1">

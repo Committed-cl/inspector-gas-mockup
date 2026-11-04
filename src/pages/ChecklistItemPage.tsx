@@ -9,6 +9,7 @@ import CenteredMessage from '../components/CenteredMessage'
 import ChatSheet from '../components/ChatSheet'
 import { useReadOnly } from '../lib/auth'
 import { SyncSlot } from '../components/SyncStatus'
+import Icon from '../components/Icon'
 
 const statusLabel = { ok: 'Cumple', warn: 'No cumple', pending: 'Pendiente', na: 'No aplica' } as const
 const statusColor = {
@@ -40,7 +41,7 @@ export default function ChecklistItemPage() {
       <CenteredMessage
         text={!project.data ? 'Proyecto no encontrado' : 'Ítem no encontrado'}
         linkTo="/checklist"
-        linkLabel="← Volver al listado de proyectos"
+        linkLabel="Volver al listado de proyectos"
       />
     )
   }
@@ -179,14 +180,14 @@ export default function ChecklistItemPage() {
       >
         {!readOnly && (
           <div className="grid grid-cols-3 gap-2">
-            {([['photo', '📷', 'Foto'], ['voice', '🎙', 'Voz'], ['text', '✎', 'Texto']] as const).map(([kind, icon, label]) => (
+            {([['photo', 'camera', 'Foto'], ['voice', 'mic', 'Voz'], ['text', 'pencil', 'Texto']] as const).map(([kind, icon, label]) => (
               <button
                 key={kind}
                 type="button"
                 onClick={() => startEvidence(kind)}
                 className="min-h-[44px] rounded-lg border border-accent text-accent font-semibold text-[13px] active:bg-accent active:text-white transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40"
               >
-                <span aria-hidden>{icon} </span>
+                <Icon name={icon} className="mr-1.5 -mt-0.5" />
                 {label}
               </button>
             ))}
@@ -195,7 +196,7 @@ export default function ChecklistItemPage() {
         <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-2">
           {prev ? (
             <Link to={itemHref(prev.id)} className="min-h-[44px] inline-flex items-center justify-center rounded-lg bg-brand/5 text-brand font-semibold text-[13px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand">
-              ‹ Anterior
+              <Icon name="chevron-left" size={16} className="mr-0.5" />Anterior
             </Link>
           ) : (
             <span />
@@ -205,7 +206,7 @@ export default function ChecklistItemPage() {
           </span>
           {next ? (
             <Link to={itemHref(next.id)} className="min-h-[44px] inline-flex items-center justify-center rounded-lg bg-brand/5 text-brand font-semibold text-[13px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand">
-              Siguiente ›
+              Siguiente<Icon name="chevron-right" size={16} className="ml-0.5" />
             </Link>
           ) : (
             <span />

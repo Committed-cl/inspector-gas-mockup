@@ -14,6 +14,7 @@ import { formatDateCl } from '../utils/date'
 import { actionButtonPrimary, actionButtonSecondary } from '../lib/actionButton'
 import { downloadVisitReportPdf, visitReportToPdfBase64 } from '../utils/reportPdf'
 import { SyncSlot } from '../components/SyncStatus'
+import Icon from '../components/Icon'
 
 const statusSortOrder: Record<ChecklistStatus, number> = { pending: 0, warn: 1, ok: 2, na: 2 }
 
@@ -51,7 +52,7 @@ export default function ChecklistProject() {
       <CenteredMessage
         text={!project.data ? 'Proyecto no encontrado' : !visit ? 'Visita no encontrada' : 'No se pudo cargar el checklist'}
         linkTo="/checklist"
-        linkLabel="← Volver al listado de proyectos"
+        linkLabel="Volver al listado de proyectos"
       />
     )
   }
@@ -201,7 +202,7 @@ export default function ChecklistProject() {
       </header>
       <header className="hidden md:block border-b border-hairline bg-white px-4 py-2.5 md:px-6 md:py-4">
         <Link to={`/checklist/${projectId}`} className="inline-flex items-center gap-1.5 bg-brand hover:bg-brand-dark text-white font-semibold rounded-lg px-3.5 py-2 text-[12.5px]">
-          ← Volver al historial de visitas
+          <Icon name="arrow-left" size={15} />Volver al historial de visitas
         </Link>
         <div className="mt-1.5 flex items-start justify-between gap-3 flex-wrap">
           <div className="min-w-0">

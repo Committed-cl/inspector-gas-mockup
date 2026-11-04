@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom'
 import { useClients, useCompanies } from '../state/adminHooks'
 import { useCreateProject } from '../state/ChecklistContext'
 import { ApiError } from '../lib/api'
+import Icon from '../components/Icon'
 
 export default function ChecklistNuevaObra() {
   const { companies, loading: companiesLoading } = useCompanies()
@@ -58,7 +59,7 @@ export default function ChecklistNuevaObra() {
         <h1 className="text-[19px] font-bold text-ink leading-tight">Nuevo proyecto</h1>
         <p className="text-[12.5px] text-muted mt-0.5">Registra un nuevo proyecto bajo una empresa existente.</p>
         <Link to="/checklist" className="inline-flex items-center gap-1.5 bg-brand hover:bg-brand-dark text-white font-semibold rounded-lg px-3.5 py-2 text-[12.5px] mt-3">
-          ← Volver al listado de proyectos
+          <Icon name="arrow-left" size={15} />Volver al listado de proyectos
         </Link>
       </header>
 

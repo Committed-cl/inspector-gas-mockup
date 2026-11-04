@@ -2,6 +2,7 @@ import { useRef, useState } from 'react'
 import { useReadOnly } from '../lib/auth'
 import { compressImageFile } from '../lib/compressImage'
 import { MAX_PHOTOS_PER_ITEM, type RequirementState } from '../data/checklistMatrizInterior'
+import Icon from './Icon'
 
 const evidenceSourceLabel = {
   'general-chat': 'chat general',
@@ -43,7 +44,7 @@ export default function EvidenceField({ requirement, onAdd, onRemove }: Props) {
   return (
     <div className={`border-l-2 ${requirement.fulfilled ? 'border-ok' : 'border-hairline'} pl-3`}>
       <p className={`text-[12.5px] font-medium ${requirement.fulfilled ? 'text-ink' : 'text-muted'}`}>
-        {requirement.type === 'photo' ? '📷 ' : ''}
+        {requirement.type === 'photo' && <Icon name="camera" size={13} className="mr-1 -mt-0.5" />}
         {requirement.label}
       </p>
 
@@ -80,7 +81,7 @@ export default function EvidenceField({ requirement, onAdd, onRemove }: Props) {
                   onClick={() => fileInputRef.current?.click()}
                   className="min-h-[44px] md:min-h-0 text-[12px] font-semibold px-3 py-1.5 rounded-lg border border-hairline text-brand hover:bg-brand-soft"
                 >
-                  📷 {requirement.evidences.length === 0 ? 'Subir foto' : 'Agregar otra foto'}
+                  <Icon name="camera" size={14} className="mr-1 -mt-0.5" />{requirement.evidences.length === 0 ? 'Subir foto' : 'Agregar otra foto'}
                 </button>
                 <span className="ml-2 text-[11px] text-muted">
                   {requirement.evidences.length}/{MAX_PHOTOS_PER_ITEM}

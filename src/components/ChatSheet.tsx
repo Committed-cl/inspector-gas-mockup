@@ -1,4 +1,5 @@
 import { useEffect, type ReactNode } from 'react'
+import Icon from './Icon'
 
 // Chat container shared by the checklist and item pages. md+: the usual
 // right-hand column. Below md: a bottom sheet toggled by the parent (a floating
@@ -27,7 +28,7 @@ export default function ChatSheet({ open, onClose, children }: { open: boolean; 
             aria-label="Cerrar chat"
             className="h-11 w-11 grid place-items-center text-muted rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
           >
-            ✕
+            <Icon name="close" />
           </button>
         </div>
         <div className="flex-1 min-h-0">{children}</div>

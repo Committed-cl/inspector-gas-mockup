@@ -6,6 +6,7 @@ import { compressImageFile } from '../lib/compressImage'
 import { useOnline } from '../lib/useOnline'
 import { startRecording, type AudioRecorder } from '../lib/recordAudio'
 import type { ChatMessage, EvidenceType } from '../data/checklistMatrizInterior'
+import Icon from './Icon'
 
 type Props = {
   title: string
@@ -140,7 +141,7 @@ export default function ChatPanel({ title, subtitle, chatId, messages, placehold
           <TranscriptBubble
             key={m.id}
             role={m.role}
-            text={m.type === 'audio' ? `🎙 ${m.text}` : m.text}
+            text={m.text} leadingIcon={m.type === 'audio' ? 'mic' : undefined}
             previewUrl={m.previewUrl}
             options={m.options}
             onSelectOption={onSelectOption ? (itemId) => onSelectOption(m.id, itemId) : undefined}
@@ -148,7 +149,7 @@ export default function ChatPanel({ title, subtitle, chatId, messages, placehold
         ))}
         {outgoing && (
           <>
-            <TranscriptBubble role="inspector" text={outgoing.type === 'audio' ? `🎙 ${outgoing.text}` : outgoing.text} previewUrl={outgoing.previewUrl} />
+            <TranscriptBubble role="inspector" text={outgoing.text} leadingIcon={outgoing.type === 'audio' ? 'mic' : undefined} previewUrl={outgoing.previewUrl} />
             <div className="flex justify-start">
               <div className="max-w-[85%] rounded-2xl rounded-bl-sm px-3 py-2 bg-brand-soft text-ink">
                 <p className="text-[10px] font-semibold uppercase tracking-wide text-brand/70 mb-1">Asistente IA</p>
@@ -178,7 +179,7 @@ export default function ChatPanel({ title, subtitle, chatId, messages, placehold
               className="shrink-0 h-6 w-6 grid place-items-center rounded-full text-muted hover:bg-white hover:text-danger transition-colors"
               aria-label="Quitar foto"
             >
-              ✕
+              <Icon name="close" size={14} />
             </button>
           </div>
         )}
@@ -194,7 +195,7 @@ export default function ChatPanel({ title, subtitle, chatId, messages, placehold
               className="shrink-0 h-6 w-6 grid place-items-center rounded-full text-muted hover:bg-white hover:text-danger transition-colors"
               aria-label="Quitar audio"
             >
-              ✕
+              <Icon name="close" size={14} />
             </button>
           </div>
         )}
@@ -211,7 +212,7 @@ export default function ChatPanel({ title, subtitle, chatId, messages, placehold
             title="Adjuntar foto"
             aria-label="Adjuntar foto"
           >
-            {compressing ? '⏳' : '📎'}
+            <Icon name={compressing ? 'spinner' : 'attach'} />
           </button>
           <button
             onClick={toggleRecording}
@@ -222,7 +223,7 @@ export default function ChatPanel({ title, subtitle, chatId, messages, placehold
             title={recording ? 'Detener grabación' : 'Dictar por voz'}
             aria-label={recording ? 'Detener grabación' : 'Dictar por voz'}
           >
-            {recording ? '⏹' : '🎙'}
+            <Icon name={recording ? 'stop' : 'mic'} />
           </button>
           <input
             ref={textInputRef}
