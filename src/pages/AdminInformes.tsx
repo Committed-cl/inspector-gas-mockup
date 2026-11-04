@@ -1,5 +1,4 @@
 import { useEffect, useMemo, useState } from 'react'
-import Sidebar from '../components/Sidebar'
 import { api, ApiError, fetchBlob } from '../lib/api'
 import { formatDateCl } from '../utils/date'
 import { visitTypeLabel } from './ObraVisitas'
@@ -60,9 +59,8 @@ export default function AdminInformes() {
   }
 
   return (
-    <div className="min-h-screen flex bg-base">
-      <Sidebar demoMode={false} />
-      <main className="flex-1 min-w-0 p-5 pt-16 md:p-8 max-w-5xl">
+    <div className="flex bg-base">
+      <main className="flex-1 min-w-0 p-5 md:p-8 max-w-5xl">
         <p className="text-[12px] uppercase tracking-wide text-muted font-semibold">Administración</p>
         <h1 className="text-2xl font-bold text-ink mt-1">Informes</h1>
         <p className="text-[13px] text-muted mt-1 max-w-xl">Informes de visita enviados. La descarga requiere sesión iniciada.</p>

@@ -1,7 +1,6 @@
 import { useState } from 'react'
 import CompanyLogo from '../components/CompanyLogo'
 import LogoUploader from '../components/LogoUploader'
-import Sidebar from '../components/Sidebar'
 import { useAuth } from '../lib/auth'
 
 // The Administrador del convenio manages their own company here (today: its logo).
@@ -12,9 +11,8 @@ export default function AdminMiEmpresa() {
   const { companyId, companyName } = auth.user
 
   return (
-    <div className="min-h-screen flex bg-base">
-      <Sidebar demoMode={false} />
-      <main className="flex-1 min-w-0 p-5 pt-16 md:p-8 max-w-4xl">
+    <div className="flex bg-base">
+      <main className="flex-1 min-w-0 p-5 md:p-8 max-w-4xl">
         <header>
           <p className="text-[12px] uppercase tracking-wide text-muted font-semibold">Administración</p>
           <h1 className="text-2xl font-bold text-ink mt-1">Mi empresa</h1>

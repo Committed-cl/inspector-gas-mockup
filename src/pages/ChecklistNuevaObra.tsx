@@ -3,7 +3,6 @@ import { Link, useNavigate } from 'react-router-dom'
 import { useClients, useCompanies } from '../state/adminHooks'
 import { useCreateProject } from '../state/ChecklistContext'
 import { ApiError } from '../lib/api'
-import Sidebar from '../components/Sidebar'
 
 export default function ChecklistNuevaObra() {
   const { companies, loading: companiesLoading } = useCompanies()
@@ -57,10 +56,9 @@ export default function ChecklistNuevaObra() {
   }
 
   return (
-    <div className="min-h-screen flex bg-base">
-      <Sidebar demoMode={false} />
+    <div className="flex bg-base">
       <div className="flex-1 min-w-0">
-      <header className="border-b border-hairline bg-white px-6 py-4 pl-16 md:pl-6">
+      <header className="border-b border-hairline bg-white px-6 py-4">
         <h1 className="text-[19px] font-bold text-ink leading-tight">Nueva obra</h1>
         <p className="text-[12.5px] text-muted mt-0.5">Registra una nueva obra bajo una empresa existente.</p>
         <Link to="/checklist" className="inline-flex items-center gap-1.5 bg-brand hover:bg-brand-dark text-white font-semibold rounded-lg px-3.5 py-2 text-[12.5px] mt-3">

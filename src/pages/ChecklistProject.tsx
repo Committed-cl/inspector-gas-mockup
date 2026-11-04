@@ -61,7 +61,7 @@ export default function ChecklistProject() {
 
   return (
     <>
-    <div className="h-screen flex flex-col bg-base overflow-hidden print:hidden">
+    <div className="h-[calc(100dvh-2.75rem)] md:h-screen flex flex-col bg-base overflow-hidden print:hidden">
       <header className="border-b border-hairline bg-white px-4 py-2.5 md:px-6 md:py-4">
         <Link to={`/checklist/${projectId}`} className="inline-flex items-center gap-1.5 bg-brand hover:bg-brand-dark text-white font-semibold rounded-lg px-3.5 py-2 text-[12.5px]">
           ← Volver al historial de visitas

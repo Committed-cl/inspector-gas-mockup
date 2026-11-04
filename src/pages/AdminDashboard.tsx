@@ -1,5 +1,4 @@
 import { Link } from 'react-router-dom'
-import Sidebar from '../components/Sidebar'
 import { useAuth, useIsGlobalAdmin } from '../lib/auth'
 import { useCompanies, useUsers, useObrasCount } from '../state/adminHooks'
 
@@ -24,9 +23,8 @@ export default function AdminDashboard() {
   }
 
   return (
-    <div className="min-h-screen flex bg-base">
-      <Sidebar demoMode={false} />
-      <main className="flex-1 min-w-0 p-5 pt-16 md:p-8 max-w-4xl">
+    <div className="flex bg-base">
+      <main className="flex-1 min-w-0 p-5 md:p-8 max-w-4xl">
         <header>
           <p className="text-[12px] uppercase tracking-wide text-muted font-semibold">Administración</p>
           <h1 className="text-2xl font-bold text-ink mt-1">Dashboard</h1>
