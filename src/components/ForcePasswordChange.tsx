@@ -2,8 +2,8 @@ import { useState, type FormEvent } from 'react'
 import PhoneFrame from './PhoneFrame'
 import { useAuth } from '../lib/auth'
 import { ApiError } from '../lib/api'
+import { MIN_PASSWORD_LENGTH as MIN_LENGTH } from '../lib/password'
 
-const MIN_LENGTH = 10
 
 // Blocking screen shown instead of any route while the account carries a
 // provisional password. The only way out is changing it or logging out.

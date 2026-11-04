@@ -3,6 +3,7 @@ import { useCompanies, useProjects, useUsers, ROLES, type AdminUser, type UserRo
 import { ApiError, type SupervisorConflict } from '../lib/api'
 import { useAuth, useIsGlobalAdmin } from '../lib/auth'
 import Modal from '../components/Modal'
+import { MIN_PASSWORD_LENGTH } from '../lib/password'
 
 // Líder and convenio admin see every project of their company: no assignment.
 const rolePicksProjects = (role: UserRole) => role !== 'lider-supervisores' && role !== 'admin-convenio'
@@ -329,7 +330,7 @@ export default function AdminUsuarios() {
               type="text"
               value={initialPassword}
               onChange={(e) => setInitialPassword(e.target.value)}
-              minLength={6}
+              minLength={MIN_PASSWORD_LENGTH}
               autoComplete="off"
               placeholder="Vacío = se genera una clave"
               className="rounded-lg border border-hairline px-3 py-2.5 text-[14px] focus:outline-none focus:ring-2 focus:ring-brand/30 focus:border-brand"
@@ -378,8 +379,8 @@ function ResetPasswordModal({ user, onCancel, onConfirm }: { user: AdminUser; on
 
   const submit = async (e: FormEvent) => {
     e.preventDefault()
-    if (value && value.length < 6) {
-      setError('La clave debe tener al menos 6 caracteres.')
+    if (value && value.length < MIN_PASSWORD_LENGTH) {
+      setError(`La clave debe tener al menos ${MIN_PASSWORD_LENGTH} caracteres.`)
       return
     }
     setError(null)
