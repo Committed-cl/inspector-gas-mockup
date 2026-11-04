@@ -17,9 +17,11 @@ type Props = {
   placeholder: string
   onSend: (text: string, type?: EvidenceType, previewUrl?: string) => Promise<void>
   onSelectOption?: (messageId: string, itemId: string) => void
+  // Lets a parent bar trigger photo / voice / text entry; `n` changes on every tap.
+  launch?: { kind: 'photo' | 'voice' | 'text'; n: number }
 }
 
-export default function ChatPanel({ title, subtitle, chatId, messages, placeholder, onSend, onSelectOption }: Props) {
+export default function ChatPanel({ title, subtitle, chatId, messages, placeholder, onSend, onSelectOption, launch }: Props) {
   const readOnly = useReadOnly()
   const offline = !useOnline()
   const [draft, setDraft] = useState('')
@@ -36,12 +38,21 @@ export default function ChatPanel({ title, subtitle, chatId, messages, placehold
   const [outgoing, setOutgoing] = useState<{ text: string; type: EvidenceType; previewUrl?: string } | null>(null)
   const [sendError, setSendError] = useState<string | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const textInputRef = useRef<HTMLInputElement>(null)
   const scrollRef = useRef<HTMLDivElement>(null)
   const recorderRef = useRef<AudioRecorder | null>(null)
 
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight })
   }, [messages, outgoing])
+
+  useEffect(() => {
+    if (!launch) return
+    if (launch.kind === 'photo') fileInputRef.current?.click()
+    else if (launch.kind === 'voice') void toggleRecording()
+    else textInputRef.current?.focus()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [launch?.n])
 
   // A recording left running when the inspector navigates away must stop the
   // mic stream — otherwise the browser keeps it open in the background.
@@ -154,7 +165,7 @@ export default function ChatPanel({ title, subtitle, chatId, messages, placehold
       {readOnly ? (
         <p className="border-t border-hairline p-3 text-[11.5px] text-muted italic">Acceso de solo lectura — este rol no puede enviar mensajes.</p>
       ) : (
-      <div className="border-t border-hairline p-3">
+      <div className="border-t border-hairline p-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
         {pendingPhoto && (
           <div className="mb-2 flex items-center gap-2 bg-brand-soft/60 rounded-lg p-2">
             <img src={pendingPhoto} alt="Foto a enviar" className="h-12 w-12 rounded-md object-cover border border-hairline shrink-0" />
@@ -191,12 +202,12 @@ export default function ChatPanel({ title, subtitle, chatId, messages, placehold
         {photoError && <p className="text-[11.5px] text-danger mb-2">{photoError}</p>}
         {micError && <p className="text-[11.5px] text-danger mb-2">{micError}</p>}
         {sendError && <p className="text-[11.5px] text-danger mb-2">{sendError}</p>}
-        <div className="flex items-center gap-1.5">
+        <div className="flex items-center gap-2 md:gap-1.5">
           <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={onFileSelected} />
           <button
             onClick={() => fileInputRef.current?.click()}
             disabled={offline || compressing || !!outgoing || recording || !!pendingAudio}
-            className="shrink-0 h-9 w-9 grid place-items-center rounded-lg border border-hairline text-muted hover:bg-brand-soft hover:text-brand transition-colors disabled:opacity-50"
+            className="shrink-0 h-11 w-11 md:h-9 md:w-9 grid place-items-center rounded-lg border border-hairline text-muted hover:bg-brand-soft hover:text-brand transition-colors disabled:opacity-50"
             title="Adjuntar foto"
             aria-label="Adjuntar foto"
           >
@@ -205,7 +216,7 @@ export default function ChatPanel({ title, subtitle, chatId, messages, placehold
           <button
             onClick={toggleRecording}
             disabled={offline || !!outgoing || !!pendingPhoto || compressing || (!recording && !!pendingAudio)}
-            className={`shrink-0 h-9 w-9 grid place-items-center rounded-lg border transition-colors disabled:opacity-50 ${
+            className={`shrink-0 h-11 w-11 md:h-9 md:w-9 grid place-items-center rounded-lg border transition-colors disabled:opacity-50 ${
               recording ? 'border-danger bg-danger/10 text-danger animate-pulse' : 'border-hairline text-muted hover:bg-brand-soft hover:text-brand'
             }`}
             title={recording ? 'Detener grabación' : 'Dictar por voz'}
@@ -214,6 +225,7 @@ export default function ChatPanel({ title, subtitle, chatId, messages, placehold
             {recording ? '⏹' : '🎙'}
           </button>
           <input
+            ref={textInputRef}
             value={draft}
             onChange={(e) => {
               setDraft(e.target.value)
@@ -224,12 +236,12 @@ export default function ChatPanel({ title, subtitle, chatId, messages, placehold
             }}
             disabled={offline || !!outgoing}
             placeholder={pendingPhoto || pendingAudio ? 'Descripción (opcional)...' : recording ? 'Grabando...' : placeholder}
-            className="flex-1 min-w-0 text-[13px] px-3 py-2 rounded-lg border border-hairline focus:outline-none focus:ring-2 focus:ring-brand/30 disabled:bg-base disabled:text-muted"
+            className="flex-1 min-w-0 text-[16px] md:text-[13px] min-h-[44px] md:min-h-0 px-3 py-2 rounded-lg border border-hairline focus:outline-none focus:ring-2 focus:ring-brand/30 disabled:bg-base disabled:text-muted"
           />
           <button
             onClick={submit}
             disabled={offline || !!outgoing || recording || (!pendingPhoto && !pendingAudio && !draft.trim())}
-            className={`shrink-0 h-9 w-9 grid place-items-center rounded-lg font-semibold transition-colors ${
+            className={`shrink-0 h-11 w-11 md:h-9 md:w-9 grid place-items-center rounded-lg font-semibold transition-colors ${
               !outgoing && !recording && (pendingPhoto || pendingAudio || draft.trim()) ? 'bg-brand text-white hover:bg-brand-dark' : 'bg-hairline text-muted cursor-not-allowed'
             }`}
             aria-label="Enviar"

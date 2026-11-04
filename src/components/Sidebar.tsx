@@ -62,7 +62,7 @@ export default function Sidebar() {
             <p className="text-brand font-bold text-lg leading-none">Inspector Gas</p>
             <p className="text-muted text-xs mt-1">{isAdminUser ? 'Backoffice' : 'Checklist'}</p>
           </Link>
-          <button type="button" onClick={() => setOpen(false)} aria-label="Cerrar menú" className="md:hidden text-muted p-1 -mt-1 -mr-1">
+          <button type="button" onClick={() => setOpen(false)} aria-label="Cerrar menú" className="md:hidden text-muted w-11 h-11 -mt-2 -mr-2 grid place-items-center">
             ✕
           </button>
         </div>
@@ -72,7 +72,7 @@ export default function Sidebar() {
               key={i.to}
               to={i.to}
               onClick={() => setOpen(false)}
-              className={`px-3 py-2 rounded-lg text-[13px] transition-colors ${
+              className={`px-3 py-2 min-h-[44px] md:min-h-0 flex items-center rounded-lg text-[13px] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand ${
                 isActive(i.to, pathname) ? 'bg-brand text-white' : 'text-ink hover:bg-brand/5'
               }`}
             >
@@ -91,7 +91,7 @@ export default function Sidebar() {
                 logout()
                 nav('/login')
               }}
-              className="mt-3 text-[12px] font-semibold text-brand hover:underline"
+              className="mt-3 text-[12px] font-semibold text-brand hover:underline min-h-[44px] md:min-h-0"
             >
               Cerrar sesión
             </button>

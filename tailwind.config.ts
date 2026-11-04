@@ -16,6 +16,9 @@ export default {
         },
         ok: '#22C55E',
         warn: '#F59E0B',
+        // AA-contrast text variants of ok/warn (the base tones fail 4.5:1 on white).
+        'ok-ink': '#15803D',
+        'warn-ink': '#B45309',
         danger: '#DC2626',
         ink: '#1F2937',
         muted: '#6B7280',

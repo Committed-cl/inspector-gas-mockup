@@ -2,13 +2,13 @@ import { useRef, useState } from 'react'
 import { useOnline } from '../lib/useOnline'
 import { Link, useParams } from 'react-router-dom'
 import { checklistDef, SECTIONS, formName, type ChecklistStatus } from '../data/checklistMatrizInterior'
-import { useProject, useProjectChecklist, useProjectVisits } from '../state/ChecklistContext'
+import { useChecklist, useProject, useProjectChecklist, useProjectVisits } from '../state/ChecklistContext'
 import { useAuth, useReadOnly } from '../lib/auth'
 import ChecklistDesktopRow from '../components/ChecklistDesktopRow'
 import ChatPanel from '../components/ChatPanel'
 import RichTextEditor from '../components/RichTextEditor'
 import CenteredMessage from '../components/CenteredMessage'
-import MobilePanelTabs, { type MobilePanel } from '../components/MobilePanelTabs'
+import ChatSheet from '../components/ChatSheet'
 import VisitReport from '../components/VisitReport'
 import { formatDateCl } from '../utils/date'
 import { actionButtonPrimary, actionButtonSecondary } from '../lib/actionButton'
@@ -33,7 +33,9 @@ export default function ChecklistProject() {
   const { visits, loading: visitsLoading, closeVisit, reopenVisit, sendReport } = useProjectVisits(projectId)
   const visit = visits.find((v) => v.id === visitId)
   const [expandedOverride, setExpandedOverride] = useState<Record<string, boolean>>({})
-  const [mobilePanel, setMobilePanel] = useState<MobilePanel>('primary')
+  const [chatOpen, setChatOpen] = useState(false)
+  const [compact, setCompact] = useState(false)
+  const { sync } = useChecklist()
   const reportRef = useRef<HTMLDivElement>(null)
   const [sending, setSending] = useState(false)
   const online = useOnline()
@@ -58,49 +60,30 @@ export default function ChecklistProject() {
   const visitDefs = checklistDef.filter((d) => itemsState[d.id])
   const total = visitDefs.length
   const completed = visitDefs.filter((d) => ['ok', 'na'].includes(itemsState[d.id]?.status)).length
+  const pendingCount = visitDefs.filter((d) => itemsState[d.id]?.status === 'pending').length
+  const syncBusy = sync.phase === 'syncing' || sync.pendingCount > 0
+  const syncText = !sync.online ? `Sin conexión · ${sync.pendingCount} pendientes` : syncBusy ? 'Sincronizando…' : 'Sincronizado'
+  const syncDot = !sync.online ? 'bg-warn' : syncBusy ? 'bg-brand animate-pulse' : 'bg-ok'
 
-  return (
+  const actions = (mobile: boolean) => (
     <>
-    <div className="h-[calc(100dvh-2.75rem)] md:h-screen flex flex-col bg-base overflow-hidden print:hidden">
-      <header className="border-b border-hairline bg-white px-4 py-2.5 md:px-6 md:py-4">
-        <Link to={`/checklist/${projectId}`} className="inline-flex items-center gap-1.5 bg-brand hover:bg-brand-dark text-white font-semibold rounded-lg px-3.5 py-2 text-[12.5px]">
-          ← Volver al historial de visitas
-        </Link>
-        <div className="mt-1.5 flex items-start justify-between gap-3 flex-wrap">
-          <div className="min-w-0">
-            <div className="flex items-center gap-2 flex-wrap">
-              <h1 className="text-[17px] md:text-[19px] font-bold text-ink leading-tight">{projectData.name}</h1>
-              <span
-                className={`shrink-0 whitespace-nowrap text-[10px] font-semibold px-1.5 py-0.5 rounded-md ${visitStatusColor[visit.status]}`}
-              >
-                {visitStatusLabel[visit.status]}
-              </span>
-            </div>
-            <p className="text-[11.5px] text-muted mt-0.5">
-              {formName} · Visita {formatDateCl(visit.date)}
-              <span className="hidden md:inline"> · {auth?.user.name}</span>
-            </p>
-          </div>
-          <div className="flex items-center gap-2 shrink-0">
-            <span className="text-[12px] font-semibold text-brand whitespace-nowrap">
-              {completed}/{total}
-            </span>
-            <div className="w-16 md:w-28 h-1.5 bg-hairline rounded-full overflow-hidden">
-              <div className="h-full bg-ok transition-all" style={{ width: `${(total ? completed / total : 0) * 100}%` }} />
-            </div>
-          </div>
-        </div>
-        <div className="mt-2 text-[11px] flex items-center gap-2 flex-wrap">
           {readOnly ? null : visit.status === 'en_curso' ? (
-            <button
-              type="button"
-              disabled={!online}
-              title={online ? undefined : 'Requiere conexión'}
-              onClick={() => closeVisit(visitId)}
-              className={actionButtonPrimary}
-            >
-              Cerrar visita
-            </button>
+            <>
+              {mobile && pendingCount > 0 && (
+                <p className="w-full text-[13px] text-warn-ink font-medium" role="status">
+                  No puedes cerrar: {pendingCount === 1 ? 'falta 1 ítem' : `faltan ${pendingCount} ítems`} por marcar.
+                </p>
+              )}
+              <button
+                type="button"
+                disabled={!online || (mobile && pendingCount > 0)}
+                title={online ? undefined : 'Requiere conexión'}
+                onClick={() => closeVisit(visitId)}
+                className={`${actionButtonPrimary} ${mobile ? 'w-full' : ''}`}
+              >
+                Cerrar visita
+              </button>
+            </>
           ) : visit.reportSentAt && !(visit.reopenedAt && visit.reopenedAt > visit.reportSentAt) ? (
             <>
               <span className="text-ok font-medium">Informe enviado el {formatDateCl(visit.reportSentAt)}</span>
@@ -167,16 +150,92 @@ export default function ChecklistProject() {
             </button>
           )}
           {reopenError && <span className="text-danger font-medium">{reopenError}</span>}
+    </>
+  )
+
+  return (
+    <>
+    <div className="h-[calc(100dvh-3.5rem-env(safe-area-inset-top))] md:h-screen flex flex-col bg-base overflow-hidden print:hidden">
+      <header className="md:hidden border-b border-hairline bg-white px-2 pt-1 pb-2 shrink-0">
+        <div className="flex items-center gap-1">
+          <Link
+            to={`/checklist/${projectId}`}
+            aria-label="Volver al historial de visitas"
+            className="h-11 w-11 shrink-0 grid place-items-center rounded-lg text-brand hover:bg-brand/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
+          >
+            <svg viewBox="0 0 24 24" fill="currentColor" className="h-5 w-5" aria-hidden>
+              <path d="M14.7 6.3a1 1 0 0 0-1.4 0l-5 5a1 1 0 0 0 0 1.4l5 5a1 1 0 1 0 1.4-1.4L10.42 12l4.28-4.3a1 1 0 0 0 0-1.4Z" />
+            </svg>
+          </Link>
+          <h1 className="min-w-0 flex-1 truncate text-[16px] font-bold text-ink leading-tight">{projectData.name}</h1>
+          <span className={`shrink-0 whitespace-nowrap text-[11.5px] font-semibold px-2 py-1 rounded-md ${visitStatusColor[visit.status]}`}>
+            {visitStatusLabel[visit.status]}
+          </span>
+        </div>
+        {!compact && (
+          <p className="px-2.5 text-[12px] text-muted leading-snug">
+            {formName} · Visita {formatDateCl(visit.date)}
+          </p>
+        )}
+        <div className="mt-1.5 px-2.5 flex items-center gap-2.5">
+          <span className="text-[13px] font-semibold text-brand whitespace-nowrap">
+            {completed}/{total}
+          </span>
+          <div
+            className="flex-1 h-2 bg-hairline rounded-full overflow-hidden"
+            role="progressbar"
+            aria-valuemin={0}
+            aria-valuemax={total}
+            aria-valuenow={completed}
+            aria-label="Ítems cubiertos"
+          >
+            <div className="h-full bg-ok transition-all" style={{ width: `${(total ? completed / total : 0) * 100}%` }} />
+          </div>
+          <span className="flex items-center gap-1.5 text-[12px] text-muted whitespace-nowrap" data-testid="header-sync">
+            <span className={`h-2 w-2 rounded-full ${syncDot}`} aria-hidden />
+            {syncText}
+          </span>
+        </div>
+      </header>
+      <header className="hidden md:block border-b border-hairline bg-white px-4 py-2.5 md:px-6 md:py-4">
+        <Link to={`/checklist/${projectId}`} className="inline-flex items-center gap-1.5 bg-brand hover:bg-brand-dark text-white font-semibold rounded-lg px-3.5 py-2 text-[12.5px]">
+          ← Volver al historial de visitas
+        </Link>
+        <div className="mt-1.5 flex items-start justify-between gap-3 flex-wrap">
+          <div className="min-w-0">
+            <div className="flex items-center gap-2 flex-wrap">
+              <h1 className="text-[17px] md:text-[19px] font-bold text-ink leading-tight">{projectData.name}</h1>
+              <span
+                className={`shrink-0 whitespace-nowrap text-[10px] font-semibold px-1.5 py-0.5 rounded-md ${visitStatusColor[visit.status]}`}
+              >
+                {visitStatusLabel[visit.status]}
+              </span>
+            </div>
+            <p className="text-[11.5px] text-muted mt-0.5">
+              {formName} · Visita {formatDateCl(visit.date)}
+              <span className="hidden md:inline"> · {auth?.user.name}</span>
+            </p>
+          </div>
+          <div className="flex items-center gap-2 shrink-0">
+            <span className="text-[12px] font-semibold text-brand whitespace-nowrap">
+              {completed}/{total}
+            </span>
+            <div className="w-16 md:w-28 h-1.5 bg-hairline rounded-full overflow-hidden">
+              <div className="h-full bg-ok transition-all" style={{ width: `${(total ? completed / total : 0) * 100}%` }} />
+            </div>
+          </div>
+        </div>
+        <div className="hidden md:flex mt-2 text-[11px] items-center gap-2 flex-wrap">
+          {actions(false)}
         </div>
       </header>
 
-      <MobilePanelTabs active={mobilePanel} onChange={setMobilePanel} primaryLabel="Checklist" />
-
-      <div className="flex-1 flex min-h-0 overflow-hidden">
+      <div className="relative flex-1 flex min-h-0 overflow-hidden">
         <main
-          className={`${mobilePanel === 'primary' ? 'block' : 'hidden'} md:block flex-1 min-h-0 overflow-y-auto px-6 py-6`}
+          onScroll={(e) => setCompact(e.currentTarget.scrollTop > 24)}
+          className="flex-1 min-h-0 overflow-y-auto px-3 py-3 md:px-6 md:py-6"
         >
-          <div className="max-w-3xl mx-auto flex flex-col gap-8">
+          <div className="max-w-3xl mx-auto flex flex-col gap-3 md:gap-8 pb-20 md:pb-0">
             {SECTIONS.map((section) => {
               const items = visitDefs.filter((d) => d.section === section)
               if (items.length === 0) return null
@@ -193,7 +252,8 @@ export default function ChecklistProject() {
                   <button
                     type="button"
                     onClick={() => setExpandedOverride((prev) => ({ ...prev, [section]: !expanded }))}
-                    className="w-full flex items-center justify-between gap-2 mb-3 group"
+                    className="w-full flex items-center justify-between gap-2 mb-1 md:mb-3 min-h-[44px] md:min-h-0 group rounded focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
+                    aria-expanded={expanded}
                   >
                     <span className="flex items-center gap-2">
                       <svg
@@ -205,12 +265,12 @@ export default function ChecklistProject() {
                       </svg>
                       <h2 className="text-[12px] uppercase tracking-wide text-brand font-semibold">{section}</h2>
                       {sectionComplete && (
-                        <span className="text-[10px] font-medium text-ok bg-ok/10 px-1.5 py-0.5 rounded-md">
+                        <span className="text-[10px] font-medium text-ok-ink md:text-ok bg-ok/10 px-1.5 py-0.5 rounded-md">
                           completa
                         </span>
                       )}
                     </span>
-                    <span className="text-[11px] text-muted group-hover:text-brand">
+                    <span className="text-[13px] md:text-[11px] text-muted group-hover:text-brand">
                       {doneCount}/{items.length}
                     </span>
                   </button>
@@ -246,9 +306,7 @@ export default function ChecklistProject() {
           </div>
         </main>
 
-        <aside
-          className={`${mobilePanel === 'chat' ? 'block' : 'hidden'} md:block w-full md:w-[380px] md:shrink-0 min-h-0 border-l-0 md:border-l border-hairline bg-white`}
-        >
+        <ChatSheet open={chatOpen} onClose={() => setChatOpen(false)}>
           <ChatPanel
             title="Chat general del checklist"
             subtitle="Cuéntame qué revisaste sin indicar el ítem — yo identifico a cuál (o cuáles) corresponde y actualizo su estado."
@@ -258,8 +316,25 @@ export default function ChecklistProject() {
             onSend={sendGeneralMessage}
             onSelectOption={resolveGeneralMessage}
           />
-        </aside>
+        </ChatSheet>
+        {!chatOpen && (
+          <button
+            type="button"
+            onClick={() => setChatOpen(true)}
+            aria-label="Abrir chat con IA"
+            className="md:hidden absolute right-3 bottom-3 z-30 h-14 w-14 grid place-items-center rounded-full bg-brand text-white shadow-lg active:scale-95 transition-transform focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-brand/40"
+          >
+            <svg viewBox="0 0 24 24" fill="currentColor" className="h-6 w-6" aria-hidden>
+              <path d="M4 4h16a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H9l-4.3 3.4A.8.8 0 0 1 3.4 20.8V18H4a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2Z" />
+            </svg>
+          </button>
+        )}
       </div>
+      {!readOnly && (
+        <div className="md:hidden shrink-0 border-t border-hairline bg-white px-3 pt-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] flex flex-wrap items-center gap-2 text-[12px]">
+          {actions(true)}
+        </div>
+      )}
     </div>
     <VisitReport
       project={projectData}

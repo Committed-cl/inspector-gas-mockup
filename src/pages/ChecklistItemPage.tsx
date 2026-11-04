@@ -6,13 +6,14 @@ import ChatPanel from '../components/ChatPanel'
 import StatusControl from '../components/StatusControl'
 import EvidenceField from '../components/EvidenceField'
 import CenteredMessage from '../components/CenteredMessage'
-import MobilePanelTabs, { type MobilePanel } from '../components/MobilePanelTabs'
+import ChatSheet from '../components/ChatSheet'
+import { useReadOnly } from '../lib/auth'
 
 const statusLabel = { ok: 'Cumple', warn: 'No cumple', pending: 'Pendiente', na: 'No aplica' } as const
 const statusColor = {
-  ok: 'text-ok bg-ok/10',
+  ok: 'text-ok-ink md:text-ok bg-ok/10',
   warn: 'text-danger bg-danger/10',
-  pending: 'text-warn bg-warn/10',
+  pending: 'text-warn-ink md:text-warn bg-warn/10',
   na: 'text-muted bg-muted/10',
 } as const
 
@@ -25,7 +26,9 @@ const resultBorderClass = {
 
 export default function ChecklistItemPage() {
   const { projectId = '', visitId = '', itemId } = useParams()
-  const [mobilePanel, setMobilePanel] = useState<MobilePanel>('primary')
+  const [chatOpen, setChatOpen] = useState(false)
+  const [launch, setLaunch] = useState<{ kind: 'photo' | 'voice' | 'text'; n: number }>()
+  const readOnly = useReadOnly()
   const project = useProject(projectId)
   const { itemsState, markManually, addEvidence, removeEvidence, sendItemMessage, loading: checklistLoading } = useProjectChecklist(projectId, visitId)
   const def = checklistDef.find((d) => d.id === itemId)
@@ -43,6 +46,15 @@ export default function ChecklistItemPage() {
   const projectData = project.data
 
   const state = itemsState[def.id]
+  const visitDefs = checklistDef.filter((d) => itemsState[d.id])
+  const pos = visitDefs.findIndex((d) => d.id === def.id)
+  const prev = visitDefs[pos - 1]
+  const next = visitDefs[pos + 1]
+  const itemHref = (id: string) => `/checklist/${projectId}/${visitId}/${id}`
+  const startEvidence = (kind: 'photo' | 'voice' | 'text') => {
+    setChatOpen(true)
+    setLaunch({ kind, n: (launch?.n ?? 0) + 1 })
+  }
   const requirements = requiredEvidenceState(def, state.evidence)
   const manualMark = state.evidence.find((e) => e.source === 'manual-mark')
   const aiDeclaration =
@@ -52,20 +64,21 @@ export default function ChecklistItemPage() {
   const conclusionResult = manualMark?.result ?? (manualMark ? undefined : state.status !== 'pending' ? state.status : undefined)
 
   return (
-    <div className="h-[calc(100dvh-2.75rem)] md:h-screen flex flex-col bg-base overflow-hidden">
-      <header className="border-b border-hairline bg-white px-6 py-4">
-        <Link to={`/checklist/${projectId}/${visitId}`} className="inline-flex items-center gap-1.5 bg-brand hover:bg-brand-dark text-white font-semibold rounded-lg px-3.5 py-2 text-[12.5px] mb-2">
+    <div className="h-[calc(100dvh-3.5rem-env(safe-area-inset-top))] md:h-screen flex flex-col bg-base overflow-hidden">
+      <header className="border-b border-hairline bg-white px-3 py-2 md:px-6 md:py-4 shrink-0">
+        <Link to={`/checklist/${projectId}/${visitId}`} className="inline-flex items-center gap-1.5 bg-brand hover:bg-brand-dark text-white font-semibold rounded-lg px-3.5 py-2 min-h-[44px] md:min-h-0 text-[12.5px] mb-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/50">
           <svg viewBox="0 0 24 24" fill="currentColor" className="h-4 w-4">
             <path d="M14.7 6.3a1 1 0 0 0-1.4 0l-5 5a1 1 0 0 0 0 1.4l5 5a1 1 0 1 0 1.4-1.4L10.42 12l4.28-4.3a1 1 0 0 0 0-1.4Z" />
           </svg>
-          Volver al checklist completo
+          <span className="md:hidden">Checklist</span>
+          <span className="hidden md:inline">Volver al checklist completo</span>
         </Link>
         <div className="flex items-start justify-between gap-4">
           <div>
             <p className="text-[11.5px] uppercase tracking-wide text-muted font-semibold">
               {projectData.name} · {def.section}
             </p>
-            <h1 className="text-[19px] font-bold text-ink mt-0.5 leading-tight">{def.title}</h1>
+            <h1 className="text-[17px] md:text-[19px] font-bold text-ink mt-0.5 leading-tight">{def.title}</h1>
           </div>
           <span className={`shrink-0 whitespace-nowrap text-[11px] font-semibold px-2 py-1 rounded-md ${statusColor[state.status]}`}>
             {statusLabel[state.status]}
@@ -73,13 +86,9 @@ export default function ChecklistItemPage() {
         </div>
       </header>
 
-      <MobilePanelTabs active={mobilePanel} onChange={setMobilePanel} primaryLabel="Detalle" />
-
       <div className="flex-1 flex min-h-0 overflow-hidden">
-        <main
-          className={`${mobilePanel === 'primary' ? 'block' : 'hidden'} md:block flex-1 min-h-0 overflow-y-auto px-6 py-6`}
-        >
-          <div className="max-w-xl mx-auto flex flex-col gap-5">
+        <main className="flex-1 min-h-0 overflow-y-auto px-3 py-3 md:px-6 md:py-6">
+          <div className="max-w-xl mx-auto flex flex-col gap-3 md:gap-5 pb-2">
             <section className="bg-white border border-hairline rounded-xl p-4">
               <p className="text-[11px] uppercase tracking-wide text-brand/70 font-semibold">Qué busca validar la app</p>
               <ul className="mt-1.5 flex flex-col gap-1 list-disc pl-4">
@@ -150,19 +159,57 @@ export default function ChecklistItemPage() {
           </div>
         </main>
 
-        <aside
-          className={`${mobilePanel === 'chat' ? 'block' : 'hidden'} md:block w-full md:w-[380px] md:shrink-0 min-h-0 border-l-0 md:border-l border-hairline bg-white`}
-        >
+        <ChatSheet open={chatOpen} onClose={() => setChatOpen(false)}>
           <ChatPanel
             title="Chat de este ítem"
             subtitle="Todo lo que hables, escribas o subas acá queda asociado solo a este ítem — no hace falta que digas a cuál te refieres."
             chatId={`${visitId} · ${def.id}`}
             messages={state.chat}
             placeholder="Cuéntame qué observaste para este ítem..."
+            launch={launch}
             onSend={(text, type, previewUrl) => sendItemMessage(def.id, text, type, previewUrl)}
           />
-        </aside>
+        </ChatSheet>
       </div>
+      <nav
+        aria-label="Acciones del ítem"
+        className="md:hidden shrink-0 border-t border-hairline bg-white px-3 pt-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] flex flex-col gap-2"
+      >
+        {!readOnly && (
+          <div className="grid grid-cols-3 gap-2">
+            {([['photo', '📷', 'Foto'], ['voice', '🎙', 'Voz'], ['text', '✎', 'Texto']] as const).map(([kind, icon, label]) => (
+              <button
+                key={kind}
+                type="button"
+                onClick={() => startEvidence(kind)}
+                className="min-h-[44px] rounded-lg border border-accent text-accent font-semibold text-[13px] active:bg-accent active:text-white transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40"
+              >
+                <span aria-hidden>{icon} </span>
+                {label}
+              </button>
+            ))}
+          </div>
+        )}
+        <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-2">
+          {prev ? (
+            <Link to={itemHref(prev.id)} className="min-h-[44px] inline-flex items-center justify-center rounded-lg bg-brand/5 text-brand font-semibold text-[13px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand">
+              ‹ Anterior
+            </Link>
+          ) : (
+            <span />
+          )}
+          <span className="text-[12px] text-muted px-1">
+            {pos + 1}/{visitDefs.length}
+          </span>
+          {next ? (
+            <Link to={itemHref(next.id)} className="min-h-[44px] inline-flex items-center justify-center rounded-lg bg-brand/5 text-brand font-semibold text-[13px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand">
+              Siguiente ›
+            </Link>
+          ) : (
+            <span />
+          )}
+        </div>
+      </nav>
     </div>
   )
 }

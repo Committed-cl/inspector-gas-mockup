@@ -24,9 +24,9 @@ const badgeText: Record<ChecklistStatus, string> = {
 }
 
 const badgeClass: Record<ChecklistStatus, string> = {
-  ok: 'text-ok bg-ok/10',
+  ok: 'text-ok-ink md:text-ok bg-ok/10',
   warn: 'text-danger bg-danger/10',
-  pending: 'text-warn bg-warn/10',
+  pending: 'text-warn-ink md:text-warn bg-warn/10',
   na: 'text-muted bg-muted/10',
 }
 
@@ -49,24 +49,27 @@ export default function ChecklistDesktopRow({ def, state, projectId, visitId, on
   const itemHref = `/checklist/${projectId}/${visitId}/${def.id}`
   const manualMark = state.evidence.find((e) => e.source === 'manual-mark')
   return (
-    <div className="rounded-xl border border-hairline bg-white px-4 py-3 hover:shadow-sm transition-shadow">
+    <div className="rounded-xl border border-hairline bg-white px-3 py-3 md:px-4 hover:shadow-sm transition-shadow">
       <div className="flex items-start gap-3">
         <span className={`mt-1.5 h-3 w-3 shrink-0 rounded-full ${dotClass[state.status]}`} aria-hidden />
         <div className="flex-1 min-w-0">
           <div className="flex items-start justify-between gap-3">
             <Link
               to={itemHref}
-              className="text-[13.5px] font-semibold text-ink leading-tight hover:text-brand hover:underline underline-offset-2"
+              className="flex-1 min-w-0 inline-flex items-center gap-1 min-h-[44px] md:min-h-0 -my-2 py-2 md:my-0 md:py-0 text-[14.5px] md:text-[13.5px] font-semibold text-ink leading-tight hover:text-brand hover:underline underline-offset-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand rounded"
             >
-              {def.title}
+              <span>{def.title}</span>
+              <svg viewBox="0 0 24 24" fill="currentColor" className="md:hidden h-4 w-4 shrink-0 text-muted" aria-hidden>
+                <path d="M9.3 6.3a1 1 0 0 1 1.4 0l5 5a1 1 0 0 1 0 1.4l-5 5a1 1 0 1 1-1.4-1.4L13.58 12 9.3 7.7a1 1 0 0 1 0-1.4Z" />
+              </svg>
             </Link>
-            <span className={`shrink-0 text-[10.5px] font-medium px-1.5 py-0.5 rounded-md ${badgeClass[state.status]}`}>
+            <span className={`shrink-0 text-[11.5px] md:text-[10.5px] font-medium px-1.5 py-0.5 rounded-md ${badgeClass[state.status]}`}>
               {badgeText[state.status]}
             </span>
           </div>
 
           {state.source && (
-            <p className="text-[10.5px] text-muted mt-0.5">
+            <p className="hidden md:block text-[10.5px] text-muted mt-0.5">
               {state.source === 'manual' ? 'Conclusión' : 'Confirmado con evidencia de chat'}
             </p>
           )}
@@ -85,7 +88,7 @@ export default function ChecklistDesktopRow({ def, state, projectId, visitId, on
           </div>
 
           {state.status !== 'na' && (
-            <div className="mt-2 flex flex-col gap-1">
+            <div className="mt-2 hidden md:flex flex-col gap-1">
               {requiredEvidenceState(def, state.evidence).map((req, i) => (
                 <div key={i} className="flex items-center gap-1.5 text-[11px]">
                   <span
