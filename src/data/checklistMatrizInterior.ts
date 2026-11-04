@@ -84,7 +84,7 @@ export const SECTIONS = [
   'Conducto Técnico',
 ] as const
 
-export const formName = 'Formulario Puesta en Servicio Matriz Interior'
+export const formName = 'Puesta en servicio de matriz interior'
 
 export const checklistDef: ChecklistItemDef[] = [
   // General
