@@ -2,7 +2,7 @@
 import { describe, expect, it, afterEach } from 'vitest'
 import { render, cleanup } from '@testing-library/react'
 import { ReportPhotos } from './VisitReport'
-import { PDF_PAGEBREAK } from '../utils/reportPdf'
+import { pageBreakShift } from '../utils/reportPdf'
 
 afterEach(cleanup)
 
@@ -37,8 +37,17 @@ describe('ReportPhotos', () => {
   })
 })
 
-describe('PDF page breaks', () => {
-  it('avoids splitting rows and photo grids across pages', () => {
-    expect(PDF_PAGEBREAK.avoid).toEqual(expect.arrayContaining(['tr', 'img']))
+describe('pageBreakShift', () => {
+  const pageH = 1000
+  it('does not move a block that fits in its page', () => {
+    expect(pageBreakShift(100, 300, pageH)).toBe(0)
+    expect(pageBreakShift(700, 300, pageH)).toBe(0)
+  })
+  it('pushes a block crossing the boundary to the start of the next page', () => {
+    expect(pageBreakShift(800, 300, pageH)).toBe(200)
+    expect(pageBreakShift(1900, 300, pageH)).toBe(100)
+  })
+  it('leaves blocks taller than a page alone', () => {
+    expect(pageBreakShift(500, 1200, pageH)).toBe(0)
   })
 })
