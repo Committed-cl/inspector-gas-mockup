@@ -6,10 +6,10 @@ import { ROLES } from '../state/adminHooks'
 type Item = { to: string; label: string; adminOnly?: boolean; globalOnly?: boolean; convenioOnly?: boolean }
 
 const items: Item[] = [
-  { to: '/checklist', label: 'Proyectos' },
   { to: '/admin', label: 'Dashboard', adminOnly: true },
   { to: '/admin/empresas', label: 'Empresa', adminOnly: true, globalOnly: true },
   { to: '/admin/mi-empresa', label: 'Mi empresa', adminOnly: true, convenioOnly: true },
+  { to: '/checklist', label: 'Proyectos' },
   { to: '/admin/usuarios', label: 'Usuario', adminOnly: true },
   { to: '/admin/informes', label: 'Informes', adminOnly: true },
   { to: '/checklist/nueva-obra', label: 'Nuevo proyecto', adminOnly: true },
