@@ -19,7 +19,7 @@ export default function StatusControl({ status, onMark, size = 'sm', hint }: Pro
   }
 
   return (
-    <div>
+    <div className="w-full md:w-auto">
       <div className="flex md:inline-flex rounded-lg border border-hairline overflow-hidden">
         <button
           type="button"

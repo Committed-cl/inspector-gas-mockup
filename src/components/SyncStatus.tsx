@@ -22,7 +22,7 @@ export default function SyncStatus() {
   if (!text && failed.length === 0) return null
 
   return (
-    <div className="fixed top-[calc(3.5rem+env(safe-area-inset-top)+0.25rem)] right-2 md:top-auto md:bottom-3 md:right-3 z-50 flex flex-col items-end gap-2 max-w-[90vw]" data-testid="sync-status">
+    <div className="fixed bottom-[calc(5rem+env(safe-area-inset-bottom))] right-2 md:bottom-3 md:right-3 z-50 flex flex-col items-end gap-2 max-w-[90vw]" data-testid="sync-status">
       {open && failed.length > 0 && (
         <div className="bg-white border border-danger/40 rounded-xl shadow-lg p-3 w-80 max-h-72 overflow-y-auto text-[12px]">
           <p className="font-semibold text-danger mb-2">Cambios que no se pudieron enviar</p>
@@ -45,7 +45,7 @@ export default function SyncStatus() {
         </div>
       )}
       {failed.length > 0 && (
-        <button type="button" onClick={() => setOpen((o) => !o)} className="rounded-full bg-danger text-white text-[12px] font-medium px-3 py-1.5 shadow">
+        <button type="button" onClick={() => setOpen((o) => !o)} className="rounded-full bg-danger text-white text-[12px] font-medium px-3 py-1.5 min-h-[44px] md:min-h-0 shadow">
           {failed.length} {failed.length === 1 ? 'cambio no enviado' : 'cambios no enviados'}
         </button>
       )}

@@ -78,7 +78,7 @@ export default function EvidenceField({ requirement, onAdd, onRemove }: Props) {
                 <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={onFileSelected} />
                 <button
                   onClick={() => fileInputRef.current?.click()}
-                  className="text-[12px] font-semibold px-3 py-1.5 rounded-lg border border-hairline text-brand hover:bg-brand-soft"
+                  className="min-h-[44px] md:min-h-0 text-[12px] font-semibold px-3 py-1.5 rounded-lg border border-hairline text-brand hover:bg-brand-soft"
                 >
                   📷 {requirement.evidences.length === 0 ? 'Subir foto' : 'Agregar otra foto'}
                 </button>
