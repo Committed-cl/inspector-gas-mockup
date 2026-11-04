@@ -66,7 +66,7 @@ describe('offline queue', () => {
     expect(sent).toEqual(['b'])
     const left = await listOps(U)
     expect(left).toHaveLength(1)
-    expect(left[0]).toMatchObject({ state: 'failed', error: 'Visita cerrada' })
+    expect(left[0]).toMatchObject({ state: 'failed', error: '409: Visita cerrada' })
     // failed ops are not resent automatically, only after an explicit retry
     let calls = 0
     await processQueue(U, async () => { calls++; return {} })
@@ -76,10 +76,57 @@ describe('offline queue', () => {
     expect(calls).toBe(1)
   })
 
-  it('keeps a 401/404 change instead of losing it', async () => {
+  it('pauses on 401: ops stay pending (with the reason), order kept, nothing failed', async () => {
     await enqueueOp(ev('a'))
-    await processQueue(U, async () => { throw new ApiError(401, 'No autorizado') })
-    expect((await listOps(U))[0]).toMatchObject({ state: 'failed' })
+    await enqueueOp(ev('b'))
+    const res = await processQueue(U, async () => { throw new ApiError(401, 'No autorizado') })
+    expect(res.blocked).toEqual({ status: 401, message: '401: No autorizado', auth: true })
+    expect((await listOps(U)).map((o) => [o.body.clientId, o.state])).toEqual([['a', 'pending'], ['b', 'pending']])
+    const sent: unknown[] = []
+    await processQueue(U, async (r) => { sent.push(r.body.clientId); return {} })
+    expect(sent).toEqual(['a', 'b'])
+  })
+
+  it.each([408, 425, 429, 500, 502])('treats %i as transient: stays pending, run stops', async (status) => {
+    await enqueueOp(ev('a'))
+    await enqueueOp(ev('b'))
+    let calls = 0
+    const res = await processQueue(U, async () => { calls++; throw new ApiError(status, 'x') })
+    expect(calls).toBe(1)
+    expect(res.stopped).toBe(true)
+    expect(res.blocked).toMatchObject({ status, auth: false })
+    expect((await listOps(U)).every((o) => o.state === 'pending')).toBe(true)
+  })
+
+  it.each([400, 403, 404, 409, 422])('fails only that op on %i with status + message and goes on', async (status) => {
+    await enqueueOp(ev('a'))
+    await enqueueOp(ev('b'))
+    const sent: unknown[] = []
+    const res = await processQueue(U, async (r) => {
+      if (r.body.clientId === 'a') throw new ApiError(status, 'nope')
+      sent.push(r.body.clientId); return {}
+    })
+    expect(sent).toEqual(['b'])
+    expect(res.blocked).toBeNull()
+    expect(await listOps(U)).toMatchObject([{ state: 'failed', error: `${status}: nope` }])
+  })
+
+  it('burst of 31 marks with an intermittent 429 and 401: none lost, all delivered in order after recovery', async () => {
+    const ids = Array.from({ length: 31 }, (_, i) => `i${i}`)
+    for (const id of ids) await enqueueOp({ ...base, kind: 'mark', itemId: id, body: { status: 'na' } })
+    const delivered: string[] = []
+    let n = 0
+    const send = async (r: { path: string }) => {
+      n++
+      if (n === 5) throw new ApiError(429, 'Too many requests')
+      if (n === 12) throw new ApiError(401, 'expired')
+      delivered.push(r.path.split('/')[6])
+      return {}
+    }
+    let runs = 0
+    while ((await listOps(U)).length > 0 && runs++ < 10) await processQueue(U, send)
+    expect(delivered).toEqual(ids)
+    expect(await listOps(U)).toHaveLength(0)
   })
 
   it('resends the same clientId on retry so the API can dedupe', async () => {

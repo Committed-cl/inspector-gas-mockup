@@ -120,13 +120,32 @@ export function isNetworkError(err: unknown): boolean {
   return err instanceof TypeError
 }
 
-export type SyncResult = { sent: number; stopped: boolean; lastByVisit: Record<string, unknown> }
+export type SyncBlock = { status: number | null; message: string; auth: boolean }
+export type SyncResult = {
+  sent: number
+  stopped: boolean
+  // Why the run stopped (null when it ran to the end). `auth`: 401, the session must be renewed.
+  blocked: SyncBlock | null
+  failedVisits: string[] // `${projectId}::${visitId}` of marks rejected for good in this run
+  lastByVisit: Record<string, unknown>
+}
 
-// Sends the user's pending ops one at a time, in order. A network error or 5xx stops the
-// run (retry later, order kept). A 4xx is definitive: the op is marked failed
-// and kept — never dropped — and the run continues with the next one.
+// 401 pauses the queue until a new login; network errors, 408/425/429 and 5xx are transient;
+// any other 4xx (400/403/404/409/422...) is a real rejection of that one operation.
+export function classifyError(err: unknown): 'auth' | 'retry' | 'fail' {
+  if (!(err instanceof ApiError)) return 'retry'
+  if (err.status === 401) return 'auth'
+  if (err.status === 408 || err.status === 425 || err.status === 429 || err.status >= 500) return 'retry'
+  return err.status >= 400 && err.status < 500 ? 'fail' : 'retry'
+}
+
+const describe = (err: unknown) => (err instanceof ApiError ? `${err.status}: ${err.message}` : 'Sin conexión con el servidor')
+
+// Sends the user's pending ops one at a time, in order. A network error, 401, 408/425/429 or
+// 5xx stops the run: the op stays pending (with the reason) and order is kept. Any other 4xx is
+// definitive for that op only: it is marked failed and kept — never dropped — and the run goes on.
 export async function processQueue(userId: string, send: (req: ReturnType<typeof opRequest>) => Promise<unknown>): Promise<SyncResult> {
-  const result: SyncResult = { sent: 0, stopped: false, lastByVisit: {} }
+  const result: SyncResult = { sent: 0, stopped: false, blocked: null, failedVisits: [], lastByVisit: {} }
   for (const op of await listOps(userId)) {
     if (op.state !== 'pending') continue
     try {
@@ -135,11 +154,15 @@ export async function processQueue(userId: string, send: (req: ReturnType<typeof
       result.sent++
       result.lastByVisit[`${op.projectId}::${op.visitId}`] = res
     } catch (err) {
-      if (err instanceof ApiError && err.status >= 400 && err.status < 500) {
-        await updateOp({ ...op, state: 'failed', error: err.message })
+      const kind = classifyError(err)
+      if (kind === 'fail') {
+        await updateOp({ ...op, state: 'failed', error: describe(err) })
+        if (op.kind === 'mark') result.failedVisits.push(`${op.projectId}::${op.visitId}`)
         continue
       }
+      await updateOp({ ...op, error: describe(err) })
       result.stopped = true
+      result.blocked = { status: err instanceof ApiError ? err.status : null, message: describe(err), auth: kind === 'auth' }
       break
     }
   }

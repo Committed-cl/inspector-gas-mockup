@@ -2,7 +2,7 @@ import { createContext, useCallback, useContext, useEffect, useRef, useState, ty
 import { Outlet } from 'react-router-dom'
 import { api } from '../lib/api'
 import { useAuth } from '../lib/auth'
-import { enqueueOp, isNetworkError, listOps, processQueue, removeOp, retryOp, subscribeQueue, type QueuedOp } from '../lib/offlineQueue'
+import { enqueueOp, isNetworkError, listOps, processQueue, removeOp, retryOp, subscribeQueue, type QueuedOp, type SyncBlock } from '../lib/offlineQueue'
 import { useOnline } from '../lib/useOnline'
 import SyncStatus from '../components/SyncStatus'
 import { checklistDef, requiredEvidenceState, type ChatMessage, type ChecklistStatus, type EvidenceType, type ItemState } from '../data/checklistMatrizInterior'
@@ -64,7 +64,9 @@ export type SyncInfo = {
   pendingCount: number
   failed: QueuedOp[]
   phase: 'idle' | 'syncing' | 'done'
+  blocked: SyncBlock | null // why pending changes are not going out (status + message)
   retry: (seq: number) => void
+  retryAll: () => void
   discard: (seq: number) => void
 }
 
@@ -149,6 +151,9 @@ export function ChecklistProvider({ children }: { children: ReactNode }) {
   const [phase, setPhase] = useState<SyncInfo['phase']>('idle')
   const queuedRef = useRef<QueuedOp[]>([])
   const syncing = useRef(false)
+  const rerun = useRef(false)
+  const attempts = useRef(0)
+  const [blocked, setBlocked] = useState<SyncBlock | null>(null)
   const retryTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const doneTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
 
@@ -163,49 +168,72 @@ export function ChecklistProvider({ children }: { children: ReactNode }) {
     return ops
   }, [userId])
 
+  // One loop at a time. Pending ops are always re-read from IndexedDB (never from queuedRef,
+  // which updates asynchronously) so marks made during a run are picked up by the same loop.
   const syncNow = useCallback(async () => {
-    if (syncing.current || !navigator.onLine || !userId) return
-    const pendingBefore = (await refreshQueue()).some((o) => o.state === 'pending')
-    if (!pendingBefore) return
+    if (!navigator.onLine || !userId) return
+    if (syncing.current) {
+      rerun.current = true
+      return
+    }
     syncing.current = true
     if (retryTimer.current) clearTimeout(retryTimer.current)
     if (doneTimer.current) clearTimeout(doneTimer.current)
-    setPhase('syncing')
-    let stopped = false
+    let sentTotal = 0
+    let blockedNow: SyncBlock | null = null
     try {
-      const result = await processQueue(userId, (req) =>
-        req.method === 'PUT' ? api.put<ChecklistState>(req.path, req.body) : api.post<ChecklistState>(req.path, req.body),
-      )
-      const remaining = await refreshQueue()
-      // The last server response per visit is authoritative; still-queued or
-      // failed ops are re-applied on top so nothing local disappears.
-      for (const [key, data] of Object.entries(result.lastByVisit)) {
-        const [pid, vid] = key.split('::')
-        setChecklistByVisit((prev) => ({ ...prev, [key]: { data: withQueued(pid, vid, data as ChecklistState, remaining), loading: false, error: null } }))
+      for (;;) {
+        const ops = await refreshQueue()
+        if (!ops.some((o) => o.state === 'pending')) break
+        setPhase('syncing')
+        const result = await processQueue(userId, (req) =>
+          req.method === 'PUT' ? api.put<ChecklistState>(req.path, req.body) : api.post<ChecklistState>(req.path, req.body),
+        )
+        sentTotal += result.sent
+        await refreshQueue()
+        // The last server response per visit is authoritative; ops still queued (including ones
+        // made during the run) or failed are re-applied on top so nothing local disappears.
+        for (const [key, data] of Object.entries(result.lastByVisit)) {
+          const [pid, vid] = key.split('::')
+          setChecklistByVisit((prev) => ({ ...prev, [key]: { data: withQueued(pid, vid, data as ChecklistState), loading: false, error: null } }))
+        }
+        // A rejected mark leaves optimistic state behind: reload visits without a fresh server response.
+        for (const key of new Set(result.failedVisits)) {
+          if (key in result.lastByVisit) continue
+          const [pid, vid] = key.split('::')
+          try {
+            const data = await api.get<ChecklistState>(`/projects/${pid}/visits/${vid}/checklist`)
+            setChecklistByVisit((prev) => ({ ...prev, [key]: { data: withQueued(pid, vid, data), loading: false, error: null } }))
+          } catch { /* keep what is shown; the next sync retries */ }
+        }
+        if (result.blocked) {
+          blockedNow = result.blocked
+          break
+        }
       }
-      // A rejected mark leaves optimistic state behind: reload visits that failed without a fresh server response.
-      const failedVisits = new Set(remaining.filter((o) => o.kind === 'mark' && o.state === 'failed').map((o) => visitKey(o.projectId, o.visitId)))
-      for (const key of failedVisits) {
-        if (key in result.lastByVisit) continue
-        const [pid, vid] = key.split('::')
-        try {
-          const data = await api.get<ChecklistState>(`/projects/${pid}/visits/${vid}/checklist`)
-          setChecklistByVisit((prev) => ({ ...prev, [key]: { data: withQueued(pid, vid, data), loading: false, error: null } }))
-        } catch { /* keep what is shown; the next sync retries */ }
-      }
-      stopped = result.stopped
-      if (result.stopped) {
+      setBlocked(blockedNow)
+      if (blockedNow) {
         setPhase('idle')
-        retryTimer.current = setTimeout(() => void syncNow(), 5000)
-      } else if (result.sent > 0) {
-        setPhase('done')
-        doneTimer.current = setTimeout(() => setPhase('idle'), 4000)
-      } else setPhase('idle')
+        // 401: wait for a new login (userId changes → effect re-runs syncNow). Otherwise back off.
+        if (!blockedNow.auth) {
+          const delay = Math.min(5000 * 2 ** attempts.current, 60000)
+          attempts.current++
+          retryTimer.current = setTimeout(() => void syncNow(), delay)
+        }
+      } else {
+        attempts.current = 0
+        if (sentTotal > 0) {
+          setPhase('done')
+          doneTimer.current = setTimeout(() => setPhase('idle'), 4000)
+        } else setPhase('idle')
+      }
     } finally {
       syncing.current = false
     }
-    // Ops queued while this run was in flight are not in its snapshot: send them now.
-    if (queuedRef.current.some((o) => o.state === 'pending') && !stopped) void syncNow()
+    if (rerun.current && !blockedNow) {
+      rerun.current = false
+      void syncNow()
+    }
   }, [refreshQueue, userId])
 
   useEffect(() => {
@@ -251,6 +279,12 @@ export function ChecklistProvider({ children }: { children: ReactNode }) {
     pendingCount: queued.filter((o) => o.state === 'pending').length,
     failed: queued.filter((o) => o.state === 'failed'),
     phase,
+    blocked,
+    retryAll: () => {
+      if (!userId) return
+      attempts.current = 0
+      void listOps(userId).then((ops) => Promise.all(ops.filter((o) => o.state === 'failed').map((o) => retryOp(o.seq!, userId)))).then(() => syncNow())
+    },
     retry: (seq) => { if (userId) void retryOp(seq, userId).then(() => syncNow()) },
     discard: (seq) => { if (userId) void removeOp(seq, userId) },
   }

@@ -19,7 +19,7 @@ export default function SyncStatus() {
   })
   const { sync } = useChecklist()
   const [open, setOpen] = useState(false)
-  const { online, pendingCount, failed, phase } = sync
+  const { online, pendingCount, failed, phase, blocked } = sync
 
   let text: string | null = null
   let tone = 'bg-brand text-white'
@@ -27,7 +27,10 @@ export default function SyncStatus() {
     text = `Sin conexión · ${pendingCount} ${pendingCount === 1 ? 'cambio pendiente' : 'cambios pendientes'}`
     tone = 'bg-warn text-white'
   } else if (phase === 'syncing') text = 'Sincronizando…'
-  else if (pendingCount > 0) text = `${pendingCount} ${pendingCount === 1 ? 'cambio pendiente' : 'cambios pendientes'} · reintentando`
+  else if (pendingCount > 0 && blocked?.auth) {
+    text = `${pendingCount} ${pendingCount === 1 ? 'cambio pendiente' : 'cambios pendientes'} · inicia sesión para enviarlos`
+    tone = 'bg-warn text-white'
+  } else if (pendingCount > 0) text = `${pendingCount} ${pendingCount === 1 ? 'cambio pendiente' : 'cambios pendientes'} · reintentando${blocked ? ` (${blocked.message})` : ''}`
   else if (phase === 'done') {
     text = 'Todo sincronizado'
     tone = 'bg-ok text-white'
@@ -38,7 +41,12 @@ export default function SyncStatus() {
     <>
       {open && failed.length > 0 && (
         <div className={`bg-white border border-danger/40 rounded-xl shadow-lg p-3 max-h-72 ${inSlot ? 'w-full' : 'w-80'} overflow-y-auto text-[12px]`}>
-          <p className="font-semibold text-danger mb-2">Cambios que no se pudieron enviar</p>
+          <div className="flex items-center justify-between mb-2">
+            <p className="font-semibold text-danger">Cambios que no se pudieron enviar</p>
+            <button type="button" className="text-brand font-medium" onClick={() => sync.retryAll()}>
+              Reintentar todo
+            </button>
+          </div>
           <ul className="space-y-2">
             {failed.map((op) => (
               <li key={op.seq} className="border-b border-hairline pb-2 last:border-0">
