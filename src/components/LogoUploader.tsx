@@ -22,7 +22,7 @@ function readDimensions(file: File): Promise<{ width: number; height: number } |
 }
 
 // Friendly pre-checks; the API re-validates everything by the file's bytes.
-async function validate(file: File): Promise<string | null> {
+export async function validateLogoFile(file: File): Promise<string | null> {
   if (file.type !== 'image/png' && file.type !== 'image/jpeg') return 'El archivo debe ser PNG o JPG (no se aceptan SVG ni otros formatos).'
   if (file.size > LOGO_MAX_BYTES) return `El logo pesa ${Math.ceil(file.size / 1024)} KB; el máximo es 500 KB.`
   const dims = await readDimensions(file)
@@ -52,7 +52,7 @@ export default function LogoUploader({ companyId, onUploaded, onCancel }: Props)
     setError(null)
     setFile(null)
     if (!picked) return
-    const problem = await validate(picked)
+    const problem = await validateLogoFile(picked)
     if (problem) return setError(problem)
     setFile(picked)
   }

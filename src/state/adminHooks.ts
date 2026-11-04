@@ -58,8 +58,8 @@ function useAsyncList<T>(path: string, enabled = true) {
 export function useCompanies(enabled = true) {
   const { data, loading, error, refetch, mutate } = useAsyncList<Company>('/companies', enabled)
 
-  const createCompany = async (name: string, logoUrl: string, additionalRecipients: string[], builderName: string, installerName: string) => {
-    const company = await api.post<Company>('/companies', { name, logoUrl, additionalRecipients, builderName, installerName })
+  const createCompany = async (name: string, additionalRecipients: string[], builderName: string, installerName: string) => {
+    const company = await api.post<Company>('/companies', { name, additionalRecipients, builderName, installerName })
     refetch()
     return company
   }

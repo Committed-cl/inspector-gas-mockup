@@ -1,8 +1,8 @@
-import { useState, type FormEvent } from 'react'
+import { useEffect, useState, type FormEvent } from 'react'
 import { useCompanies, type Company } from '../state/adminHooks'
-import { ApiError } from '../lib/api'
+import { ApiError, putFile } from '../lib/api'
 import CompanyLogo from '../components/CompanyLogo'
-import LogoUploader from '../components/LogoUploader'
+import LogoUploader, { validateLogoFile } from '../components/LogoUploader'
 
 const parseEmails = (text: string) => text.split(/[\s,;]+/).filter(Boolean)
 
@@ -170,20 +170,46 @@ export default function AdminEmpresas() {
   const { companies, loading, createCompany, updateRecipients, updateCompanyNames } = useCompanies()
   const [recipientsText, setRecipientsText] = useState('')
   const [name, setName] = useState('')
-  const [logoUrl, setLogoUrl] = useState('')
+  const [logoFile, setLogoFile] = useState<File | null>(null)
+  const [logoPreview, setLogoPreview] = useState<string | null>(null)
+  const [logoError, setLogoError] = useState<string | null>(null)
+  const [fileInputKey, setFileInputKey] = useState(0)
   const [builderName, setBuilderName] = useState('')
   const [installerName, setInstallerName] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
+
+  useEffect(() => {
+    if (!logoFile) return setLogoPreview(null)
+    const url = URL.createObjectURL(logoFile)
+    setLogoPreview(url)
+    return () => URL.revokeObjectURL(url)
+  }, [logoFile])
+
+  const pickLogo = async (picked: File | undefined) => {
+    setLogoError(null)
+    setLogoFile(null)
+    if (!picked) return
+    const problem = await validateLogoFile(picked)
+    if (problem) return setLogoError(problem)
+    setLogoFile(picked)
+  }
 
   const submit = async (e: FormEvent) => {
     e.preventDefault()
     setError(null)
     setSubmitting(true)
     try {
-      await createCompany(name, logoUrl, parseEmails(recipientsText), builderName, installerName)
+      if (!logoFile) return setError('Sube el logo de la empresa (PNG o JPG).')
+      const company = await createCompany(name, parseEmails(recipientsText), builderName, installerName)
+      try {
+        await putFile(`/companies/${encodeURIComponent(company.id)}/logo`, logoFile)
+      } catch (err) {
+        setError(`Empresa creada, pero no se pudo subir el logo: ${err instanceof ApiError ? err.message : 'error desconocido'}. Súbelo desde la tabla.`)
+      }
       setName('')
-      setLogoUrl('')
+      setLogoFile(null)
+      setFileInputKey((k) => k + 1)
       setRecipientsText('')
       setBuilderName('')
       setInstallerName('')
@@ -265,15 +291,18 @@ export default function AdminEmpresas() {
             />
           </label>
           <label className="flex flex-col gap-1.5">
-            <span className="text-[12px] font-medium text-ink">URL del logo</span>
+            <span className="text-[12px] font-medium text-ink">Logo</span>
             <input
-              value={logoUrl}
-              onChange={(e) => setLogoUrl(e.target.value)}
-              required
-              type="url"
-              placeholder="https://..."
-              className="rounded-lg border border-hairline px-3 py-2.5 text-[14px] focus:outline-none focus:ring-2 focus:ring-brand/30 focus:border-brand"
+              key={fileInputKey}
+              type="file"
+              accept="image/png,image/jpeg"
+              aria-label="Archivo del logo"
+              onChange={(e) => pickLogo(e.target.files?.[0])}
+              className="text-[13px]"
             />
+            <span className="text-[11.5px] text-muted">PNG o JPG, máx. 500 KB y 1000×500 px (fondo transparente recomendado).</span>
+            {logoPreview && <img src={logoPreview} alt="Vista previa del logo" className="h-12 max-w-[200px] object-contain border border-hairline rounded p-1 bg-white" />}
+            {logoError && <span className="text-[12.5px] text-danger">{logoError}</span>}
           </label>
           <label className="flex flex-col gap-1.5">
             <span className="text-[12px] font-medium text-ink">Constructora (opcional)</span>
