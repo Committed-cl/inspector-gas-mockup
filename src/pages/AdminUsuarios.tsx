@@ -1,5 +1,4 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react'
-import Sidebar from '../components/Sidebar'
 import { useCompanies, useProjects, useUsers, ROLES, type AdminUser, type UserRole } from '../state/adminHooks'
 import { ApiError, type SupervisorConflict } from '../lib/api'
 import { useAuth, useIsGlobalAdmin } from '../lib/auth'
@@ -93,9 +92,8 @@ export default function AdminUsuarios() {
   }
 
   return (
-    <div className="min-h-screen flex bg-base">
-      <Sidebar demoMode={false} />
-      <main className="flex-1 min-w-0 p-5 pt-16 md:p-8 max-w-5xl">
+    <div className="flex bg-base">
+      <main className="flex-1 min-w-0 p-5 md:p-8 max-w-5xl">
         <header>
           <p className="text-[12px] uppercase tracking-wide text-muted font-semibold">Administración</p>
           <h1 className="text-2xl font-bold text-ink mt-1">Usuarios</h1>

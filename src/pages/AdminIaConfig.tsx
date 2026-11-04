@@ -1,5 +1,4 @@
 import { useEffect, useState, type FormEvent } from 'react'
-import Sidebar from '../components/Sidebar'
 import { useAiConfig, useCompanies, type AiVendor } from '../state/adminHooks'
 import { ApiError } from '../lib/api'
 
@@ -24,9 +23,8 @@ export default function AdminIaConfig() {
   }, [companies, companyId])
 
   return (
-    <div className="min-h-screen flex bg-base">
-      <Sidebar demoMode={false} />
-      <main className="flex-1 min-w-0 p-5 pt-16 md:p-8 max-w-2xl">
+    <div className="flex bg-base">
+      <main className="flex-1 min-w-0 p-5 md:p-8 max-w-2xl">
         <header>
           <p className="text-[12px] uppercase tracking-wide text-muted font-semibold">Administración</p>
           <h1 className="text-2xl font-bold text-ink mt-1">Configuración de IA</h1>

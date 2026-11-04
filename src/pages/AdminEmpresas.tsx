@@ -1,5 +1,4 @@
 import { useState, type FormEvent } from 'react'
-import Sidebar from '../components/Sidebar'
 import { useCompanies, type Company } from '../state/adminHooks'
 import { ApiError } from '../lib/api'
 import CompanyLogo from '../components/CompanyLogo'
@@ -196,9 +195,8 @@ export default function AdminEmpresas() {
   }
 
   return (
-    <div className="min-h-screen flex bg-base">
-      <Sidebar demoMode={false} />
-      <main className="flex-1 min-w-0 p-5 pt-16 md:p-8 max-w-4xl">
+    <div className="flex bg-base">
+      <main className="flex-1 min-w-0 p-5 md:p-8 max-w-4xl">
         <header>
           <p className="text-[12px] uppercase tracking-wide text-muted font-semibold">Administración</p>
           <h1 className="text-2xl font-bold text-ink mt-1">Empresas</h1>

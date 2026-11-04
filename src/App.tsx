@@ -15,6 +15,7 @@ import ChecklistItemPage from './pages/ChecklistItemPage'
 import { ChecklistLayout } from './state/ChecklistContext'
 import RequireAuth from './components/RequireAuth'
 import RequireAdmin from './components/RequireAdmin'
+import AppLayout from './components/AppLayout'
 
 export default function App() {
   return (
@@ -22,53 +23,58 @@ export default function App() {
       <Route path="/" element={<Navigate to="/checklist" replace />} />
       <Route path="/login" element={<Login />} />
       <Route path="/magic-login" element={<MagicLogin />} />
-      <Route
-        element={
-          <RequireAdmin>
-            <Outlet />
-          </RequireAdmin>
-        }
-      >
-        <Route path="/admin" element={<AdminDashboard />} />
-        <Route
-          path="/admin/empresas"
-          element={
-            <RequireAdmin globalOnly>
-              <AdminEmpresas />
-            </RequireAdmin>
-          }
-        />
-        <Route path="/admin/mi-empresa" element={<AdminMiEmpresa />} />
-        <Route path="/admin/usuarios" element={<AdminUsuarios />} />
-        <Route path="/admin/informes" element={<AdminInformes />} />
-        <Route
-          path="/admin/ia"
-          element={
-            <RequireAdmin globalOnly>
-              <AdminIaConfig />
-            </RequireAdmin>
-          }
-        />
-      </Route>
+      {/* One shell (AppLayout: Sidebar + content) for every authenticated screen. */}
       <Route
         element={
           <RequireAuth>
-            <ChecklistLayout />
+            <AppLayout />
           </RequireAuth>
         }
       >
-        <Route path="/checklist" element={<ChecklistProjects />} />
         <Route
-          path="/checklist/nueva-obra"
           element={
             <RequireAdmin>
-              <ChecklistNuevaObra />
+              <Outlet />
             </RequireAdmin>
           }
-        />
-        <Route path="/checklist/:projectId" element={<ObraVisitas />} />
-        <Route path="/checklist/:projectId/:visitId" element={<ChecklistProject />} />
-        <Route path="/checklist/:projectId/:visitId/:itemId" element={<ChecklistItemPage />} />
+        >
+          <Route path="/admin" element={<AdminDashboard />} />
+          <Route
+            path="/admin/empresas"
+            element={
+              <RequireAdmin globalOnly>
+                <AdminEmpresas />
+              </RequireAdmin>
+            }
+          />
+          <Route path="/admin/mi-empresa" element={<AdminMiEmpresa />} />
+          <Route path="/admin/usuarios" element={<AdminUsuarios />} />
+          <Route path="/admin/informes" element={<AdminInformes />} />
+          <Route
+            path="/admin/ia"
+            element={
+              <RequireAdmin globalOnly>
+                <AdminIaConfig />
+              </RequireAdmin>
+            }
+          />
+        </Route>
+        <Route
+          element={<ChecklistLayout />}
+        >
+          <Route path="/checklist" element={<ChecklistProjects />} />
+          <Route
+            path="/checklist/nueva-obra"
+            element={
+              <RequireAdmin>
+                <ChecklistNuevaObra />
+              </RequireAdmin>
+            }
+          />
+          <Route path="/checklist/:projectId" element={<ObraVisitas />} />
+          <Route path="/checklist/:projectId/:visitId" element={<ChecklistProject />} />
+          <Route path="/checklist/:projectId/:visitId/:itemId" element={<ChecklistItemPage />} />
+        </Route>
       </Route>
       <Route path="*" element={<Navigate to="/checklist" replace />} />
     </Routes>

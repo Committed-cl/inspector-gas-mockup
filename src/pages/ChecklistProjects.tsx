@@ -1,52 +1,26 @@
-import { Link, useNavigate } from 'react-router-dom'
+import { Link } from 'react-router-dom'
 import { useProjects } from '../state/ChecklistContext'
-import { useAuth } from '../lib/auth'
 import { formatDateCl } from '../utils/date'
 import CenteredMessage from '../components/CenteredMessage'
 
 export default function ChecklistProjects() {
   const { data: projects, loading, error } = useProjects()
-  const { auth, logout } = useAuth()
-  const nav = useNavigate()
 
   if (loading) return <CenteredMessage text="Cargando proyectos..." />
   if (error || !projects) return <CenteredMessage text="No se pudieron cargar los proyectos." />
 
   return (
-    <div className="min-h-screen bg-base">
-      <header className="border-b border-hairline bg-white px-6 py-4">
-        <div className="flex items-center justify-between gap-4 flex-wrap">
-          <div>
-            <h1 className="text-[19px] font-bold text-ink leading-tight">Visita de Supervisor</h1>
-            <p className="text-[12.5px] text-muted mt-0.5">Proyectos a su cargo — Selecciona un Proyecto</p>
-          </div>
-          <div className="text-right">
-            <p className="text-[12px] text-muted">
-              {[auth?.user.name, 'Supervisor', auth?.user.companyName].filter(Boolean).join(' · ')}
-            </p>
-            <div className="mt-1 flex items-center gap-3 justify-end">
-              {(auth?.user.isAdmin || auth?.user.role === 'admin-convenio') && (
-                <Link to="/admin" className="text-[11.5px] font-semibold text-brand hover:underline">
-                  Panel admin
-                </Link>
-              )}
-              <button
-                type="button"
-                onClick={() => {
-                  logout()
-                  nav('/login')
-                }}
-                className="text-[11.5px] font-semibold text-brand hover:underline"
-              >
-                Cerrar sesión
-              </button>
-            </div>
-          </div>
+    <div className="bg-base">
+      <header className="px-5 pt-5 md:px-8 md:pt-8">
+        <div className="max-w-4xl">
+          <p className="text-[12px] uppercase tracking-wide text-muted font-semibold">Checklist</p>
+          <h1 className="text-2xl font-bold text-ink mt-1">Visita de Supervisor</h1>
+          <p className="text-[13px] text-muted mt-1">Proyectos a su cargo — Selecciona un Proyecto</p>
         </div>
       </header>
 
-      <main className="px-6 py-8">
-        <div className="max-w-3xl mx-auto flex flex-col gap-3">
+      <main className="px-5 py-6 md:px-8">
+        <div className="max-w-4xl flex flex-col gap-3">
           {projects.map((p) => (
             <Link
               key={p.id}

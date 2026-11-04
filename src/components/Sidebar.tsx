@@ -1,76 +1,100 @@
 import { useState } from 'react'
-import { Link, useLocation } from 'react-router-dom'
-import { useIsGlobalAdmin } from '../lib/auth'
+import { Link, useLocation, useNavigate } from 'react-router-dom'
+import { useAuth, useIsGlobalAdmin } from '../lib/auth'
+import { ROLES } from '../state/adminHooks'
 
-const items = [
-  { to: '/admin', label: 'Dashboard' },
-  { to: '/admin/empresas', label: 'Empresa', globalOnly: true },
-  { to: '/admin/mi-empresa', label: 'Mi empresa', convenioOnly: true },
-  { to: '/admin/usuarios', label: 'Usuario' },
-  { to: '/admin/informes', label: 'Informes' },
-  { to: '/checklist/nueva-obra', label: 'Proyecto' },
-  { to: '/admin/ia', label: 'Configuración de IA', globalOnly: true },
-  { to: '/checklist', label: 'Ir a checklist' },
+type Item = { to: string; label: string; adminOnly?: boolean; globalOnly?: boolean; convenioOnly?: boolean }
+
+const items: Item[] = [
+  { to: '/checklist', label: 'Proyectos' },
+  { to: '/admin', label: 'Dashboard', adminOnly: true },
+  { to: '/admin/empresas', label: 'Empresa', adminOnly: true, globalOnly: true },
+  { to: '/admin/mi-empresa', label: 'Mi empresa', adminOnly: true, convenioOnly: true },
+  { to: '/admin/usuarios', label: 'Usuario', adminOnly: true },
+  { to: '/admin/informes', label: 'Informes', adminOnly: true },
+  { to: '/checklist/nueva-obra', label: 'Nuevo proyecto', adminOnly: true },
+  { to: '/admin/ia', label: 'Configuración de IA', adminOnly: true, globalOnly: true },
 ]
 
-// Below md, the sidebar is a fixed width too wide for a phone screen to share
-// with content, so it becomes an off-canvas drawer opened by a floating
-// button — same nav, same links, just hidden until asked for.
-export default function Sidebar({ demoMode = true }: { demoMode?: boolean }) {
+function isActive(to: string, pathname: string): boolean {
+  if (to === '/admin') return pathname === '/admin'
+  // «Proyectos» covers the whole checklist flow except the admin-only form.
+  if (to === '/checklist') return pathname.startsWith('/checklist') && !pathname.startsWith('/checklist/nueva-obra')
+  return pathname.startsWith(to)
+}
+
+// Desktop: static column. Below md: a slim top bar in the page flow (it never
+// overlaps content) that opens the same nav as an off-canvas drawer.
+export default function Sidebar() {
   const { pathname } = useLocation()
+  const nav = useNavigate()
   const [open, setOpen] = useState(false)
+  const { auth, logout } = useAuth()
   const isGlobalAdmin = useIsGlobalAdmin()
-  const visibleItems = items.filter((i) => (!('globalOnly' in i) || isGlobalAdmin) && (!('convenioOnly' in i) || !isGlobalAdmin))
+  const user = auth?.user
+  const isAdminUser = !!user && (user.isAdmin || user.role === 'admin-convenio')
+  const visibleItems = items.filter(
+    (i) =>
+      (!i.adminOnly || isAdminUser) && (!i.globalOnly || isGlobalAdmin) && (!i.convenioOnly || !isGlobalAdmin),
+  )
+  const roleLabel = ROLES.find((r) => r.value === user?.role)?.label ?? user?.role
 
   return (
     <>
-      <button
-        type="button"
-        onClick={() => setOpen(true)}
-        aria-label="Abrir menú"
-        className="md:hidden fixed top-3 left-3 z-30 bg-white border border-hairline rounded-lg p-2 shadow-sm"
-      >
-        <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round">
-          <path d="M3 5.5h14M3 10h14M3 14.5h14" />
-        </svg>
-      </button>
+      <div className="md:hidden h-11 flex items-center gap-2 px-3 border-b border-hairline bg-white print:hidden">
+        <button type="button" onClick={() => setOpen(true)} aria-label="Abrir menú" className="p-1.5 -ml-1 rounded-lg text-ink hover:bg-brand/5">
+          <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round">
+            <path d="M3 5.5h14M3 10h14M3 14.5h14" />
+          </svg>
+        </button>
+        <p className="text-brand font-bold text-[15px] leading-none">Inspector Gas</p>
+      </div>
 
-      {open && <div className="md:hidden fixed inset-0 bg-ink/30 z-40" onClick={() => setOpen(false)} />}
+      {open && <div className="md:hidden fixed inset-0 bg-ink/30 z-40 print:hidden" onClick={() => setOpen(false)} />}
 
       <aside
-        className={`w-60 shrink-0 border-r border-hairline bg-white md:bg-white/60 md:backdrop-blur min-h-screen p-5 fixed inset-y-0 left-0 z-50 overflow-y-auto transition-transform duration-200 md:static md:translate-x-0 ${
+        className={`w-60 shrink-0 border-r border-hairline bg-white md:bg-white/60 md:backdrop-blur p-5 fixed inset-y-0 left-0 z-50 overflow-y-auto flex flex-col transition-transform duration-200 md:sticky md:top-0 md:h-screen md:translate-x-0 print:hidden ${
           open ? 'translate-x-0' : '-translate-x-full'
         }`}
       >
         <div className="flex items-start justify-between mb-6">
-          <Link to="/" className="block" onClick={() => setOpen(false)}>
+          <Link to="/checklist" className="block" onClick={() => setOpen(false)}>
             <p className="text-brand font-bold text-lg leading-none">Inspector Gas</p>
-            <p className="text-muted text-xs mt-1">Backoffice</p>
+            <p className="text-muted text-xs mt-1">{isAdminUser ? 'Backoffice' : 'Checklist'}</p>
           </Link>
           <button type="button" onClick={() => setOpen(false)} aria-label="Cerrar menú" className="md:hidden text-muted p-1 -mt-1 -mr-1">
             ✕
           </button>
         </div>
         <nav className="flex flex-col gap-1">
-          {visibleItems.map((i) => {
-            const active = i.to === '/admin' || i.to === '/checklist' ? pathname === i.to : pathname.startsWith(i.to)
-            return (
-              <Link
-                key={i.to}
-                to={i.to}
-                onClick={() => setOpen(false)}
-                className={`px-3 py-2 rounded-lg text-[13px] transition-colors ${
-                  active ? 'bg-brand text-white' : 'text-ink hover:bg-brand/5'
-                }`}
-              >
-                {i.label}
-              </Link>
-            )
-          })}
+          {visibleItems.map((i) => (
+            <Link
+              key={i.to}
+              to={i.to}
+              onClick={() => setOpen(false)}
+              className={`px-3 py-2 rounded-lg text-[13px] transition-colors ${
+                isActive(i.to, pathname) ? 'bg-brand text-white' : 'text-ink hover:bg-brand/5'
+              }`}
+            >
+              {i.label}
+            </Link>
+          ))}
         </nav>
-        {demoMode && (
-          <div className="mt-10 p-3 rounded-lg bg-brand-soft text-[11.5px] text-brand leading-snug">
-            Modo demo — los cambios no se persisten.
+        {user && (
+          <div className="mt-auto pt-6 border-t border-hairline">
+            <p className="text-[13px] font-semibold text-ink leading-tight">{user.name}</p>
+            <p className="text-[11.5px] text-muted mt-0.5">{[roleLabel, user.companyName].filter(Boolean).join(' · ')}</p>
+            <button
+              type="button"
+              onClick={() => {
+                setOpen(false)
+                logout()
+                nav('/login')
+              }}
+              className="mt-3 text-[12px] font-semibold text-brand hover:underline"
+            >
+              Cerrar sesión
+            </button>
           </div>
         )}
       </aside>

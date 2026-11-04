@@ -1,9 +1,8 @@
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { formName } from '../data/checklistMatrizInterior'
 import { useProject, useProjectVisits, type VisitType } from '../state/ChecklistContext'
-import { useAuth, useReadOnly } from '../lib/auth'
+import { useReadOnly } from '../lib/auth'
 import { formatDateCl } from '../utils/date'
-import { ROLES } from '../state/adminHooks'
 import CenteredMessage from '../components/CenteredMessage'
 
 export const visitTypeLabel: Record<VisitType, string> = { gas_prueba: 'Visita Gas de Prueba', gas_final: 'Visita Gas Final', visita_estandar: 'Visita Estándar' }
@@ -17,7 +16,6 @@ const statusColor = {
 export default function ObraVisitas() {
   const { projectId = '' } = useParams()
   const nav = useNavigate()
-  const { auth } = useAuth()
   const readOnly = useReadOnly()
   const project = useProject(projectId)
   const { visits, loading, error, createVisit } = useProjectVisits(projectId)
@@ -37,26 +35,21 @@ export default function ObraVisitas() {
   }
 
   return (
-    <div className="min-h-screen bg-base">
-      <header className="border-b border-hairline bg-white px-6 py-4">
-        <div className="flex items-center justify-between gap-4 flex-wrap">
-          <div>
-            <h1 className="text-[19px] font-bold text-ink leading-tight">{projectData.name}</h1>
-            <p className="text-[12.5px] text-muted mt-0.5">
-              {formName} · Contratista {projectData.installer}
-            </p>
-          </div>
-          <p className="text-[12px] text-muted">
-            {auth?.user.name} · {ROLES.find((r) => r.value === auth?.user.role)?.label ?? auth?.user.role}
+    <div className="bg-base">
+      <header className="px-5 pt-5 md:px-8 md:pt-8">
+        <div className="max-w-4xl">
+          <Link to="/checklist" className="inline-flex items-center gap-1 text-[12.5px] font-semibold text-brand hover:underline">
+            ← Proyectos
+          </Link>
+          <h1 className="text-2xl font-bold text-ink mt-2">{projectData.name}</h1>
+          <p className="text-[13px] text-muted mt-1">
+            {formName} · Contratista {projectData.installer}
           </p>
         </div>
-        <Link to="/checklist" className="inline-flex items-center gap-1.5 bg-brand hover:bg-brand-dark text-white font-semibold rounded-lg px-3.5 py-2 text-[12.5px] mt-3">
-          ← Volver al listado de proyectos
-        </Link>
       </header>
 
-      <main className="px-6 py-8">
-        <div className="max-w-3xl mx-auto flex flex-col gap-4">
+      <main className="px-5 py-6 md:px-8">
+        <div className="max-w-4xl flex flex-col gap-4">
           <div className="flex items-center justify-between gap-4">
             <h2 className="text-[14px] font-semibold text-ink">Historial de visitas</h2>
             {open ? (
