@@ -41,6 +41,8 @@ export type CreateProjectInput = {
   matrixVolumeM3?: number
 }
 
+export type ProjectTechnicalData = { servicePressureKpa?: number; matrixVolumeM3?: number }
+
 type ChecklistState = { itemsState: Record<string, ItemState>; generalChat: ChatMessage[]; observations: string }
 
 type Async<T> = { data: T | null; loading: boolean; error: string | null }
@@ -103,6 +105,7 @@ type Ctx = {
   getChecklist: (projectId: string, visitId: string) => Async<ChecklistState>
   fetchChecklistIfNeeded: (projectId: string, visitId: string) => void
   createProject: (input: CreateProjectInput) => Promise<string>
+  updateProjectTechnicalData: (projectId: string, input: ProjectTechnicalData) => Promise<void>
   createVisit: (projectId: string, visitType: VisitType) => Promise<string>
   closeVisit: (projectId: string, visitId: string) => Promise<void>
   reopenVisit: (projectId: string, visitId: string) => Promise<void>
@@ -321,6 +324,13 @@ export function ChecklistProvider({ children }: { children: ReactNode }) {
     return summary.id
   }, [])
 
+  const updateProjectTechnicalData = useCallback(async (projectId: string, input: ProjectTechnicalData) => {
+    const updated = await api.patch<Omit<ProjectSummary, 'openVisit'>>(`/projects/${projectId}`, input)
+    const merge = (p: ProjectSummary): ProjectSummary => ({ ...p, ...updated, openVisit: p.openVisit })
+    setProjectById((prev) => (prev[projectId]?.data ? { ...prev, [projectId]: { ...prev[projectId], data: merge(prev[projectId].data!) } } : prev))
+    setProjects((prev) => (prev.data ? { ...prev, data: prev.data.map((p) => (p.id === projectId ? merge(p) : p)) } : prev))
+  }, [])
+
   const createVisit = useCallback(async (projectId: string, visitType: VisitType) => {
     const visit = await api.post<Visit>(`/projects/${projectId}/visits`, { visitType })
     setVisitsByProject((prev) => ({
@@ -438,6 +448,7 @@ export function ChecklistProvider({ children }: { children: ReactNode }) {
     getChecklist,
     fetchChecklistIfNeeded,
     createProject,
+    updateProjectTechnicalData,
     createVisit,
     closeVisit,
     reopenVisit,
@@ -475,6 +486,11 @@ export function useProject(projectId: string) {
   }, [projectId, fetchProjectIfNeeded])
   const state = getProject(projectId)
   return { ...state, loading: isPending(state) }
+}
+
+export function useUpdateProjectTechnicalData() {
+  const { updateProjectTechnicalData } = useChecklist()
+  return updateProjectTechnicalData
 }
 
 export function useCreateProject() {
