@@ -45,6 +45,41 @@ function paginate(root: HTMLElement) {
   }
 }
 
+function blobToDataUrl(blob: Blob): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader()
+    reader.onload = () => resolve(reader.result as string)
+    reader.onerror = () => reject(reader.error)
+    reader.readAsDataURL(blob)
+  })
+}
+
+// Photos live in a cross-origin bucket in production. html2canvas silently skips images it cannot read (leaving empty
+// boxes), so every remote image is fetched with CORS and inlined as a data URL first. `cache: 'reload'` avoids reusing
+// the non-CORS response the browser cached when the <img> was shown on screen. A photo that cannot be loaded is replaced
+// by an explicit note instead of an empty box.
+export async function inlineRemoteImages(root: HTMLElement): Promise<number> {
+  const imgs = [...root.querySelectorAll('img')].filter((img) => img.getAttribute('src') && !img.src.startsWith('data:'))
+  const results = await Promise.all(
+    imgs.map(async (img) => {
+      try {
+        const res = await fetch(img.src, { mode: 'cors', cache: 'reload' })
+        if (!res.ok) throw new Error(String(res.status))
+        img.src = await blobToDataUrl(await res.blob())
+        await img.decode()
+        return true
+      } catch {
+        const note = document.createElement('div')
+        note.className = `${img.className} flex items-center justify-center text-center text-muted`
+        note.textContent = 'Foto no disponible'
+        img.replaceWith(note)
+        return false
+      }
+    }),
+  )
+  return results.filter((ok) => !ok).length
+}
+
 // Renders the print-only visit report (hidden on screen) into a jsPDF document with footer and page numbering.
 async function renderVisitReport<T>(source: HTMLElement, visitId: string, run: (pdf: any) => T): Promise<T> {
   const clone = source.cloneNode(true) as HTMLElement
@@ -55,6 +90,8 @@ async function renderVisitReport<T>(source: HTMLElement, visitId: string, run: (
   host.appendChild(clone)
   document.body.appendChild(host)
   try {
+    await inlineRemoteImages(clone)
+    await Promise.all([...clone.querySelectorAll('img')].map((img) => img.decode().catch(() => undefined)))
     paginate(clone)
     // `pagebreak` is supported by html2pdf.js but missing from its typings.
     const options = {
