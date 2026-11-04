@@ -4,6 +4,9 @@ import { ApiError, type SupervisorConflict } from '../lib/api'
 import { useAuth, useIsGlobalAdmin } from '../lib/auth'
 import Modal from '../components/Modal'
 
+// Líder and convenio admin see every project of their company: no assignment.
+const rolePicksProjects = (role: UserRole) => role !== 'lider-supervisores' && role !== 'admin-convenio'
+
 export default function AdminUsuarios() {
   const { auth } = useAuth()
   const isGlobalAdmin = useIsGlobalAdmin()
@@ -61,7 +64,7 @@ export default function AdminUsuarios() {
     setConflicts(null)
     setSubmitting(true)
     try {
-      const result = await createUser(email, name, role, false, companyId, newProjectIds, replaceSupervisor)
+      const result = await createUser(email, name, role, false, companyId, rolePicksProjects(role) ? newProjectIds : [], replaceSupervisor)
       setPassword({ email: result.user.email, value: result.provisionalPassword })
       setEmail('')
       setName('')
@@ -252,7 +255,6 @@ export default function AdminUsuarios() {
                 companies={companies}
                 projects={projects}
                 roles={roles}
-                canGrantAdmin={isGlobalAdmin}
                 onCancel={() => setEditingId(null)}
                 onSave={async (input) => {
                   await updateUser(editingUser.id, input)
@@ -315,7 +317,7 @@ export default function AdminUsuarios() {
               ))}
             </select>
           </label>
-          <div className="flex flex-col gap-1.5">
+          {rolePicksProjects(role) && <div className="flex flex-col gap-1.5">
             <span className="text-[12px] font-medium text-ink">Proyectos asignados</span>
             {projects.length === 0 && <p className="text-[12px] text-muted italic">Todavía no hay proyectos creados.</p>}
             <div className="flex flex-wrap gap-x-4 gap-y-1.5 max-h-32 overflow-y-auto">
@@ -333,7 +335,7 @@ export default function AdminUsuarios() {
                 </label>
               ))}
             </div>
-          </div>
+          </div>}
           {error && <p className="text-[12.5px] text-danger">{error}</p>}
           {conflicts && <ReplaceSupervisorPrompt conflicts={conflicts} busy={submitting} onConfirm={() => submit(undefined, true)} onCancel={() => setConflicts(null)} />}
           <button
@@ -349,14 +351,13 @@ export default function AdminUsuarios() {
   )
 }
 
-type EditUserInput = { name: string; role: UserRole; isAdmin?: boolean; companyId: string; projectIds: string[]; replaceSupervisor?: boolean }
+type EditUserInput = { name: string; role: UserRole; companyId: string; projectIds: string[]; replaceSupervisor?: boolean }
 
 function EditUserCard({
   user,
   companies,
   projects,
   roles,
-  canGrantAdmin,
   onCancel,
   onSave,
 }: {
@@ -364,14 +365,11 @@ function EditUserCard({
   companies: { id: string; name: string }[]
   projects: { id: string; name: string }[]
   roles: { value: UserRole; label: string }[]
-  // The API rejects (403) isAdmin changes from a convenio admin.
-  canGrantAdmin: boolean
   onCancel: () => void
   onSave: (input: EditUserInput) => Promise<void>
 }) {
   const [name, setName] = useState(user.name)
   const [role, setRole] = useState<UserRole>(user.role)
-  const [isAdmin, setIsAdmin] = useState(user.isAdmin)
   const [companyId, setCompanyId] = useState(user.companyId)
   const [projectIds, setProjectIds] = useState<string[]>(user.projectIds ?? [])
   const [error, setError] = useState<string | null>(null)
@@ -387,7 +385,7 @@ function EditUserCard({
     setConflicts(null)
     setSaving(true)
     try {
-      await onSave({ name, role, ...(canGrantAdmin && { isAdmin }), companyId, projectIds, ...(replaceSupervisor && { replaceSupervisor }) })
+      await onSave({ name, role, companyId, projectIds: rolePicksProjects(role) ? projectIds : [], ...(replaceSupervisor && { replaceSupervisor }) })
     } catch (err) {
       if (err instanceof ApiError && err.status === 409 && err.conflicts?.length) setConflicts(err.conflicts)
       else setError(err instanceof ApiError ? err.message : 'No se pudo guardar el usuario.')
@@ -436,15 +434,9 @@ function EditUserCard({
                 ))}
               </select>
             </label>
-            {canGrantAdmin && (
-              <label className="flex items-center gap-2 text-[12.5px] text-ink self-end pb-2">
-                <input type="checkbox" checked={isAdmin} onChange={(e) => setIsAdmin(e.target.checked)} className="h-4 w-4 rounded accent-brand" />
-                Es administrador
-              </label>
-            )}
           </div>
 
-          <div className="flex flex-col gap-1.5">
+          {rolePicksProjects(role) && <div className="flex flex-col gap-1.5">
             <span className="text-[11.5px] font-medium text-ink">Proyectos asignados</span>
             {projects.length === 0 && <p className="text-[12px] text-muted italic">Todavía no hay proyectos creados.</p>}
             <div className="flex flex-wrap gap-x-4 gap-y-1.5 max-h-32 overflow-y-auto">
@@ -460,7 +452,7 @@ function EditUserCard({
                 </label>
               ))}
             </div>
-          </div>
+          </div>}
 
           {error && <p className="text-[12.5px] text-danger">{error}</p>}
           {conflicts && <ReplaceSupervisorPrompt conflicts={conflicts} busy={saving} onConfirm={() => save(true)} onCancel={() => setConflicts(null)} />}
