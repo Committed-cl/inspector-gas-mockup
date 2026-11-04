@@ -30,6 +30,8 @@ export default function AdminUsuarios() {
   const [submitting, setSubmitting] = useState(false)
   const [conflicts, setConflicts] = useState<SupervisorConflict[] | null>(null)
   const [password, setPassword] = useState<{ email: string; value: string } | null>(null)
+  const [initialPassword, setInitialPassword] = useState('')
+  const [resetTarget, setResetTarget] = useState<AdminUser | null>(null)
   const [editingId, setEditingId] = useState<string | null>(null)
 
   const companyName = (id: string) => companies.find((c) => c.id === id)?.name ?? id
@@ -64,11 +66,12 @@ export default function AdminUsuarios() {
     setConflicts(null)
     setSubmitting(true)
     try {
-      const result = await createUser(email, name, role, false, companyId, rolePicksProjects(role) ? newProjectIds : [], replaceSupervisor)
+      const result = await createUser(email, name, role, false, companyId, rolePicksProjects(role) ? newProjectIds : [], replaceSupervisor, initialPassword)
       setPassword({ email: result.user.email, value: result.provisionalPassword })
       setEmail('')
       setName('')
       setNewProjectIds([])
+      setInitialPassword('')
     } catch (err) {
       if (err instanceof ApiError && err.status === 409 && err.conflicts?.length) setConflicts(err.conflicts)
       else setError(err instanceof ApiError ? err.message : 'No se pudo crear el usuario.')
@@ -77,13 +80,16 @@ export default function AdminUsuarios() {
     }
   }
 
-  const onResetPassword = async (user: AdminUser) => {
-    try {
-      const result = await resetPassword(user.id)
-      setPassword({ email: user.email, value: result.provisionalPassword })
-    } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'No se pudo restablecer la contraseña.')
-    }
+  const onResetPassword = (user: AdminUser) => {
+    setError(null)
+    setResetTarget(user)
+  }
+
+  const confirmReset = async (newPassword: string) => {
+    if (!resetTarget) return
+    const result = await resetPassword(resetTarget.id, newPassword)
+    setPassword({ email: resetTarget.email, value: result.provisionalPassword })
+    setResetTarget(null)
   }
 
   const onDelete = async (user: AdminUser) => {
@@ -317,6 +323,19 @@ export default function AdminUsuarios() {
               ))}
             </select>
           </label>
+          <label className="flex flex-col gap-1.5">
+            <span className="text-[12px] font-medium text-ink">Clave inicial (opcional)</span>
+            <input
+              type="text"
+              value={initialPassword}
+              onChange={(e) => setInitialPassword(e.target.value)}
+              minLength={6}
+              autoComplete="off"
+              placeholder="Vacío = se genera una clave"
+              className="rounded-lg border border-hairline px-3 py-2.5 text-[14px] focus:outline-none focus:ring-2 focus:ring-brand/30 focus:border-brand"
+            />
+            <span className="text-[11.5px] text-muted">Mínimo 6 caracteres. El usuario deberá cambiarla al ingresar.</span>
+          </label>
           {rolePicksProjects(role) && <div className="flex flex-col gap-1.5">
             <span className="text-[12px] font-medium text-ink">Proyectos asignados</span>
             {projects.length === 0 && <p className="text-[12px] text-muted italic">Todavía no hay proyectos creados.</p>}
@@ -347,7 +366,60 @@ export default function AdminUsuarios() {
           </button>
         </form>
       </main>
+      {resetTarget && <ResetPasswordModal user={resetTarget} onCancel={() => setResetTarget(null)} onConfirm={confirmReset} />}
     </div>
+  )
+}
+
+function ResetPasswordModal({ user, onCancel, onConfirm }: { user: AdminUser; onCancel: () => void; onConfirm: (newPassword: string) => Promise<void> }) {
+  const [value, setValue] = useState('')
+  const [error, setError] = useState<string | null>(null)
+  const [busy, setBusy] = useState(false)
+
+  const submit = async (e: FormEvent) => {
+    e.preventDefault()
+    if (value && value.length < 6) {
+      setError('La clave debe tener al menos 6 caracteres.')
+      return
+    }
+    setError(null)
+    setBusy(true)
+    try {
+      await onConfirm(value)
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'No se pudo restablecer la contraseña.')
+      setBusy(false)
+    }
+  }
+
+  return (
+    <Modal labelledBy="reset-password-title" onClose={onCancel}>
+      <form onSubmit={submit} className="p-5 flex flex-col gap-3">
+        <h2 id="reset-password-title" className="text-[13px] font-semibold text-ink">Restablecer clave de {user.name}</h2>
+        <label className="flex flex-col gap-1.5">
+          <span className="text-[11.5px] font-medium text-ink">Nueva clave (opcional)</span>
+          <input
+            type="text"
+            value={value}
+            onChange={(e) => setValue(e.target.value)}
+            autoComplete="off"
+            autoFocus
+            placeholder="Vacío = se genera una clave"
+            className="rounded-lg border border-hairline px-2.5 py-2 text-[13px] focus:outline-none focus:ring-2 focus:ring-brand/30 focus:border-brand"
+          />
+          <span className="text-[11.5px] text-muted">Mínimo 6 caracteres. El usuario deberá cambiarla al ingresar.</span>
+        </label>
+        {error && <p className="text-[12.5px] text-danger">{error}</p>}
+        <div className="flex items-center gap-3">
+          <button type="submit" disabled={busy} className="bg-brand hover:bg-brand-dark text-white font-semibold px-3.5 py-1.5 rounded-lg text-[12.5px] disabled:opacity-60">
+            {busy ? 'Restableciendo...' : 'Restablecer'}
+          </button>
+          <button type="button" onClick={onCancel} className="text-[12.5px] text-muted hover:underline">
+            Cancelar
+          </button>
+        </div>
+      </form>
+    </Modal>
   )
 }
 

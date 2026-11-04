@@ -106,8 +106,8 @@ function withoutProjects(list: AdminUser[], keepUserId: string, projectIds: stri
 export function useUsers() {
   const { data, loading, error, mutate } = useAsyncList<AdminUser>('/users')
 
-  const createUser = async (email: string, name: string, role: UserRole, isAdmin: boolean, companyId: string, projectIds: string[] = [], replaceSupervisor = false) => {
-    const result = await api.post<CreateUserResult>('/users', { email, name, role, isAdmin, companyId, projectIds, ...(replaceSupervisor && { replaceSupervisor }) })
+  const createUser = async (email: string, name: string, role: UserRole, isAdmin: boolean, companyId: string, projectIds: string[] = [], replaceSupervisor = false, initialPassword = '') => {
+    const result = await api.post<CreateUserResult>('/users', { email, name, role, isAdmin, companyId, projectIds, ...(replaceSupervisor && { replaceSupervisor }), ...(initialPassword && { initialPassword }) })
     mutate((list) => [...withoutProjects(list, result.user.id, replaceSupervisor ? projectIds : []), result.user])
     return result
   }
@@ -123,7 +123,8 @@ export function useUsers() {
     mutate((list) => list.filter((u) => u.id !== id))
   }
 
-  const resetPassword = (id: string) => api.post<ResetPasswordResult>(`/users/${encodeURIComponent(id)}/password`)
+  const resetPassword = (id: string, newPassword = '') =>
+    api.post<ResetPasswordResult>(`/users/${encodeURIComponent(id)}/password`, newPassword ? { newPassword } : undefined)
 
   return { users: data ?? [], loading, error, createUser, updateUser, deleteUser, resetPassword }
 }

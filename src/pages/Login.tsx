@@ -13,6 +13,7 @@ export default function Login() {
   const [error, setError] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
   const [linkSent, setLinkSent] = useState(false)
+  const [forgotSent, setForgotSent] = useState(false)
 
   const submit = async (e: FormEvent) => {
     e.preventDefault()
@@ -40,6 +41,24 @@ export default function Login() {
       setLinkSent(true)
     } catch (err) {
       setError(err instanceof ApiError && err.status === 429 ? 'Demasiados intentos. Espera un momento e intenta de nuevo.' : 'No se pudo enviar el enlace. Intenta de nuevo.')
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
+  const forgotPassword = async () => {
+    setError(null)
+    setForgotSent(false)
+    if (!email.trim()) {
+      setError('Ingresa tu email para solicitar ayuda con tu clave.')
+      return
+    }
+    setSubmitting(true)
+    try {
+      await api.post('/auth/forgot-password', { email })
+      setForgotSent(true)
+    } catch (err) {
+      setError(err instanceof ApiError && err.status === 429 ? 'Demasiados intentos. Espera un momento e intenta de nuevo.' : 'No se pudo enviar la solicitud. Intenta de nuevo.')
     } finally {
       setSubmitting(false)
     }
@@ -96,8 +115,14 @@ export default function Login() {
 
           {linkSent && <p className="text-[12.5px] text-ink">Si el email está registrado, te enviamos un enlace de acceso (vale 15 minutos).</p>}
 
+          {forgotSent && <p className="text-[12.5px] text-ink">Tu solicitud fue enviada al administrador.</p>}
+
+          <button type="button" onClick={forgotPassword} disabled={submitting} className="text-[12.5px] text-brand/80 hover:underline disabled:opacity-60">
+            Olvidé mi clave
+          </button>
+
           <button type="button" onClick={sendMagicLink} disabled={submitting} className="text-[12.5px] text-brand/80 hover:underline disabled:opacity-60">
-            Enviar enlace de acceso por correo (también si olvidaste tu contraseña)
+            Enviar enlace de acceso por correo
           </button>
         </form>
       </div>
