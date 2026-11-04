@@ -3,9 +3,9 @@ import { useAuth, useIsGlobalAdmin } from '../lib/auth'
 import { useCompanies, useUsers, useObrasCount } from '../state/adminHooks'
 
 const CARDS = [
-  { to: '/admin/empresas', label: 'Empresas', description: 'Empresas que usan la plataforma, dueñas de las obras.', globalOnly: true },
+  { to: '/admin/empresas', label: 'Empresas', description: 'Empresas que usan la plataforma, dueñas de los proyectos.', globalOnly: true },
   { to: '/admin/usuarios', label: 'Usuarios', description: 'Administradores, líderes de supervisores y supervisores de proyecto.' },
-  { to: '/checklist/nueva-obra', label: 'Obras', description: 'Obras registradas en el sistema.' },
+  { to: '/checklist/nueva-obra', label: 'Proyectos', description: 'Proyectos registrados en el sistema.' },
 ] as const
 
 export default function AdminDashboard() {
@@ -19,7 +19,7 @@ export default function AdminDashboard() {
   const counts: Record<(typeof CARDS)[number]['label'], number | null> = {
     Empresas: companiesLoading ? null : companies.length,
     Usuarios: usersLoading ? null : (isGlobalAdmin ? users : users.filter((u) => u.companyId === companyId)).length,
-    Obras: obrasLoading ? null : obrasCount,
+    Proyectos: obrasLoading ? null : obrasCount,
   }
 
   return (
@@ -68,7 +68,7 @@ export default function AdminDashboard() {
               to="/checklist/nueva-obra"
               className="text-[12.5px] font-semibold text-brand bg-brand-soft hover:bg-brand-soft/70 px-3 py-2 rounded-lg transition-colors"
             >
-              + Nueva obra
+              + Nuevo proyecto
             </Link>
             {isGlobalAdmin && (
             <Link

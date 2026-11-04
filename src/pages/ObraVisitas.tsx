@@ -140,7 +140,7 @@ export default function ObraVisitas() {
           </div>
 
           {sorted.length === 0 && (
-            <p className="text-[14px] md:text-[13px] text-muted italic">Todavía no hay visitas registradas para esta obra.</p>
+            <p className="text-[14px] md:text-[13px] text-muted italic">Todavía no hay visitas registradas para este proyecto.</p>
           )}
 
           <div className="flex flex-col gap-2">

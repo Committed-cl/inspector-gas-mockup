@@ -73,7 +73,7 @@ export default function VisitReport({ project, visit, visits, itemsState, observ
   const missingPhotos = photoReqs.length - photosLoaded
   const missingDeclarations = allReqs.filter((r) => r.type !== 'photo' && !r.fulfilled).length
 
-  const supervisorRole = supervisorCompany ? `Supervisor de ${supervisorCompany}` : 'Supervisor de obra'
+  const supervisorRole = supervisorCompany ? `Supervisor de ${supervisorCompany}` : 'Supervisor de proyecto'
   const sorted = [...visits].sort((a, b) => a.date.localeCompare(b.date))
   const idx = sorted.findIndex((v) => v.id === visit.id)
   const previous = idx > 0 ? sorted[idx - 1] : undefined
@@ -136,7 +136,7 @@ export default function VisitReport({ project, visit, visits, itemsState, observ
     <div ref={reportRef} className="hidden print:block text-[10.5px] text-ink leading-snug">
       <header className="border-b-2 border-brand pb-2">
         {auth && <CompanyLogo companyId={auth.user.companyId} alt={auth.user.companyName ?? 'Empresa'} fallbackUrl={auth.user.companyLogoUrl || undefined} hideWhenEmpty className="h-10 max-w-[180px] object-contain mb-1" />}
-        <h1 className="text-[17px] font-bold text-brand">INFORME DE VISITA DE SUPERVISOR DE OBRA</h1>
+        <h1 className="text-[17px] font-bold text-brand">INFORME DE VISITA DE SUPERVISOR DE PROYECTO</h1>
         <p className="text-[11px] font-semibold text-muted">Supervisa360</p>
         <p className="font-semibold">{formName}</p>
         <p>
@@ -146,7 +146,7 @@ export default function VisitReport({ project, visit, visits, itemsState, observ
           Fecha de visita: {formatDateCl(visit.date)} · Fecha de envío: {sentOn}
         </p>
         <p>
-          <span className="font-semibold">Supervisor de obra {supervisorName ?? '—'}</span> · {supervisorRole} · realizó la
+          <span className="font-semibold">Supervisor de proyecto {supervisorName ?? '—'}</span> · {supervisorRole} · realizó la
           visita y emite este informe
         </p>
       </header>
@@ -158,7 +158,7 @@ export default function VisitReport({ project, visit, visits, itemsState, observ
           ['Dirección', project.address],
           ['Constructora', project.builder],
           ['Instaladora', project.installer],
-          ['Supervisor de obra', supervisorCompany ? `${supervisorName ?? '—'} · ${supervisorRole}` : (supervisorName ?? '—')],
+          ['Supervisor de proyecto', supervisorCompany ? `${supervisorName ?? '—'} · ${supervisorRole}` : (supervisorName ?? '—')],
           ['Tipo de visita', `${visitTypeLabel[visit.visitType]} (${total} ítems)`],
           ['N° de visita', `${idx + 1}${previous ? ` — anterior (${formatDateCl(previous.date)}): ${previous.status === 'aprobada' ? 'Aprobada' : previous.status === 'rechazada' ? 'Rechazada' : 'En curso'}` : ''}`],
           ['Fecha de visita', formatDateCl(visit.date)],
@@ -333,7 +333,7 @@ export default function VisitReport({ project, visit, visits, itemsState, observ
 
       <Section n={9} title="Validación y distribución">
         <p>
-          Informe emitido por {supervisorName ?? 'el supervisor de obra'}
+          Informe emitido por {supervisorName ?? 'el supervisor de proyecto'}
           {visit.reportSentAt ? ` el ${formatDateCl(visit.reportSentAt)}` : ''}.
         </p>
         <p className="mt-1">

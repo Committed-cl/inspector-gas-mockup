@@ -46,7 +46,7 @@ export default function ChecklistNuevaObra() {
       })
       nav(`/checklist/${id}`)
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'No se pudo crear la obra.')
+      setError(err instanceof ApiError ? err.message : 'No se pudo crear el proyecto.')
       setSubmitting(false)
     }
   }
@@ -55,8 +55,8 @@ export default function ChecklistNuevaObra() {
     <div className="flex bg-base">
       <div className="flex-1 min-w-0">
       <header className="border-b border-hairline bg-white px-6 py-4">
-        <h1 className="text-[19px] font-bold text-ink leading-tight">Nueva obra</h1>
-        <p className="text-[12.5px] text-muted mt-0.5">Registra una nueva obra bajo una empresa existente.</p>
+        <h1 className="text-[19px] font-bold text-ink leading-tight">Nuevo proyecto</h1>
+        <p className="text-[12.5px] text-muted mt-0.5">Registra un nuevo proyecto bajo una empresa existente.</p>
         <Link to="/checklist" className="inline-flex items-center gap-1.5 bg-brand hover:bg-brand-dark text-white font-semibold rounded-lg px-3.5 py-2 text-[12.5px] mt-3">
           ← Volver al listado de proyectos
         </Link>
@@ -85,7 +85,7 @@ export default function ChecklistNuevaObra() {
           </label>
 
           <label className="flex flex-col gap-1.5">
-            <span className="text-[12px] font-medium text-ink">Nombre de la obra</span>
+            <span className="text-[12px] font-medium text-ink">Nombre del proyecto</span>
             <input
               value={name}
               onChange={(e) => setName(e.target.value)}
@@ -176,7 +176,7 @@ export default function ChecklistNuevaObra() {
             disabled={submitting}
             className="self-start bg-brand hover:bg-brand-dark text-white font-semibold px-4 py-2.5 rounded-lg disabled:opacity-60"
           >
-            {submitting ? 'Creando...' : 'Crear obra'}
+            {submitting ? 'Creando...' : 'Crear proyecto'}
           </button>
         </form>
       </main>
