@@ -1,5 +1,8 @@
 import html2pdf from 'html2pdf.js'
 
+// Never split a table row (or a photo grid) across pages.
+export const PDF_PAGEBREAK = { mode: ['css', 'legacy'], avoid: ['tr', 'img', '[data-testid="report-photos"]'] }
+
 // Renders the print-only visit report (hidden on screen) into a jsPDF document with footer and page numbering.
 async function renderVisitReport<T>(source: HTMLElement, visitId: string, run: (pdf: any) => T): Promise<T> {
   const clone = source.cloneNode(true) as HTMLElement
@@ -10,14 +13,15 @@ async function renderVisitReport<T>(source: HTMLElement, visitId: string, run: (
   host.appendChild(clone)
   document.body.appendChild(host)
   try {
-    const worker = html2pdf()
-      .set({
-        margin: [10, 10, 14, 10],
-        image: { type: 'jpeg', quality: 0.9 },
-        html2canvas: { scale: 2, useCORS: true },
-        jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
-      })
-      .from(clone)
+    // `pagebreak` is supported by html2pdf.js but missing from its typings.
+    const options = {
+      margin: [10, 10, 14, 10],
+      image: { type: 'jpeg', quality: 0.9 },
+      html2canvas: { scale: 2, useCORS: true },
+      pagebreak: PDF_PAGEBREAK,
+      jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
+    }
+    const worker = html2pdf().set(options as never).from(clone)
     const pdf = await worker.toPdf().get('pdf')
     const total: number = pdf.internal.getNumberOfPages()
     const width: number = pdf.internal.pageSize.getWidth()

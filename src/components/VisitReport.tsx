@@ -37,14 +37,15 @@ function Section({ n, title, children }: { n: number; title: string; children: R
 
 // Print-only visit report (the "Descargar PDF" action prints the page, see
 // ChecklistProject). Hidden on screen.
-// 1 photo: shown large. 2–4: compact 2-column grid so the row stays about as tall as a single large photo.
-function ReportPhotos({ photos }: { photos: { id: string; previewUrl?: string }[] }) {
+// 1 photo: shown large. 2–4 (max 4): fixed 2x2-style grid of uniform 4:3 cells. Photos are letterboxed (object-contain),
+// never cropped, and the whole block is kept on one page.
+export function ReportPhotos({ photos }: { photos: { id: string; previewUrl?: string }[] }) {
   if (photos.length === 0) return null
-  if (photos.length === 1) return <img src={photos[0].previewUrl} alt="" className="mt-1 max-h-40 w-auto max-w-full border border-hairline" />
+  if (photos.length === 1) return <img src={photos[0].previewUrl} alt="" className="mt-1 max-h-40 w-auto max-w-full border border-hairline break-inside-avoid" />
   return (
-    <div className="mt-1 grid grid-cols-2 gap-1">
-      {photos.map((p) => (
-        <img key={p.id} src={p.previewUrl} alt="" className="h-[4.5rem] w-full border border-hairline object-cover" />
+    <div data-testid="report-photos" className="mt-1 grid grid-cols-2 gap-1 break-inside-avoid">
+      {photos.slice(0, 4).map((p) => (
+        <img key={p.id} src={p.previewUrl} alt="" className="aspect-[4/3] w-full border border-hairline bg-white object-contain" />
       ))}
     </div>
   )
@@ -303,7 +304,7 @@ export default function VisitReport({ project, visit, visits, itemsState, observ
                         <td className={td}>{comment ?? st.notApplicableReason ?? 'sin comentario registrado'}</td>
                         <td className={td}>
                           {reqs(d.id).map((r, i) => (
-                            <div key={i}>
+                            <div key={i} className="break-inside-avoid">
                               {r.label}:{' '}
                               {r.fulfilled ? (
                                 'cargada'
