@@ -223,7 +223,7 @@ export default function ChecklistProject() {
                           state={itemsState[def.id]}
                           projectId={projectId}
                           visitId={visitId}
-                          onMark={(status, reason) => markManually(def.id, status, reason)}
+                          onMark={async (status, reason) => { await markManually(def.id, status, reason) }}
                         />
                       ))}
                     </div>
