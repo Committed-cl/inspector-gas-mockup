@@ -440,5 +440,5 @@ export function requiredEvidenceState(def: ChecklistItemDef, evidence: Evidence[
 export function missingEvidenceHint(def: ChecklistItemDef, evidence: Evidence[]): string | undefined {
   const missing = requiredEvidenceState(def, evidence).filter((r) => !r.fulfilled)
   if (missing.length === 0) return undefined
-  return `Falta ${missing.map((r) => r.label.toLowerCase()).join(', ')} para quedar en verde.`
+  return `Falta evidencia: ${missing.map((r) => r.label.toLowerCase()).join(', ')}.`
 }

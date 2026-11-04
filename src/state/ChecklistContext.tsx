@@ -5,7 +5,7 @@ import { useAuth } from '../lib/auth'
 import { enqueueOp, isNetworkError, listOps, processQueue, removeOp, retryOp, subscribeQueue, type QueuedOp } from '../lib/offlineQueue'
 import { useOnline } from '../lib/useOnline'
 import SyncStatus from '../components/SyncStatus'
-import type { ChatMessage, ChecklistStatus, EvidenceType, ItemState } from '../data/checklistMatrizInterior'
+import { checklistDef, requiredEvidenceState, type ChatMessage, type ChecklistStatus, type EvidenceType, type ItemState } from '../data/checklistMatrizInterior'
 
 export type VisitStatus = 'en_curso' | 'aprobada' | 'rechazada'
 export type VisitType = 'gas_prueba' | 'gas_final' | 'visita_estandar'
@@ -70,12 +70,15 @@ export type SyncInfo = {
 
 // Shows a queued change on top of server state so it stays visible locally
 // until it is synced (or decided on, if it failed).
-function applyOp(state: ChecklistState, op: QueuedOp): ChecklistState {
+export function applyOp(state: ChecklistState, op: QueuedOp): ChecklistState {
   if (op.kind === 'observations') return { ...state, observations: String(op.body.observations ?? '') }
   const item = op.itemId ? state.itemsState[op.itemId] : undefined
   if (!item) return state
   if (op.kind === 'mark') {
-    const status = op.body.status as ChecklistStatus
+    // Same rule as the API (applyManualMark): "Cumple" without all its required evidence is "No cumple".
+    const def = checklistDef.find((d) => d.id === op.itemId)
+    const requested = op.body.status as ChecklistStatus
+    const status: ChecklistStatus = requested === 'ok' && def && !requiredEvidenceState(def, item.evidence).every((r) => r.fulfilled) ? 'warn' : requested
     return { ...state, itemsState: { ...state.itemsState, [op.itemId!]: { ...item, status, source: 'manual', notApplicableReason: op.body.reason as string | undefined } } }
   }
   const clientId = String(op.body.clientId)
