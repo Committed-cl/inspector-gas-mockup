@@ -13,6 +13,7 @@ import VisitReport from '../components/VisitReport'
 import { formatDateCl } from '../utils/date'
 import { actionButtonPrimary, actionButtonSecondary } from '../lib/actionButton'
 import { downloadVisitReportPdf, visitReportToPdfBase64 } from '../utils/reportPdf'
+import { SyncSlot } from '../components/SyncStatus'
 
 const statusSortOrder: Record<ChecklistStatus, number> = { pending: 0, warn: 1, ok: 2, na: 2 }
 
@@ -196,6 +197,7 @@ export default function ChecklistProject() {
             {syncText}
           </span>
         </div>
+        <SyncSlot />
       </header>
       <header className="hidden md:block border-b border-hairline bg-white px-4 py-2.5 md:px-6 md:py-4">
         <Link to={`/checklist/${projectId}`} className="inline-flex items-center gap-1.5 bg-brand hover:bg-brand-dark text-white font-semibold rounded-lg px-3.5 py-2 text-[12.5px]">

@@ -1,9 +1,22 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
+import { createPortal } from 'react-dom'
 import { useChecklist } from '../state/ChecklistContext'
 
-// Fixed corner indicator for the offline queue: offline + pending count →
-// syncing → all synced, plus the changes the server definitively rejected.
+// Mount point inside each screen header: on mobile the sync notice renders here
+// (in flow) so it never covers titles, badges or fixed bars.
+export function SyncSlot() {
+  return <div id="sync-slot" className="md:hidden empty:hidden flex flex-col items-start gap-2 mt-2" />
+}
+
+// Offline queue indicator: offline + pending count → syncing → all synced, plus
+// the changes the server definitively rejected. Desktop: fixed corner. Mobile:
+// inside the header slot (fixed top fallback when the screen has no slot).
 export default function SyncStatus() {
+  const [slot, setSlot] = useState<HTMLElement | null>(null)
+  useEffect(() => {
+    const el = document.getElementById('sync-slot')
+    if (el !== slot) setSlot(el)
+  })
   const { sync } = useChecklist()
   const [open, setOpen] = useState(false)
   const { online, pendingCount, failed, phase } = sync
@@ -21,10 +34,10 @@ export default function SyncStatus() {
   }
   if (!text && failed.length === 0) return null
 
-  return (
-    <div className="fixed bottom-[calc(5rem+env(safe-area-inset-bottom))] right-2 md:bottom-3 md:right-3 z-50 flex flex-col items-end gap-2 max-w-[90vw]" data-testid="sync-status">
+  const content = (inSlot: boolean) => (
+    <>
       {open && failed.length > 0 && (
-        <div className="bg-white border border-danger/40 rounded-xl shadow-lg p-3 w-80 max-h-72 overflow-y-auto text-[12px]">
+        <div className={`bg-white border border-danger/40 rounded-xl shadow-lg p-3 max-h-72 ${inSlot ? 'w-full' : 'w-80'} overflow-y-auto text-[12px]`}>
           <p className="font-semibold text-danger mb-2">Cambios que no se pudieron enviar</p>
           <ul className="space-y-2">
             {failed.map((op) => (
@@ -54,6 +67,21 @@ export default function SyncStatus() {
           {text}
         </div>
       )}
-    </div>
+    </>
+  )
+
+  return (
+    <>
+      <div className="hidden md:flex fixed bottom-3 right-3 z-50 flex-col items-end gap-2 max-w-[90vw]" data-testid="sync-status">
+        {content(false)}
+      </div>
+      {slot ? (
+        createPortal(<div className="contents" data-testid="sync-status-mobile">{content(true)}</div>, slot)
+      ) : (
+        <div className="md:hidden fixed top-[calc(3.5rem+env(safe-area-inset-top)+0.25rem)] right-2 z-50 flex flex-col items-end gap-2 max-w-[90vw]">
+          {content(false)}
+        </div>
+      )}
+    </>
   )
 }

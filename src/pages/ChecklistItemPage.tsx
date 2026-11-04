@@ -8,6 +8,7 @@ import EvidenceField from '../components/EvidenceField'
 import CenteredMessage from '../components/CenteredMessage'
 import ChatSheet from '../components/ChatSheet'
 import { useReadOnly } from '../lib/auth'
+import { SyncSlot } from '../components/SyncStatus'
 
 const statusLabel = { ok: 'Cumple', warn: 'No cumple', pending: 'Pendiente', na: 'No aplica' } as const
 const statusColor = {
@@ -84,6 +85,7 @@ export default function ChecklistItemPage() {
             {statusLabel[state.status]}
           </span>
         </div>
+        <SyncSlot />
       </header>
 
       <div className="flex-1 flex min-h-0 overflow-hidden">
