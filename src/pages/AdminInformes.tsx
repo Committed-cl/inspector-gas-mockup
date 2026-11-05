@@ -1,3 +1,4 @@
+import { TableRowsSkeleton } from '../components/Skeleton'
 import { useEffect, useMemo, useState } from 'react'
 import { api, ApiError, fetchBlob } from '../lib/api'
 import { formatDateCl } from '../utils/date'
@@ -82,9 +83,7 @@ export default function AdminInformes() {
             </thead>
             <tbody className="divide-y divide-hairline">
               {reports === null && !error && (
-                <tr>
-                  <td colSpan={5} className="px-4 py-4 text-muted italic">Cargando...</td>
-                </tr>
+                <TableRowsSkeleton cols={5} />
               )}
               {reports?.length === 0 && (
                 <tr>

@@ -1,3 +1,4 @@
+import { CardListSkeleton } from '../components/Skeleton'
 import { useCallback, useEffect, useState } from 'react'
 import { api, ApiError } from '../lib/api'
 import { formatDateCl } from '../utils/date'
@@ -123,7 +124,7 @@ export default function AdminUso() {
             <button type="button" onClick={() => load(range.from, range.to)} className="text-brand font-semibold hover:underline">Reintentar</button>
           </div>
         )}
-        {loading && !usage && !error && <p className="mt-6 text-[13px] text-muted italic">Cargando...</p>}
+        {loading && !usage && !error && <div className="mt-6"><CardListSkeleton /></div>}
 
         {usage && (
           <div className={loading ? 'opacity-60 transition-opacity' : 'transition-opacity'} aria-busy={loading}>

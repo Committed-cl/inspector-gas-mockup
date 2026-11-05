@@ -25,3 +25,30 @@ body {
 .thin-scroll::-webkit-scrollbar-thumb {
   @apply bg-hairline rounded-full;
 }
+
+/* Subtle loading placeholder: very light fill + a slow, low-contrast horizontal
+   shimmer on the fill only (no pulse, no scale/opacity change on the container). */
+.skeleton {
+  position: relative;
+  overflow: hidden;
+  background-color: #f1f3f5;
+}
+.skeleton::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  transform: translateX(-100%);
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.7), transparent);
+  animation: skeleton-shimmer 2.4s ease-in-out infinite;
+}
+@keyframes skeleton-shimmer {
+  to {
+    transform: translateX(100%);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .skeleton::after {
+    animation: none;
+    display: none;
+  }
+}

@@ -1,3 +1,4 @@
+import { TableRowsSkeleton, CardListSkeleton } from '../components/Skeleton'
 import { useEffect, useRef, useState, type FormEvent } from 'react'
 import { useCompanies, useProjects, useUsers, ROLES, type AdminUser, type UserRole } from '../state/adminHooks'
 import { ApiError, type SupervisorConflict } from '../lib/api'
@@ -137,7 +138,7 @@ export default function AdminUsuarios() {
         {/* Phones: stacked cards — a 7-column table has no good answer at 390px,
             so this is the primary layout below md, not a fallback. */}
         <div className="mt-6 flex flex-col gap-3 md:hidden">
-          {loading && <p className="text-muted italic text-[13px]">Cargando...</p>}
+          {loading && <CardListSkeleton />}
           {!loading && users.length === 0 && <p className="text-muted italic text-[13px]">Todavía no hay usuarios.</p>}
           {users.map((u) => (
             <div key={u.id} className="bg-white border border-hairline rounded-xl p-4 flex flex-col gap-3">
@@ -198,13 +199,7 @@ export default function AdminUsuarios() {
               </tr>
             </thead>
             <tbody className="divide-y divide-hairline">
-              {loading && (
-                <tr>
-                  <td colSpan={7} className="px-4 py-4 text-muted italic">
-                    Cargando...
-                  </td>
-                </tr>
-              )}
+              {loading && <TableRowsSkeleton cols={7} />}
               {!loading && users.length === 0 && (
                 <tr>
                   <td colSpan={7} className="px-4 py-4 text-muted italic">

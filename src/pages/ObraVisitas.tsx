@@ -1,3 +1,4 @@
+import { CardListSkeleton } from '../components/Skeleton'
 import { useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { formName } from '../data/checklistMatrizInterior'
@@ -84,7 +85,13 @@ export default function ObraVisitas() {
   const project = useProject(projectId)
   const { visits, loading, error, createVisit } = useProjectVisits(projectId)
 
-  if (project.loading || loading) return <CenteredMessage text="Cargando..." />
+  if (project.loading || loading) {
+    return (
+      <div className="bg-base min-h-screen px-4 py-6 md:px-8">
+        <div className="max-w-4xl"><CardListSkeleton /></div>
+      </div>
+    )
+  }
   if (error || !project.data) {
     return <CenteredMessage text="Proyecto no encontrado" linkTo="/checklist" linkLabel="Volver al listado de proyectos" />
   }

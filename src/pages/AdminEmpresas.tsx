@@ -1,3 +1,4 @@
+import { TableRowsSkeleton } from '../components/Skeleton'
 import { useEffect, useState, type FormEvent } from 'react'
 import { useCompanies, type Company } from '../state/adminHooks'
 import { ApiError, putFile } from '../lib/api'
@@ -243,13 +244,7 @@ export default function AdminEmpresas() {
               </tr>
             </thead>
             <tbody className="divide-y divide-hairline">
-              {loading && (
-                <tr>
-                  <td colSpan={4} className="px-4 py-4 text-muted italic">
-                    Cargando...
-                  </td>
-                </tr>
-              )}
+              {loading && <TableRowsSkeleton cols={4} />}
               {!loading && companies.length === 0 && (
                 <tr>
                   <td colSpan={4} className="px-4 py-4 text-muted italic">

@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'
 import { useProjects, useChecklist } from '../state/ChecklistContext'
 import { formatDateCl } from '../utils/date'
 import Icon from '../components/Icon'
+import { ProjectCardSkeleton } from '../components/Skeleton'
 
 const SEARCH_THRESHOLD = 6
 
@@ -10,12 +11,7 @@ function ProjectsSkeleton() {
   return (
     <div className="flex flex-col gap-3" aria-busy="true" aria-label="Cargando proyectos">
       {[0, 1, 2].map((i) => (
-        <div key={i} className="bg-white border border-hairline rounded-xl px-4 py-4 md:px-5 animate-pulse">
-          <div className="h-4 w-2/3 bg-hairline rounded" />
-          <div className="h-3 w-full bg-hairline rounded mt-3" />
-          <div className="h-3 w-1/2 bg-hairline rounded mt-2" />
-          <div className="h-6 w-32 bg-hairline rounded-full mt-4" />
-        </div>
+        <ProjectCardSkeleton key={i} />
       ))}
     </div>
   )
