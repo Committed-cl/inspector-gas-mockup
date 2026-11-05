@@ -16,7 +16,13 @@ export type QueuedOp = {
   label: string // human description, shown if the change fails for good
   state: 'pending' | 'failed'
   error?: string
+  reason?: 'visit_closed' // set when the server rejected the op because the visit is closed
 }
+
+export const VISIT_CLOSED_MESSAGE = 'La visita está cerrada y no admite cambios'
+const isVisitClosedMessage = (m: string) => /visit is closed|visita está cerrada/i.test(m)
+// Ops rejected because the visit was closed (also those stored before `reason` existed).
+export const isVisitClosedOp = (op: QueuedOp) => op.state === 'failed' && (op.reason === 'visit_closed' || isVisitClosedMessage(op.error ?? ''))
 
 const DB_NAME = 'ig_offline_queue'
 const STORE = 'ops'
@@ -100,7 +106,7 @@ async function updateOp(op: QueuedOp): Promise<void> {
 
 export async function retryOp(seq: number, userId: string): Promise<void> {
   const op = (await listOps(userId)).find((o) => o.seq === seq)
-  if (op) await updateOp({ ...op, state: 'pending', error: undefined })
+  if (op) await updateOp({ ...op, state: 'pending', error: undefined, reason: undefined })
 }
 
 export function opRequest(op: QueuedOp): { method: 'POST' | 'PUT'; path: string; body: Record<string, unknown> } {
@@ -140,7 +146,9 @@ export function classifyError(err: unknown): 'auth' | 'retry' | 'fail' {
   return err.status >= 400 && err.status < 500 ? 'fail' : 'retry'
 }
 
-const describe = (err: unknown) => (err instanceof ApiError ? `${err.status}: ${err.message}` : 'Sin conexión con el servidor')
+const closedVisit = (err: unknown) => err instanceof ApiError && err.status === 409 && isVisitClosedMessage(err.message)
+const describe = (err: unknown) =>
+  closedVisit(err) ? VISIT_CLOSED_MESSAGE : err instanceof ApiError ? `${err.status}: ${err.message}` : 'Sin conexión con el servidor'
 
 // Sends the user's pending ops one at a time, in order. A network error, 401, 408/425/429 or
 // 5xx stops the run: the op stays pending (with the reason) and order is kept. Any other 4xx is
@@ -157,7 +165,7 @@ export async function processQueue(userId: string, send: (req: ReturnType<typeof
     } catch (err) {
       const kind = classifyError(err)
       if (kind === 'fail') {
-        await updateOp({ ...op, state: 'failed', error: describe(err) })
+        await updateOp({ ...op, state: 'failed', error: describe(err), reason: closedVisit(err) ? 'visit_closed' : undefined })
         continue
       }
       await updateOp({ ...op, error: describe(err) })

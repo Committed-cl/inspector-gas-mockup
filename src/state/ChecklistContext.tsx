@@ -68,6 +68,10 @@ export type SyncInfo = {
   retry: (seq: number) => void
   retryAll: () => void
   discard: (seq: number) => void
+  visitOps: (visitId: string) => { pending: number; failed: QueuedOp[] }
+  retryVisit: (visitId: string) => void
+  discardVisit: (visitId: string) => void
+  reopenAndResend: (projectId: string, visitId: string) => Promise<void>
 }
 
 // Shows a queued change on top of server state so it stays visible locally
@@ -150,6 +154,8 @@ export function ChecklistProvider({ children }: { children: ReactNode }) {
   const [queued, setQueued] = useState<QueuedOp[]>([])
   const [phase, setPhase] = useState<SyncInfo['phase']>('idle')
   const queuedRef = useRef<QueuedOp[]>([])
+  const flushVisitRef = useRef<(visitId: string) => Promise<void>>(async () => {})
+  const reopenVisitRef = useRef<(projectId: string, visitId: string) => Promise<void>>(async () => {})
   const syncing = useRef(false)
   const rerun = useRef(false)
   const attempts = useRef(0)
@@ -271,6 +277,17 @@ export function ChecklistProvider({ children }: { children: ReactNode }) {
     void syncNow()
   }
 
+  // Runs the queue and waits until this visit has no pending ops left (or sync is stuck).
+  const flushVisit = async (visitId: string) => {
+    if (!userId) return
+    await syncNow()
+    for (let i = 0; i < 300 && syncing.current; i++) await new Promise((r) => setTimeout(r, 100))
+    const ops = await listOps(userId)
+    if (ops.some((o) => o.visitId === visitId))
+      throw new Error('Hay cambios sin sincronizar en esta visita. Espera a que se envíen o revísalos antes de continuar.')
+  }
+  flushVisitRef.current = flushVisit
+
   const sync: SyncInfo = {
     online,
     pendingCount: queued.filter((o) => o.state === 'pending').length,
@@ -281,6 +298,28 @@ export function ChecklistProvider({ children }: { children: ReactNode }) {
       if (!userId) return
       attempts.current = 0
       void listOps(userId).then((ops) => Promise.all(ops.filter((o) => o.state === 'failed').map((o) => retryOp(o.seq!, userId)))).then(() => syncNow())
+    },
+    visitOps: (visitId) => ({
+      pending: queued.filter((o) => o.visitId === visitId && o.state === 'pending').length,
+      failed: queued.filter((o) => o.visitId === visitId && o.state === 'failed'),
+    }),
+    retryVisit: (visitId) => {
+      if (!userId) return
+      attempts.current = 0
+      void listOps(userId).then((ops) => Promise.all(ops.filter((o) => o.visitId === visitId && o.state === 'failed').map((o) => retryOp(o.seq!, userId)))).then(() => syncNow())
+    },
+    discardVisit: (visitId) => {
+      if (!userId) return
+      for (const o of queued.filter((q) => q.visitId === visitId && q.state === 'failed')) sync.discard(o.seq!)
+    },
+    // Reopens the visit and re-sends every failed op of it, in order (retryOp keeps the seq).
+    reopenAndResend: async (projectId, visitId) => {
+      if (!userId) throw new Error('Sesión no iniciada')
+      await reopenVisitRef.current(projectId, visitId)
+      attempts.current = 0
+      const ops = await listOps(userId)
+      await Promise.all(ops.filter((o) => o.visitId === visitId && o.state === 'failed').map((o) => retryOp(o.seq!, userId)))
+      await flushVisit(visitId)
     },
     retry: (seq) => { if (userId) void retryOp(seq, userId).then(() => syncNow()) },
     discard: (seq) => {
@@ -389,14 +428,17 @@ export function ChecklistProvider({ children }: { children: ReactNode }) {
   }, [])
 
   const closeVisit = useCallback(async (projectId: string, visitId: string) => {
+    await flushVisitRef.current(visitId)
     adoptVisit(projectId, await api.post<Visit>(`/projects/${projectId}/visits/${visitId}/close`))
   }, [])
 
   const reopenVisit = useCallback(async (projectId: string, visitId: string) => {
     adoptVisit(projectId, await api.post<Visit>(`/projects/${projectId}/visits/${visitId}/reopen`))
   }, [])
+  reopenVisitRef.current = reopenVisit
 
   const sendReport = useCallback(async (projectId: string, visitId: string, pdfBase64?: string) => {
+    await flushVisitRef.current(visitId)
     adoptVisit(projectId, await api.post<Visit>(`/projects/${projectId}/visits/${visitId}/send-report`, { pdfBase64 }))
   }, [])
 
