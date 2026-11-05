@@ -75,9 +75,20 @@ export function useAuth() {
 
 // Líder de Supervisores sees their company's projects but cannot edit anything
 // (the API also 403s every mutation for this role). Admins are never read-only.
-export function useReadOnly(): boolean {
+export function useRoleReadOnly(): boolean {
   const { auth } = useAuth()
   return auth?.user.role === 'lider-supervisores' && !auth.user.isAdmin
+}
+
+// A closed visit accepts no changes unless it is reopened on purpose: screens that show a
+// visit wrap their tree in <VisitClosedProvider> so every control below turns read-only.
+const VisitClosedContext = createContext(false)
+export const VisitClosedProvider = VisitClosedContext.Provider
+export const useVisitClosed = () => useContext(VisitClosedContext)
+
+export function useReadOnly(): boolean {
+  const roleReadOnly = useRoleReadOnly()
+  return roleReadOnly || useVisitClosed()
 }
 
 // Admin-convenio manages the admin panel for their own company only; it is

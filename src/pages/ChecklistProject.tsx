@@ -3,7 +3,7 @@ import { useOnline } from '../lib/useOnline'
 import { Link, useParams } from 'react-router-dom'
 import { checklistDef, SECTIONS, formName, type ChecklistStatus } from '../data/checklistMatrizInterior'
 import { useChecklist, useProject, useProjectChecklist, useProjectVisits } from '../state/ChecklistContext'
-import { useAuth, useReadOnly } from '../lib/auth'
+import { useAuth, useRoleReadOnly, VisitClosedProvider } from '../lib/auth'
 import ChecklistDesktopRow from '../components/ChecklistDesktopRow'
 import ChatPanel from '../components/ChatPanel'
 import RichTextEditor from '../components/RichTextEditor'
@@ -15,7 +15,6 @@ import { actionButtonPrimary, actionButtonSecondary } from '../lib/actionButton'
 import { downloadVisitReportPdf, visitReportToPdfBase64 } from '../utils/reportPdf'
 import { SyncSlot } from '../components/SyncStatus'
 import Icon from '../components/Icon'
-import { isVisitClosedOp } from '../lib/offlineQueue'
 
 const statusSortOrder: Record<ChecklistStatus, number> = { pending: 0, warn: 1, ok: 2, na: 2 }
 
@@ -29,7 +28,7 @@ const visitStatusColor = {
 export default function ChecklistProject() {
   const { projectId = '', visitId = '' } = useParams()
   const { auth } = useAuth()
-  const readOnly = useReadOnly()
+  const roleReadOnly = useRoleReadOnly()
   const project = useProject(projectId)
   const { itemsState, markManually, generalChat, sendGeneralMessage, resolveGeneralMessage, observations, setObservations, loading: checklistLoading, error: checklistError } =
     useProjectChecklist(projectId, visitId)
@@ -69,9 +68,7 @@ export default function ChecklistProject() {
   const syncDot = !sync.online ? 'bg-warn' : syncBusy ? 'bg-brand animate-pulse' : 'bg-ok'
 
   const vops = sync.visitOps(visitId)
-  const closedFailed = vops.failed.filter(isVisitClosedOp)
-  const otherFailed = vops.failed.filter((o) => !isVisitClosedOp(o))
-  const queueBusy = vops.pending > 0 || vops.failed.length > 0
+  const queueBusy = vops.pending > 0 || vops.held > 0 || vops.failed.length > 0
   const queueTitle = !online ? 'Requiere conexión' : queueBusy ? 'Primero deben sincronizarse los cambios de esta visita' : undefined
   const plural = (n: number, one: string, many: string) => `${n} ${n === 1 ? one : many}`
 
@@ -82,18 +79,16 @@ export default function ChecklistProject() {
           Sincronizando {plural(vops.pending, 'cambio', 'cambios')}…
         </span>
       )}
-      {otherFailed.length > 0 && (
-        <span className="text-danger font-medium" role="alert">
-          {plural(otherFailed.length, 'cambio rechazado', 'cambios rechazados')} por el servidor.
-        </span>
-      )}
-      {closedFailed.length > 0 && (
-        <span className="text-danger font-medium" role="alert" data-testid="visit-closed-rejected">
-          {plural(closedFailed.length, 'cambio rechazado', 'cambios rechazados')}: visita cerrada.
+      {vops.held > 0 && (
+        <span className="text-warn font-medium" role="status" data-testid="visit-closed-held">
+          {plural(vops.held, 'cambio pendiente', 'cambios pendientes')}: visita cerrada. Se enviarán al reabrir la visita.
         </span>
       )}
       {vops.failed.length > 0 && (
         <>
+          <span className="text-danger font-medium" role="alert">
+            {plural(vops.failed.length, 'cambio rechazado', 'cambios rechazados')} por el servidor.
+          </span>
           <button type="button" className="text-brand font-medium underline" onClick={() => sync.retryVisit(visitId)}>
             Reintentar
           </button>
@@ -106,34 +101,13 @@ export default function ChecklistProject() {
           </button>
         </>
       )}
-      {closedFailed.length > 0 && canReopen && visit.status !== 'en_curso' && (
-        <button
-          type="button"
-          disabled={reopening || !online}
-          className={actionButtonSecondary}
-          onClick={async () => {
-            if (!window.confirm('¿Reabrir la visita y reenviar los cambios rechazados? Quedará registrado quién la reabrió; después deberás cerrarla de nuevo.')) return
-            setReopening(true)
-            setReopenError(null)
-            try {
-              await sync.reopenAndResend(projectId, visitId)
-            } catch (err) {
-              setReopenError(err instanceof Error && err.message ? err.message : 'No se pudo reabrir la visita')
-            } finally {
-              setReopening(false)
-            }
-          }}
-        >
-          {reopening ? 'Reabriendo...' : 'Reabrir visita y reenviar'}
-        </button>
-      )}
     </>
   )
 
   const actions = (mobile: boolean) => (
     <>
           {syncNotice}
-          {readOnly ? null : visit.status === 'en_curso' ? (
+          {roleReadOnly ? null : visit.status === 'en_curso' ? (
             <>
               {mobile && pendingCount > 0 && (
                 <p className="w-full text-[13px] text-warn-ink font-medium" role="status">
@@ -223,7 +197,7 @@ export default function ChecklistProject() {
   )
 
   return (
-    <>
+    <VisitClosedProvider value={visit.status !== 'en_curso'}>
     <div className="h-[calc(100dvh-3.5rem-env(safe-area-inset-top))] md:h-screen flex flex-col bg-base overflow-hidden print:hidden">
       <header className="md:hidden border-b border-hairline bg-white px-2 pt-1 pb-2 shrink-0">
         <div className="flex items-center gap-1">
@@ -369,7 +343,7 @@ export default function ChecklistProject() {
                 key={visitId}
                 value={observations}
                 onChange={setObservations}
-                readOnly={readOnly}
+                readOnly={roleReadOnly || visit.status !== 'en_curso'}
                 placeholder="Escribe aquí observaciones generales de la visita..."
               />
             </section>
@@ -400,7 +374,7 @@ export default function ChecklistProject() {
           </button>
         )}
       </div>
-      {!readOnly && (
+      {!roleReadOnly && (
         <div className="md:hidden shrink-0 border-t border-hairline bg-white px-3 pt-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] flex flex-wrap items-center gap-2 text-[12px]">
           {actions(true)}
         </div>
@@ -416,6 +390,6 @@ export default function ChecklistProject() {
       supervisorCompany={auth?.user.companyName}
       reportRef={reportRef}
     />
-    </>
+    </VisitClosedProvider>
   )
 }

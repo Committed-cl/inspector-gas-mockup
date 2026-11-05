@@ -2,7 +2,7 @@ import { createContext, useCallback, useContext, useEffect, useRef, useState, ty
 import { Outlet } from 'react-router-dom'
 import { api } from '../lib/api'
 import { useAuth } from '../lib/auth'
-import { enqueueOp, isNetworkError, listOps, processQueue, removeOp, retryOp, subscribeQueue, type QueuedOp, type SyncBlock } from '../lib/offlineQueue'
+import { enqueueOp, isHeldOp, isNetworkError, listOps, processQueue, releaseVisit, removeOp, retryOp, subscribeQueue, type QueuedOp, type SyncBlock } from '../lib/offlineQueue'
 import { useOnline } from '../lib/useOnline'
 import SyncStatus from '../components/SyncStatus'
 import { checklistDef, requiredEvidenceState, type ChatMessage, type ChecklistStatus, type EvidenceType, type ItemState } from '../data/checklistMatrizInterior'
@@ -68,10 +68,11 @@ export type SyncInfo = {
   retry: (seq: number) => void
   retryAll: () => void
   discard: (seq: number) => void
-  visitOps: (visitId: string) => { pending: number; failed: QueuedOp[] }
+  heldCount: number // queued changes held back because their visit is closed
+  held: QueuedOp[]
+  visitOps: (visitId: string) => { pending: number; held: number; failed: QueuedOp[] }
   retryVisit: (visitId: string) => void
   discardVisit: (visitId: string) => void
-  reopenAndResend: (projectId: string, visitId: string) => Promise<void>
 }
 
 // Shows a queued change on top of server state so it stays visible locally
@@ -154,8 +155,8 @@ export function ChecklistProvider({ children }: { children: ReactNode }) {
   const [queued, setQueued] = useState<QueuedOp[]>([])
   const [phase, setPhase] = useState<SyncInfo['phase']>('idle')
   const queuedRef = useRef<QueuedOp[]>([])
+  const releaseIfOpenRef = useRef<(visit: Visit) => void>(() => {})
   const flushVisitRef = useRef<(visitId: string) => Promise<void>>(async () => {})
-  const reopenVisitRef = useRef<(projectId: string, visitId: string) => Promise<void>>(async () => {})
   const syncing = useRef(false)
   const rerun = useRef(false)
   const attempts = useRef(0)
@@ -196,7 +197,7 @@ export function ChecklistProvider({ children }: { children: ReactNode }) {
     try {
       for (;;) {
         const ops = await refreshQueue()
-        if (!ops.some((o) => o.state === 'pending')) break
+        if (!ops.some((o) => o.state === 'pending' && !isHeldOp(o))) break
         setPhase('syncing')
         const result = await processQueue(userId, (req) =>
           req.method === 'PUT' ? api.put<ChecklistState>(req.path, req.body) : api.post<ChecklistState>(req.path, req.body),
@@ -277,20 +278,22 @@ export function ChecklistProvider({ children }: { children: ReactNode }) {
     void syncNow()
   }
 
-  // Runs the queue and waits until this visit has no pending ops left (or sync is stuck).
+  // Runs the queue and waits until this visit has no changes left to send (or sync is stuck).
   const flushVisit = async (visitId: string) => {
     if (!userId) return
     await syncNow()
     for (let i = 0; i < 300 && syncing.current; i++) await new Promise((r) => setTimeout(r, 100))
     const ops = await listOps(userId)
     if (ops.some((o) => o.visitId === visitId))
-      throw new Error('Hay cambios sin sincronizar en esta visita. Espera a que se envíen o revísalos antes de continuar.')
+      throw new Error('Hay cambios sin enviar en esta visita. Espera a que se sincronicen o revísalos antes de continuar.')
   }
   flushVisitRef.current = flushVisit
 
   const sync: SyncInfo = {
     online,
-    pendingCount: queued.filter((o) => o.state === 'pending').length,
+    pendingCount: queued.filter((o) => o.state === 'pending' && !isHeldOp(o)).length,
+    heldCount: queued.filter(isHeldOp).length,
+    held: queued.filter(isHeldOp),
     failed: queued.filter((o) => o.state === 'failed'),
     phase,
     blocked,
@@ -300,7 +303,8 @@ export function ChecklistProvider({ children }: { children: ReactNode }) {
       void listOps(userId).then((ops) => Promise.all(ops.filter((o) => o.state === 'failed').map((o) => retryOp(o.seq!, userId)))).then(() => syncNow())
     },
     visitOps: (visitId) => ({
-      pending: queued.filter((o) => o.visitId === visitId && o.state === 'pending').length,
+      pending: queued.filter((o) => o.visitId === visitId && o.state === 'pending' && !isHeldOp(o)).length,
+      held: queued.filter((o) => o.visitId === visitId && isHeldOp(o)).length,
       failed: queued.filter((o) => o.visitId === visitId && o.state === 'failed'),
     }),
     retryVisit: (visitId) => {
@@ -311,15 +315,6 @@ export function ChecklistProvider({ children }: { children: ReactNode }) {
     discardVisit: (visitId) => {
       if (!userId) return
       for (const o of queued.filter((q) => q.visitId === visitId && q.state === 'failed')) sync.discard(o.seq!)
-    },
-    // Reopens the visit and re-sends every failed op of it, in order (retryOp keeps the seq).
-    reopenAndResend: async (projectId, visitId) => {
-      if (!userId) throw new Error('Sesión no iniciada')
-      await reopenVisitRef.current(projectId, visitId)
-      attempts.current = 0
-      const ops = await listOps(userId)
-      await Promise.all(ops.filter((o) => o.visitId === visitId && o.state === 'failed').map((o) => retryOp(o.seq!, userId)))
-      await flushVisit(visitId)
     },
     retry: (seq) => { if (userId) void retryOp(seq, userId).then(() => syncNow()) },
     discard: (seq) => {
@@ -361,7 +356,10 @@ export function ChecklistProvider({ children }: { children: ReactNode }) {
     setVisitsByProject((prev) => {
       if (prev[projectId]?.data || prev[projectId]?.loading) return prev
       api.get<Visit[]>(`/projects/${projectId}/visits`).then(
-        (data) => setVisitsByProject((v) => ({ ...v, [projectId]: { data, loading: false, error: null } })),
+        (data) => {
+          data.forEach((v) => releaseIfOpenRef.current(v))
+          setVisitsByProject((v) => ({ ...v, [projectId]: { data, loading: false, error: null } }))
+        },
         (err) => setVisitsByProject((v) => ({ ...v, [projectId]: { data: null, loading: false, error: String(err) } })),
       )
       return { ...prev, [projectId]: { data: null, loading: true, error: null } }
@@ -388,7 +386,22 @@ export function ChecklistProvider({ children }: { children: ReactNode }) {
     setChecklistByVisit((prev) => ({ ...prev, [visitKey(projectId, visitId)]: { data: withQueued(projectId, visitId, data), loading: false, error: null } }))
   }
 
+  // Whenever an open visit is seen (reopened here, or loaded already open), the changes held
+  // for it while it was closed go out by themselves, in order.
+  const releaseIfOpen = (visit: Visit) => {
+    if (visit.status !== 'en_curso' || !userId) return
+    void releaseVisit(visit.id, userId).then((n) => {
+      if (n > 0) {
+        attempts.current = 0
+        void syncNow()
+      }
+    })
+  }
+
+  releaseIfOpenRef.current = releaseIfOpen
+
   const adoptVisit = (projectId: string, visit: Visit) => {
+    releaseIfOpen(visit)
     setVisitsByProject((prev) => ({
       ...prev,
       [projectId]: { data: (prev[projectId]?.data ?? []).map((v) => (v.id === visit.id ? visit : v)), loading: false, error: null },
@@ -435,7 +448,6 @@ export function ChecklistProvider({ children }: { children: ReactNode }) {
   const reopenVisit = useCallback(async (projectId: string, visitId: string) => {
     adoptVisit(projectId, await api.post<Visit>(`/projects/${projectId}/visits/${visitId}/reopen`))
   }, [])
-  reopenVisitRef.current = reopenVisit
 
   const sendReport = useCallback(async (projectId: string, visitId: string, pdfBase64?: string) => {
     await flushVisitRef.current(visitId)

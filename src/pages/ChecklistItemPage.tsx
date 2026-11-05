@@ -1,13 +1,13 @@
 import { useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { checklistDef, requiredEvidenceState, missingEvidenceHint } from '../data/checklistMatrizInterior'
-import { useProject, useProjectChecklist } from '../state/ChecklistContext'
+import { useProject, useProjectChecklist, useProjectVisits } from '../state/ChecklistContext'
 import ChatPanel from '../components/ChatPanel'
 import StatusControl from '../components/StatusControl'
 import EvidenceField from '../components/EvidenceField'
 import CenteredMessage from '../components/CenteredMessage'
 import ChatSheet from '../components/ChatSheet'
-import { useReadOnly } from '../lib/auth'
+import { useReadOnly, VisitClosedProvider } from '../lib/auth'
 import { SyncSlot } from '../components/SyncStatus'
 import Icon from '../components/Icon'
 
@@ -26,7 +26,19 @@ const resultBorderClass = {
   na: 'border-muted',
 } as const
 
+// A closed visit is read-only here too: nothing can be marked, attached or chatted.
 export default function ChecklistItemPage() {
+  const { projectId = '', visitId = '' } = useParams()
+  const { visits } = useProjectVisits(projectId)
+  const visit = visits.find((v) => v.id === visitId)
+  return (
+    <VisitClosedProvider value={!!visit && visit.status !== 'en_curso'}>
+      <ChecklistItem />
+    </VisitClosedProvider>
+  )
+}
+
+function ChecklistItem() {
   const { projectId = '', visitId = '', itemId } = useParams()
   const [chatOpen, setChatOpen] = useState(false)
   const [launch, setLaunch] = useState<{ kind: 'photo' | 'voice' | 'text'; n: number }>()

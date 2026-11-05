@@ -1,7 +1,7 @@
 import 'fake-indexeddb/auto'
 import { beforeEach, describe, expect, it } from 'vitest'
 import { ApiError } from './api'
-import { clearQueue, enqueueOp, isVisitClosedOp, listOps, processQueue, removeOp, retryOp, VISIT_CLOSED_MESSAGE, type QueuedOp } from './offlineQueue'
+import { clearQueue, enqueueOp, isHeldOp, releaseVisit, listOps, processQueue, removeOp, retryOp, VISIT_CLOSED_MESSAGE, type QueuedOp } from './offlineQueue'
 
 const U = 'userA'
 const base = { userId: U, projectId: 'p1', visitId: 'v1', label: 'x' }
@@ -55,16 +55,24 @@ describe('offline queue', () => {
     expect((await listOps(U))[0].state).toBe('pending')
   })
 
-  it('an op rejected because the visit is closed is flagged, in Spanish, and re-sent after retry', async () => {
+  it('an op rejected because the visit is closed is held (not failed), in Spanish, and goes out after release', async () => {
     await enqueueOp(ev('a'))
+    await enqueueOp(ev('b'))
     await processQueue(U, async () => { throw new ApiError(409, 'Visit is closed and cannot be modified: v1') })
-    const [op] = await listOps(U)
-    expect(op).toMatchObject({ state: 'failed', error: VISIT_CLOSED_MESSAGE, reason: 'visit_closed' })
-    expect(isVisitClosedOp(op)).toBe(true)
-    await retryOp(op.seq!, U)
+    const ops = await listOps(U)
+    expect(ops).toHaveLength(2)
+    expect(ops[0]).toMatchObject({ state: 'pending', error: VISIT_CLOSED_MESSAGE, reason: 'visit_closed' })
+    expect(ops.every(isHeldOp)).toBe(true)
+    // while the visit stays closed nothing is sent
+    const sentWhileClosed: unknown[] = []
+    await processQueue(U, async (r) => { sentWhileClosed.push(r.body.clientId); return {} })
+    expect(sentWhileClosed).toEqual([])
+    expect(await listOps(U)).toHaveLength(2)
+    // reopened on purpose: they are sent by themselves, in order
+    expect(await releaseVisit('v1', U)).toBe(2)
     const sent: unknown[] = []
     await processQueue(U, async (r) => { sent.push(r.body.clientId); return {} })
-    expect(sent).toEqual(['a'])
+    expect(sent).toEqual(['a', 'b'])
     expect(await listOps(U)).toHaveLength(0)
   })
 

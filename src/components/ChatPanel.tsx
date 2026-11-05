@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import TranscriptBubble from './TranscriptBubble'
-import { useReadOnly } from '../lib/auth'
+import { useReadOnly, useVisitClosed } from '../lib/auth'
 import { ApiError } from '../lib/api'
 import { compressImageFile } from '../lib/compressImage'
 import { useOnline } from '../lib/useOnline'
@@ -24,6 +24,7 @@ type Props = {
 
 export default function ChatPanel({ title, subtitle, chatId, messages, placeholder, onSend, onSelectOption, launch }: Props) {
   const readOnly = useReadOnly()
+  const visitClosed = useVisitClosed()
   const offline = !useOnline()
   const [draft, setDraft] = useState('')
   const [pendingType, setPendingType] = useState<EvidenceType>('text')
@@ -164,7 +165,7 @@ export default function ChatPanel({ title, subtitle, chatId, messages, placehold
         )}
       </div>
       {readOnly ? (
-        <p className="border-t border-hairline p-3 text-[11.5px] text-muted italic">Acceso de solo lectura — este rol no puede enviar mensajes.</p>
+        <p className="border-t border-hairline p-3 text-[11.5px] text-muted italic">{visitClosed ? 'Visita cerrada: solo lectura. Reábrela para enviar mensajes.' : 'Acceso de solo lectura — este rol no puede enviar mensajes.'}</p>
       ) : (
       <div className="border-t border-hairline p-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
         {pendingPhoto && (

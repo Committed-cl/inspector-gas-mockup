@@ -29,7 +29,7 @@ beforeEach(async () => {
 })
 
 describe('visit close vs offline queue', () => {
-  it('closing the visit waits for the queue; a closed-visit rejection is re-sent after reopen', async () => {
+  it('closing the visit waits for the queue; changes rejected by a closed visit are held until it is reopened', async () => {
     const calls: string[] = []
     let closed = false
     post.mockImplementation(async (path: string) => {
@@ -48,12 +48,19 @@ describe('visit close vs offline queue', () => {
     await act(async () => { await result.current.ctx.closeVisit('p1', 'v1') })
     expect(calls.filter((c) => c === 'mark')).toHaveLength(3)
     expect(calls.indexOf('close')).toBeGreaterThan(calls.lastIndexOf('mark'))
-    // now a mark that reaches a closed visit is rejected, grouped by reason and in Spanish
+    // a mark that reaches a closed visit is held (pending, never failed) and nothing is retried on its own
     await act(async () => { await result.current.cl.markManually(ids[5], 'na', 'x') })
-    await waitFor(() => expect(result.current.ctx.sync.visitOps('v1').failed).toHaveLength(1))
-    expect(result.current.ctx.sync.visitOps('v1').failed[0].error).toBe('La visita está cerrada y no admite cambios')
-    await act(async () => { await result.current.ctx.sync.reopenAndResend('p1', 'v1') })
-    expect(calls).toContain('reopen')
-    expect(result.current.ctx.sync.visitOps('v1')).toEqual({ pending: 0, failed: [] })
+    await waitFor(() => expect(result.current.ctx.sync.visitOps('v1').held).toBe(1))
+    expect(result.current.ctx.sync.visitOps('v1').failed).toHaveLength(0)
+    expect(result.current.ctx.sync.held[0].error).toBe('La visita está cerrada y no admite cambios')
+    const marksBefore = calls.filter((c) => c === 'mark').length
+    await sleep(300)
+    expect(calls.filter((c) => c === 'mark').length).toBe(marksBefore)
+    // the local mark is never reverted
+    expect(result.current.cl.itemsState[ids[5]].status).toBe('na')
+    // reopened on purpose with the existing action: the held change is re-sent by itself
+    await act(async () => { await result.current.ctx.reopenVisit('p1', 'v1') })
+    await waitFor(() => expect(result.current.ctx.sync.visitOps('v1')).toEqual({ pending: 0, held: 0, failed: [] }))
+    expect(calls.filter((c) => c === 'mark').length).toBe(marksBefore + 1)
   })
 })

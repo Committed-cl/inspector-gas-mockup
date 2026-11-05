@@ -16,13 +16,15 @@ export type QueuedOp = {
   label: string // human description, shown if the change fails for good
   state: 'pending' | 'failed'
   error?: string
-  reason?: 'visit_closed' // set when the server rejected the op because the visit is closed
+  reason?: 'visit_closed' // the op is held (still pending, never dropped) because its visit is closed
 }
 
 export const VISIT_CLOSED_MESSAGE = 'La visita está cerrada y no admite cambios'
 const isVisitClosedMessage = (m: string) => /visit is closed|visita está cerrada/i.test(m)
-// Ops rejected because the visit was closed (also those stored before `reason` existed).
-export const isVisitClosedOp = (op: QueuedOp) => op.state === 'failed' && (op.reason === 'visit_closed' || isVisitClosedMessage(op.error ?? ''))
+// Held ops are not sent while the visit stays closed; they go out by themselves once it is reopened.
+export const isHeldOp = (op: QueuedOp) => op.state === 'pending' && op.reason === 'visit_closed'
+// Ops stored by an earlier version as "failed: visit closed" are held too (see processQueue).
+const isLegacyClosedOp = (op: QueuedOp) => op.state === 'failed' && isVisitClosedMessage(op.error ?? '')
 
 const DB_NAME = 'ig_offline_queue'
 const STORE = 'ops'
@@ -109,6 +111,13 @@ export async function retryOp(seq: number, userId: string): Promise<void> {
   if (op) await updateOp({ ...op, state: 'pending', error: undefined, reason: undefined })
 }
 
+// The visit is open again: its held ops become regular pending ops. Returns how many were released.
+export async function releaseVisit(visitId: string, userId: string): Promise<number> {
+  const held = (await listOps(userId)).filter((o) => o.visitId === visitId && (isHeldOp(o) || isLegacyClosedOp(o)))
+  for (const o of held) await updateOp({ ...o, state: 'pending', error: undefined, reason: undefined })
+  return held.length
+}
+
 export function opRequest(op: QueuedOp): { method: 'POST' | 'PUT'; path: string; body: Record<string, unknown> } {
   const base = `/projects/${op.projectId}/visits/${op.visitId}`
   switch (op.kind) {
@@ -151,21 +160,35 @@ const describe = (err: unknown) =>
   closedVisit(err) ? VISIT_CLOSED_MESSAGE : err instanceof ApiError ? `${err.status}: ${err.message}` : 'Sin conexión con el servidor'
 
 // Sends the user's pending ops one at a time, in order. A network error, 401, 408/425/429 or
-// 5xx stops the run: the op stays pending (with the reason) and order is kept. Any other 4xx is
-// definitive for that op only: it is marked failed and kept — never dropped — and the run goes on.
+// 5xx stops the run: the op stays pending (with the reason) and order is kept. A rejection because
+// the visit is closed holds that op (and the rest of its visit, to keep order) as pending until the
+// visit is reopened. Any other 4xx is definitive for that op only: it is marked failed and kept —
+// never dropped — and the run goes on.
 export async function processQueue(userId: string, send: (req: ReturnType<typeof opRequest>) => Promise<unknown>): Promise<SyncResult> {
   const result: SyncResult = { sent: 0, stopped: false, blocked: null, lastByVisit: {} }
+  for (const op of await listOps(userId)) if (isLegacyClosedOp(op)) await updateOp({ ...op, state: 'pending', error: VISIT_CLOSED_MESSAGE, reason: 'visit_closed' })
+  const held = new Set<string>()
   for (const op of await listOps(userId)) {
     if (op.state !== 'pending') continue
+    if (isHeldOp(op)) { held.add(op.visitId); continue }
+    if (held.has(op.visitId)) continue
     try {
       const res = await send(opRequest(op))
       await removeOp(op.seq!, userId)
       result.sent++
       if (op.kind !== 'mark') result.lastByVisit[`${op.projectId}::${op.visitId}`] = res
     } catch (err) {
+      if (closedVisit(err)) {
+        // Hold this op and every later pending op of the visit (order is kept; none is dropped).
+        held.add(op.visitId)
+        for (const o of await listOps(userId)) {
+          if (o.visitId === op.visitId && o.state === 'pending' && !isHeldOp(o)) await updateOp({ ...o, error: VISIT_CLOSED_MESSAGE, reason: 'visit_closed' })
+        }
+        continue
+      }
       const kind = classifyError(err)
       if (kind === 'fail') {
-        await updateOp({ ...op, state: 'failed', error: describe(err), reason: closedVisit(err) ? 'visit_closed' : undefined })
+        await updateOp({ ...op, state: 'failed', error: describe(err) })
         continue
       }
       await updateOp({ ...op, error: describe(err) })
