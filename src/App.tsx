@@ -7,6 +7,7 @@ import AdminMiEmpresa from './pages/AdminMiEmpresa'
 import AdminUsuarios from './pages/AdminUsuarios'
 import AdminInformes from './pages/AdminInformes'
 import AdminIaConfig from './pages/AdminIaConfig'
+import AdminUso from './pages/AdminUso'
 import ChecklistProjects from './pages/ChecklistProjects'
 import ChecklistNuevaObra from './pages/ChecklistNuevaObra'
 import ObraVisitas from './pages/ObraVisitas'
@@ -50,6 +51,14 @@ export default function App() {
           <Route path="/admin/mi-empresa" element={<AdminMiEmpresa />} />
           <Route path="/admin/usuarios" element={<AdminUsuarios />} />
           <Route path="/admin/informes" element={<AdminInformes />} />
+          <Route
+            path="/admin/uso"
+            element={
+              <RequireAdmin globalOnly>
+                <AdminUso />
+              </RequireAdmin>
+            }
+          />
           <Route
             path="/admin/ia"
             element={
