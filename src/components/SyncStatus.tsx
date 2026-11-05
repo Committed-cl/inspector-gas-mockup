@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { useChecklist } from '../state/ChecklistContext'
+import { isVisitClosedOp, VISIT_CLOSED_MESSAGE } from '../lib/offlineQueue'
 
 // Mount point inside each screen header: on mobile the sync notice renders here
 // (in flow) so it never covers titles, badges or fixed bars.
@@ -21,6 +22,8 @@ export default function SyncStatus() {
   const [open, setOpen] = useState(false)
   const { online, pendingCount, failed, phase, blocked } = sync
 
+  const closedOps = failed.filter(isVisitClosedOp)
+  const otherOps = failed.filter((o) => !isVisitClosedOp(o))
   let text: string | null = null
   let tone = 'bg-brand text-white'
   if (!online) {
@@ -48,7 +51,23 @@ export default function SyncStatus() {
             </button>
           </div>
           <ul className="space-y-2">
-            {failed.map((op) => (
+            {closedOps.length > 0 && (
+              <li className="border-b border-hairline pb-2">
+                <p className="font-medium">
+                  {closedOps.length} {closedOps.length === 1 ? 'cambio rechazado' : 'cambios rechazados'}: visita cerrada
+                </p>
+                <p className="text-muted">{VISIT_CLOSED_MESSAGE}. Un administrador puede reabrir la visita y reenviarlos desde su pantalla.</p>
+                <div className="mt-1 flex gap-3">
+                  <button type="button" className="text-brand font-medium" onClick={() => closedOps.forEach((op) => sync.retry(op.seq!))}>
+                    Reintentar
+                  </button>
+                  <button type="button" className="text-danger font-medium" onClick={() => closedOps.forEach((op) => sync.discard(op.seq!))}>
+                    Descartar
+                  </button>
+                </div>
+              </li>
+            )}
+            {otherOps.map((op) => (
               <li key={op.seq} className="border-b border-hairline pb-2 last:border-0">
                 <p className="font-medium">{op.label}</p>
                 <p className="text-muted">{op.error}</p>

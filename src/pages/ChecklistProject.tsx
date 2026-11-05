@@ -15,6 +15,7 @@ import { actionButtonPrimary, actionButtonSecondary } from '../lib/actionButton'
 import { downloadVisitReportPdf, visitReportToPdfBase64 } from '../utils/reportPdf'
 import { SyncSlot } from '../components/SyncStatus'
 import Icon from '../components/Icon'
+import { isVisitClosedOp } from '../lib/offlineQueue'
 
 const statusSortOrder: Record<ChecklistStatus, number> = { pending: 0, warn: 1, ok: 2, na: 2 }
 
@@ -67,8 +68,71 @@ export default function ChecklistProject() {
   const syncText = !sync.online ? `Sin conexión · ${sync.pendingCount} pendientes` : syncBusy ? 'Sincronizando…' : 'Sincronizado'
   const syncDot = !sync.online ? 'bg-warn' : syncBusy ? 'bg-brand animate-pulse' : 'bg-ok'
 
+  const vops = sync.visitOps(visitId)
+  const closedFailed = vops.failed.filter(isVisitClosedOp)
+  const otherFailed = vops.failed.filter((o) => !isVisitClosedOp(o))
+  const queueBusy = vops.pending > 0 || vops.failed.length > 0
+  const queueTitle = !online ? 'Requiere conexión' : queueBusy ? 'Primero deben sincronizarse los cambios de esta visita' : undefined
+  const plural = (n: number, one: string, many: string) => `${n} ${n === 1 ? one : many}`
+
+  const syncNotice = (
+    <>
+      {vops.pending > 0 && (
+        <span className="text-brand font-medium" role="status" data-testid="visit-syncing">
+          Sincronizando {plural(vops.pending, 'cambio', 'cambios')}…
+        </span>
+      )}
+      {otherFailed.length > 0 && (
+        <span className="text-danger font-medium" role="alert">
+          {plural(otherFailed.length, 'cambio rechazado', 'cambios rechazados')} por el servidor.
+        </span>
+      )}
+      {closedFailed.length > 0 && (
+        <span className="text-danger font-medium" role="alert" data-testid="visit-closed-rejected">
+          {plural(closedFailed.length, 'cambio rechazado', 'cambios rechazados')}: visita cerrada.
+        </span>
+      )}
+      {vops.failed.length > 0 && (
+        <>
+          <button type="button" className="text-brand font-medium underline" onClick={() => sync.retryVisit(visitId)}>
+            Reintentar
+          </button>
+          <button
+            type="button"
+            className="text-danger font-medium underline"
+            onClick={() => window.confirm('¿Descartar los cambios no enviados de esta visita? No se podrán recuperar.') && sync.discardVisit(visitId)}
+          >
+            Descartar
+          </button>
+        </>
+      )}
+      {closedFailed.length > 0 && canReopen && visit.status !== 'en_curso' && (
+        <button
+          type="button"
+          disabled={reopening || !online}
+          className={actionButtonSecondary}
+          onClick={async () => {
+            if (!window.confirm('¿Reabrir la visita y reenviar los cambios rechazados? Quedará registrado quién la reabrió; después deberás cerrarla de nuevo.')) return
+            setReopening(true)
+            setReopenError(null)
+            try {
+              await sync.reopenAndResend(projectId, visitId)
+            } catch (err) {
+              setReopenError(err instanceof Error && err.message ? err.message : 'No se pudo reabrir la visita')
+            } finally {
+              setReopening(false)
+            }
+          }}
+        >
+          {reopening ? 'Reabriendo...' : 'Reabrir visita y reenviar'}
+        </button>
+      )}
+    </>
+  )
+
   const actions = (mobile: boolean) => (
     <>
+          {syncNotice}
           {readOnly ? null : visit.status === 'en_curso' ? (
             <>
               {mobile && pendingCount > 0 && (
@@ -78,13 +142,14 @@ export default function ChecklistProject() {
               )}
               <button
                 type="button"
-                disabled={!online || (mobile && pendingCount > 0)}
-                title={online ? undefined : 'Requiere conexión'}
-                onClick={() => closeVisit(visitId)}
+                disabled={!online || queueBusy || (mobile && pendingCount > 0)}
+                title={queueTitle}
+                onClick={() => closeVisit(visitId).catch((err) => setSendError(err instanceof Error ? err.message : 'No se pudo cerrar la visita'))}
                 className={`${actionButtonPrimary} ${mobile ? 'w-full' : ''}`}
               >
                 Cerrar visita
               </button>
+              {sendError && <span className="text-danger font-medium">{sendError}</span>}
             </>
           ) : visit.reportSentAt && !(visit.reopenedAt && visit.reopenedAt > visit.reportSentAt) ? (
             <>
@@ -92,6 +157,8 @@ export default function ChecklistProject() {
               <span className="hidden md:inline text-muted">· al Líder de Supervisores, con copia a quien lo emitió</span>
               <button
                 type="button"
+                disabled={queueBusy}
+                title={queueTitle}
                 onClick={() => reportRef.current && downloadVisitReportPdf(reportRef.current, visitId)}
                 className={actionButtonSecondary}
               >
@@ -102,8 +169,8 @@ export default function ChecklistProject() {
             <>
               <button
                 type="button"
-                disabled={sending || !online}
-                title={online ? undefined : 'Requiere conexión'}
+                disabled={sending || !online || queueBusy}
+                title={queueTitle}
                 onClick={async () => {
                   if (!reportRef.current) return
                   setSending(true)
@@ -120,7 +187,7 @@ export default function ChecklistProject() {
               >
                 {sending ? 'Enviando...' : 'Enviar informe'}
               </button>
-              <button type="button" onClick={() => reportRef.current && downloadVisitReportPdf(reportRef.current, visitId)} className={actionButtonSecondary}>
+              <button type="button" disabled={queueBusy} title={queueTitle} onClick={() => reportRef.current && downloadVisitReportPdf(reportRef.current, visitId)} className={actionButtonSecondary}>
                 Descargar informe
               </button>
               {sendError &&<span className="text-danger font-medium">{sendError}</span>}
