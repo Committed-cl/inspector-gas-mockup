@@ -2,7 +2,7 @@ import { createContext, useCallback, useContext, useEffect, useRef, useState, ty
 import { Outlet } from 'react-router-dom'
 import { api } from '../lib/api'
 import { useAuth } from '../lib/auth'
-import { enqueueOp, isHeldOp, isNetworkError, listOps, processQueue, releaseVisit, removeOp, retryOp, subscribeQueue, type QueuedOp, type SyncBlock } from '../lib/offlineQueue'
+import { enqueueOp, isHeldOp, isNetworkError, listOps, processQueue, releaseVisit, removeOp, retryOp, subscribeQueue, type BatchResponse, type QueuedOp, type SyncBlock } from '../lib/offlineQueue'
 import { useOnline } from '../lib/useOnline'
 import SyncStatus from '../components/SyncStatus'
 import { checklistDef, requiredEvidenceState, type ChatMessage, type ChecklistStatus, type EvidenceType, type ItemState } from '../data/checklistMatrizInterior'
@@ -57,6 +57,7 @@ function isPending<T>(a: Async<T>): boolean {
   return a.loading || (!a.data && !a.error)
 }
 
+const SYNC_CYCLE_MS = 2000
 const visitKey = (projectId: string, visitId: string) => `${projectId}::${visitId}`
 
 export type SyncInfo = {
@@ -163,6 +164,8 @@ export function ChecklistProvider({ children }: { children: ReactNode }) {
   const [blocked, setBlocked] = useState<SyncBlock | null>(null)
   const retryTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const doneTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const cycleTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const scheduleSyncRef = useRef<() => void>(() => {})
 
   // The latest mark the user made per item in this session (sent or not). Local state wins:
   // no server response or reload may repaint an item the user already marked.
@@ -181,8 +184,10 @@ export function ChecklistProvider({ children }: { children: ReactNode }) {
     return ops
   }, [userId])
 
-  // One loop at a time. Pending ops are always re-read from IndexedDB (never from queuedRef,
-  // which updates asynchronously) so marks made during a run are picked up by the same loop.
+  // One sync pass at a time. Pending ops are re-read from IndexedDB (never from queuedRef, which
+  // updates asynchronously). A pass sends everything pending in one request per visit; whatever
+  // arrives while it runs waits for the next cycle (scheduleSync), so a burst of clicks costs a
+  // couple of requests instead of one per click.
   const syncNow = useCallback(async () => {
     if (!navigator.onLine || !userId) return
     if (syncing.current) {
@@ -192,29 +197,27 @@ export function ChecklistProvider({ children }: { children: ReactNode }) {
     syncing.current = true
     if (retryTimer.current) clearTimeout(retryTimer.current)
     if (doneTimer.current) clearTimeout(doneTimer.current)
-    let sentTotal = 0
     let blockedNow: SyncBlock | null = null
+    let more = false
     try {
-      for (;;) {
-        const ops = await refreshQueue()
-        if (!ops.some((o) => o.state === 'pending' && !isHeldOp(o))) break
+      const ops = await refreshQueue()
+      if (ops.some((o) => o.state === 'pending' && !isHeldOp(o))) {
         setPhase('syncing')
-        const result = await processQueue(userId, (req) =>
-          req.method === 'PUT' ? api.put<ChecklistState>(req.path, req.body) : api.post<ChecklistState>(req.path, req.body),
-        )
-        sentTotal += result.sent
-        await refreshQueue()
-        // Responses to evidence/observations are adopted, with queued ops and session marks re-applied
-        // on top so nothing local disappears. Mark responses are never applied.
+        const result = await processQueue(userId, (req) => api.post<BatchResponse>(req.path, req.body))
+        const after = await refreshQueue()
+        // Server state for batches with evidence/observations is adopted, with queued ops and session marks
+        // re-applied on top so nothing local disappears. Marks alone never repaint.
         for (const [key, data] of Object.entries(result.lastByVisit)) {
           const [pid, vid] = key.split('::')
-          setChecklistByVisit((prev) => ({ ...prev, [key]: { data: withQueued(pid, vid, data as ChecklistState), loading: false, error: null } }))
+          setChecklistByVisit((prev) => ({ ...prev, [key]: { data: withQueued(pid, vid, data as ChecklistState, after), loading: false, error: null } }))
         }
-        if (result.blocked) {
-          blockedNow = result.blocked
-          break
-        }
-      }
+        blockedNow = result.blocked
+        more = !blockedNow && after.some((o) => o.state === 'pending' && !isHeldOp(o))
+        if (!blockedNow && result.sent > 0 && !more) {
+          setPhase('done')
+          doneTimer.current = setTimeout(() => setPhase('idle'), 4000)
+        } else if (!more) setPhase('idle')
+      } else setPhase('idle')
       setBlocked(blockedNow)
       if (blockedNow) {
         setPhase('idle')
@@ -224,21 +227,26 @@ export function ChecklistProvider({ children }: { children: ReactNode }) {
           attempts.current++
           retryTimer.current = setTimeout(() => void syncNow(), delay)
         }
-      } else {
-        attempts.current = 0
-        if (sentTotal > 0) {
-          setPhase('done')
-          doneTimer.current = setTimeout(() => setPhase('idle'), 4000)
-        } else setPhase('idle')
-      }
+      } else attempts.current = 0
     } finally {
       syncing.current = false
     }
-    if (rerun.current && !blockedNow) {
+    if (blockedNow) return
+    if (rerun.current) {
       rerun.current = false
       void syncNow()
-    }
+    } else if (more) scheduleSyncRef.current()
   }, [refreshQueue, userId])
+
+  // Paced cycle: the first change starts a timer; everything queued until it fires goes in one request.
+  const scheduleSync = useCallback(() => {
+    if (cycleTimer.current) return
+    cycleTimer.current = setTimeout(() => {
+      cycleTimer.current = null
+      void syncNow()
+    }, SYNC_CYCLE_MS)
+  }, [syncNow])
+  scheduleSyncRef.current = scheduleSync
 
   useEffect(() => {
     void refreshQueue().then(() => syncNow())
@@ -247,6 +255,8 @@ export function ChecklistProvider({ children }: { children: ReactNode }) {
       unsub()
       if (retryTimer.current) clearTimeout(retryTimer.current)
       if (doneTimer.current) clearTimeout(doneTimer.current)
+      if (cycleTimer.current) clearTimeout(cycleTimer.current)
+      cycleTimer.current = null
     }
   }, [refreshQueue, syncNow])
 
@@ -275,14 +285,19 @@ export function ChecklistProvider({ children }: { children: ReactNode }) {
       const cur = prev[key]?.data
       return cur ? { ...prev, [key]: { data: withQueued(op.projectId, op.visitId, cur, ops.slice(-1)), loading: false, error: null } } : prev
     })
-    void syncNow()
+    scheduleSync()
   }
 
   // Runs the queue and waits until this visit has no changes left to send (or sync is stuck).
   const flushVisit = async (visitId: string) => {
     if (!userId) return
-    await syncNow()
-    for (let i = 0; i < 300 && syncing.current; i++) await new Promise((r) => setTimeout(r, 100))
+    if (cycleTimer.current) { clearTimeout(cycleTimer.current); cycleTimer.current = null }
+    const sendable = async () => (await listOps(userId)).some((o) => o.visitId === visitId && o.state === 'pending' && !isHeldOp(o))
+    for (let pass = 0; pass < 20; pass++) {
+      await syncNow()
+      for (let i = 0; i < 300 && syncing.current; i++) await new Promise((r) => setTimeout(r, 100))
+      if (!(await sendable())) break
+    }
     const ops = await listOps(userId)
     if (ops.some((o) => o.visitId === visitId))
       throw new Error('Hay cambios sin enviar en esta visita. Espera a que se sincronicen o revísalos antes de continuar.')
@@ -482,8 +497,8 @@ export function ChecklistProvider({ children }: { children: ReactNode }) {
     const ops = await refreshQueue()
     const saved = ops.filter((o) => o.kind === 'mark' && o.itemId === itemId && o.visitId === visitId).slice(-1)[0]
     if (saved && sessionMarks.current[key]?.[itemId]?.body === mark.body) sessionMarks.current[key][itemId] = { ...saved, state: 'pending' }
-    void syncNow()
-  }, [userId, refreshQueue, syncNow])
+    scheduleSync()
+  }, [userId, refreshQueue, scheduleSync])
 
   const addEvidence = useCallback(
     async (projectId: string, visitId: string, itemId: string, requirementIndex: number, type: EvidenceType, text: string, previewUrl?: string) => {

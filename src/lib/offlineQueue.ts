@@ -7,6 +7,7 @@ export type QueuedOpKind = 'mark' | 'evidence' | 'observations'
 
 export type QueuedOp = {
   seq?: number // autoincrement key — defines the sync order
+  opId?: string // idempotency key sent to the server (absent on ops stored by older versions: seq is used)
   userId: string // owner: only this user's session may sync, see or act on the op
   kind: QueuedOpKind
   projectId: string
@@ -77,6 +78,8 @@ export async function clearQueue(): Promise<void> {
   notify()
 }
 
+const newOpId = () => (typeof globalThis.crypto?.randomUUID === 'function' ? globalThis.crypto.randomUUID() : `op-${Date.now()}-${Math.random().toString(36).slice(2)}`)
+
 export async function enqueueOp(op: Omit<QueuedOp, 'seq' | 'state'>): Promise<void> {
   // The editor autosaves the whole observations HTML: only the latest matters.
   if (op.kind === 'observations') {
@@ -90,7 +93,7 @@ export async function enqueueOp(op: Omit<QueuedOp, 'seq' | 'state'>): Promise<vo
     )
     for (const o of stale) await tx('readwrite', (s) => s.delete(o.seq!))
   }
-  await tx('readwrite', (s) => s.add({ ...op, state: 'pending' }))
+  await tx('readwrite', (s) => s.add({ ...op, opId: op.opId ?? newOpId(), state: 'pending' }))
   notify()
 }
 
@@ -118,16 +121,39 @@ export async function releaseVisit(visitId: string, userId: string): Promise<num
   return held.length
 }
 
-export function opRequest(op: QueuedOp): { method: 'POST' | 'PUT'; path: string; body: Record<string, unknown> } {
-  const base = `/projects/${op.projectId}/visits/${op.visitId}`
-  switch (op.kind) {
-    case 'mark':
-      return { method: 'POST', path: `${base}/items/${op.itemId}/mark`, body: op.body }
-    case 'evidence':
-      return { method: 'POST', path: `${base}/items/${op.itemId}/evidence`, body: op.body }
-    case 'observations':
-      return { method: 'PUT', path: `${base}/observations`, body: op.body }
+const wireOpId = (op: QueuedOp) => op.opId ?? `seq-${op.seq}`
+const toWireOp = (op: QueuedOp) => ({ opId: wireOpId(op), kind: op.kind, ...(op.itemId ? { itemId: op.itemId } : {}), body: op.body })
+
+// One request carries many ops of the same visit (the API caps a batch at 100 ops; photos make
+// a body heavy, so a batch is also cut by size — a single op bigger than the cap goes alone).
+export const MAX_BATCH_OPS = 100
+export const MAX_BATCH_BYTES = 3_000_000
+const opSize = (op: QueuedOp) => JSON.stringify(op.body).length + 100
+
+export type BatchRequest = { path: string; body: { ops: ReturnType<typeof toWireOp>[] } }
+export type BatchOpResult = { opId: string; status: 'ok' | 'rejected'; error?: string; code?: string }
+export type BatchResponse = { results: BatchOpResult[]; state?: unknown }
+
+export function batchRequest(ops: QueuedOp[]): BatchRequest {
+  return { path: `/projects/${ops[0].projectId}/visits/${ops[0].visitId}/sync`, body: { ops: ops.map(toWireOp) } }
+}
+
+function chunkOps(ops: QueuedOp[]): QueuedOp[][] {
+  const chunks: QueuedOp[][] = []
+  let cur: QueuedOp[] = []
+  let size = 0
+  for (const op of ops) {
+    const s = opSize(op)
+    if (cur.length > 0 && (cur.length >= MAX_BATCH_OPS || size + s > MAX_BATCH_BYTES)) {
+      chunks.push(cur)
+      cur = []
+      size = 0
+    }
+    cur.push(op)
+    size += s
   }
+  if (cur.length) chunks.push(cur)
+  return chunks
 }
 
 // A fetch that never reached the server (offline, DNS, dropped connection).
@@ -159,42 +185,64 @@ const closedVisit = (err: unknown) => err instanceof ApiError && err.status === 
 const describe = (err: unknown) =>
   closedVisit(err) ? VISIT_CLOSED_MESSAGE : err instanceof ApiError ? `${err.status}: ${err.message}` : 'Sin conexión con el servidor'
 
-// Sends the user's pending ops one at a time, in order. A network error, 401, 408/425/429 or
-// 5xx stops the run: the op stays pending (with the reason) and order is kept. A rejection because
-// the visit is closed holds that op (and the rest of its visit, to keep order) as pending until the
-// visit is reopened. Any other 4xx is definitive for that op only: it is marked failed and kept —
-// never dropped — and the run goes on.
-export async function processQueue(userId: string, send: (req: ReturnType<typeof opRequest>) => Promise<unknown>): Promise<SyncResult> {
+// Holds every pending op of the visit (order is kept; none is dropped) until it is reopened.
+async function holdVisit(userId: string, visitId: string) {
+  for (const o of await listOps(userId)) {
+    if (o.visitId === visitId && o.state === 'pending' && !isHeldOp(o)) await updateOp({ ...o, error: VISIT_CLOSED_MESSAGE, reason: 'visit_closed' })
+  }
+}
+
+// One sync cycle: the user's pending ops go out grouped by visit, one request per visit (more only
+// when a batch is too big), in queue order. Each op is answered on its own: `ok` leaves the queue;
+// a rejection because the visit is closed holds the op (and the rest of its visit) as pending until
+// the visit is reopened; any other rejection marks that op failed — kept, never dropped. A network
+// error, 401, 408/425/429 or 5xx stops the run: the whole batch stays pending, in order. Any other
+// 4xx of the request itself fails that batch only and the run goes on with the next visit.
+export async function processQueue(userId: string, send: (req: BatchRequest) => Promise<BatchResponse>): Promise<SyncResult> {
   const result: SyncResult = { sent: 0, stopped: false, blocked: null, lastByVisit: {} }
   for (const op of await listOps(userId)) if (isLegacyClosedOp(op)) await updateOp({ ...op, state: 'pending', error: VISIT_CLOSED_MESSAGE, reason: 'visit_closed' })
-  const held = new Set<string>()
+  const byVisit = new Map<string, QueuedOp[]>()
   for (const op of await listOps(userId)) {
-    if (op.state !== 'pending') continue
-    if (isHeldOp(op)) { held.add(op.visitId); continue }
-    if (held.has(op.visitId)) continue
-    try {
-      const res = await send(opRequest(op))
-      await removeOp(op.seq!, userId)
-      result.sent++
-      if (op.kind !== 'mark') result.lastByVisit[`${op.projectId}::${op.visitId}`] = res
-    } catch (err) {
-      if (closedVisit(err)) {
-        // Hold this op and every later pending op of the visit (order is kept; none is dropped).
-        held.add(op.visitId)
-        for (const o of await listOps(userId)) {
-          if (o.visitId === op.visitId && o.state === 'pending' && !isHeldOp(o)) await updateOp({ ...o, error: VISIT_CLOSED_MESSAGE, reason: 'visit_closed' })
+    if (op.state !== 'pending' || isHeldOp(op)) continue
+    byVisit.set(`${op.projectId}::${op.visitId}`, [...(byVisit.get(`${op.projectId}::${op.visitId}`) ?? []), op])
+  }
+  for (const [visitKey, visitOps] of byVisit) {
+    let held = false
+    for (const batch of chunkOps(visitOps)) {
+      if (held) break
+      try {
+        const res = await send(batchRequest(batch))
+        const byId = new Map(res.results.map((r) => [r.opId, r]))
+        for (const op of batch) {
+          const r = byId.get(wireOpId(op))
+          if (r?.status === 'ok') {
+            await removeOp(op.seq!, userId)
+            result.sent++
+          } else if (r?.code === 'visit_closed' || (r && isVisitClosedMessage(r.error ?? ''))) {
+            held = true
+          } else {
+            await updateOp({ ...op, state: 'failed', error: r?.error ?? 'El servidor no respondió esta operación' })
+          }
         }
-        continue
+        // Only non-mark ops need the server state back (a mark never repaints the UI).
+        if (res.state && batch.some((o) => o.kind !== 'mark') && !held) result.lastByVisit[visitKey] = res.state
+        if (held) await holdVisit(userId, batch[0].visitId)
+      } catch (err) {
+        if (closedVisit(err)) {
+          await holdVisit(userId, batch[0].visitId)
+          held = true
+          continue
+        }
+        const kind = classifyError(err)
+        if (kind === 'fail') {
+          for (const op of batch) await updateOp({ ...op, state: 'failed', error: describe(err) })
+          continue
+        }
+        for (const op of batch) await updateOp({ ...op, error: describe(err) })
+        result.stopped = true
+        result.blocked = { status: err instanceof ApiError ? err.status : null, message: describe(err), auth: kind === 'auth' }
+        return result
       }
-      const kind = classifyError(err)
-      if (kind === 'fail') {
-        await updateOp({ ...op, state: 'failed', error: describe(err) })
-        continue
-      }
-      await updateOp({ ...op, error: describe(err) })
-      result.stopped = true
-      result.blocked = { status: err instanceof ApiError ? err.status : null, message: describe(err), auth: kind === 'auth' }
-      break
     }
   }
   return result

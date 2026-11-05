@@ -8,10 +8,11 @@ import { ApiError } from '../lib/api'
 import { clearQueue } from '../lib/offlineQueue'
 
 const ids = checklistDef.slice(0, 15).map((d) => d.id)
+const allIds = checklistDef.slice(0, 31).map((d) => d.id)
 const stale = () => ({
   observations: '',
   generalChat: [],
-  itemsState: Object.fromEntries(ids.map((id) => [id, { status: 'pending', source: 'manual', evidence: [] }])),
+  itemsState: Object.fromEntries(allIds.map((id) => [id, { status: 'pending', source: 'manual', evidence: [] }])),
 })
 const post = vi.fn()
 vi.mock('../lib/api', async (orig) => ({ ...(await orig<typeof import('../lib/api')>()), api: { get: vi.fn(async () => stale()), post: (...a: unknown[]) => post(...a), put: vi.fn(), patch: vi.fn(), delete: vi.fn() } }))
@@ -28,12 +29,12 @@ const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms))
 // Slow, out-of-order responses (each one carries a stale server snapshot). `fault` injects errors.
 async function burst(fault: (n: number) => ApiError | null) {
   let n = 0
-  post.mockImplementation(async () => {
+  post.mockImplementation(async (_path: string, body: { ops: { opId: string }[] }) => {
     const k = ++n
     await sleep(150 - (k % 3) * 40)
     const f = fault(k)
     if (f) throw f
-    return stale()
+    return { results: body.ops.map((o) => ({ opId: o.opId, status: 'ok' })), state: stale() }
   })
   const { result } = renderHook(useBoth, { wrapper })
   await waitFor(() => expect(result.current.cl.loading).toBe(false))
@@ -62,7 +63,10 @@ describe('offline marks: local state is the source of truth', () => {
     samples.push(naCount(result))
     expect(monotonic(samples)).toBe(true)
     expect(naCount(result)).toBe(15)
-    expect(post).toHaveBeenCalledTimes(15) // each click sent exactly once
+    expect(post.mock.calls.length).toBeLessThanOrEqual(3) // 15 clicks, a couple of /sync requests (not 15)
+    expect(post.mock.calls.every((c) => String(c[0]).endsWith('/sync'))).toBe(true)
+    const sent = post.mock.calls.flatMap((c) => (c[1] as { ops: { itemId: string }[] }).ops.map((o) => o.itemId))
+    expect([...sent].sort()).toEqual([...ids].sort()) // each click delivered exactly once
   })
 
   it('a 500 and a 429 leave the buttons alone and nothing is lost', async () => {
@@ -71,11 +75,33 @@ describe('offline marks: local state is the source of truth', () => {
     expect(naCount(result)).toBe(15)
   })
 
-  it('a definitive 4xx keeps the button painted and lists the op as not sent', async () => {
-    const { result, samples } = await burst((k) => (k === 4 ? new ApiError(409, 'Visita cerrada') : null))
+  it('a definitive 4xx keeps the buttons painted and lists the ops as not sent', async () => {
+    const { result, samples } = await burst((k) => (k === 1 ? new ApiError(409, 'Visita cerrada') : null))
     expect(monotonic(samples)).toBe(true)
     expect(naCount(result)).toBe(15)
-    await waitFor(() => expect(result.current.sync.failed).toHaveLength(1))
+    await waitFor(() => expect(result.current.sync.failed.length).toBeGreaterThan(0))
     expect(result.current.sync.failed[0].error).toBe('409: Visita cerrada')
   })
+
+  it('31 clicks with 800 ms latency: the server gets all 31 in at most 3 /sync requests, the UI never changes', async () => {
+    const delivered: string[] = []
+    post.mockImplementation(async (_path: string, body: { ops: { opId: string; itemId: string }[] }) => {
+      await sleep(800)
+      delivered.push(...body.ops.map((o) => o.itemId))
+      return { results: body.ops.map((o) => ({ opId: o.opId, status: 'ok' })), state: stale() }
+    })
+    const { checklistDef: def } = await import('../data/checklistMatrizInterior')
+    const many = def.slice(0, 31).map((d) => d.id)
+    const { result } = renderHook(useBoth, { wrapper })
+    await waitFor(() => expect(result.current.cl.loading).toBe(false))
+    for (const id of many) {
+      await act(async () => { await result.current.cl.markManually(id, 'na', 'x') })
+      await sleep(30)
+    }
+    await waitFor(() => expect(result.current.sync.pendingCount).toBe(0), { timeout: 8000 })
+    expect(post.mock.calls.length).toBeLessThanOrEqual(3)
+    expect(post.mock.calls.every((c) => String(c[0]).endsWith('/sync'))).toBe(true)
+    expect(delivered).toHaveLength(many.length)
+    expect(Object.values(result.current.cl.itemsState).filter((i) => i.status === 'na')).toHaveLength(many.length)
+  }, 20000)
 })
