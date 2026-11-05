@@ -8,6 +8,7 @@ import AdminUsuarios from './pages/AdminUsuarios'
 import AdminInformes from './pages/AdminInformes'
 import AdminIaConfig from './pages/AdminIaConfig'
 import AdminUso from './pages/AdminUso'
+import AdminSalud from './pages/AdminSalud'
 import ChecklistProjects from './pages/ChecklistProjects'
 import ChecklistNuevaObra from './pages/ChecklistNuevaObra'
 import ObraVisitas from './pages/ObraVisitas'
@@ -56,6 +57,14 @@ export default function App() {
             element={
               <RequireAdmin globalOnly>
                 <AdminUso />
+              </RequireAdmin>
+            }
+          />
+          <Route
+            path="/admin/salud"
+            element={
+              <RequireAdmin globalOnly>
+                <AdminSalud />
               </RequireAdmin>
             }
           />
