@@ -157,9 +157,15 @@ export function ChecklistProvider({ children }: { children: ReactNode }) {
   const retryTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const doneTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
 
-  const withQueued = (projectId: string, visitId: string, data: ChecklistState, ops: QueuedOp[] = queuedRef.current) =>
-    // A rejected mark is not shown: the item goes back to its real state (the op stays in sync.failed).
-    ops.filter((o) => o.projectId === projectId && o.visitId === visitId && !(o.kind === 'mark' && o.state === 'failed')).reduce(applyOp, data)
+  // The latest mark the user made per item in this session (sent or not). Local state wins:
+  // no server response or reload may repaint an item the user already marked.
+  const sessionMarks = useRef<Record<string, Record<string, QueuedOp>>>({})
+
+  const withQueued = (projectId: string, visitId: string, data: ChecklistState, ops: QueuedOp[] = queuedRef.current) => {
+    // Rejected marks stay visible too (the user decides in sync.failed: retry or discard).
+    const withOps = ops.filter((o) => o.projectId === projectId && o.visitId === visitId).reduce(applyOp, data)
+    return Object.values(sessionMarks.current[visitKey(projectId, visitId)] ?? {}).reduce(applyOp, withOps)
+  }
 
   const refreshQueue = useCallback(async () => {
     const ops = userId ? await listOps(userId).catch(() => []) : []
@@ -191,20 +197,11 @@ export function ChecklistProvider({ children }: { children: ReactNode }) {
         )
         sentTotal += result.sent
         await refreshQueue()
-        // The last server response per visit is authoritative; ops still queued (including ones
-        // made during the run) or failed are re-applied on top so nothing local disappears.
+        // Responses to evidence/observations are adopted, with queued ops and session marks re-applied
+        // on top so nothing local disappears. Mark responses are never applied.
         for (const [key, data] of Object.entries(result.lastByVisit)) {
           const [pid, vid] = key.split('::')
           setChecklistByVisit((prev) => ({ ...prev, [key]: { data: withQueued(pid, vid, data as ChecklistState), loading: false, error: null } }))
-        }
-        // A rejected mark leaves optimistic state behind: reload visits without a fresh server response.
-        for (const key of new Set(result.failedVisits)) {
-          if (key in result.lastByVisit) continue
-          const [pid, vid] = key.split('::')
-          try {
-            const data = await api.get<ChecklistState>(`/projects/${pid}/visits/${vid}/checklist`)
-            setChecklistByVisit((prev) => ({ ...prev, [key]: { data: withQueued(pid, vid, data), loading: false, error: null } }))
-          } catch { /* keep what is shown; the next sync retries */ }
         }
         if (result.blocked) {
           blockedNow = result.blocked
@@ -286,7 +283,15 @@ export function ChecklistProvider({ children }: { children: ReactNode }) {
       void listOps(userId).then((ops) => Promise.all(ops.filter((o) => o.state === 'failed').map((o) => retryOp(o.seq!, userId)))).then(() => syncNow())
     },
     retry: (seq) => { if (userId) void retryOp(seq, userId).then(() => syncNow()) },
-    discard: (seq) => { if (userId) void removeOp(seq, userId) },
+    discard: (seq) => {
+      if (!userId) return
+      const op = queued.find((o) => o.seq === seq)
+      if (op?.kind === 'mark' && op.itemId) {
+        const marks = sessionMarks.current[visitKey(op.projectId, op.visitId)]
+        if (marks?.[op.itemId]?.seq === seq) delete marks[op.itemId]
+      }
+      void removeOp(seq, userId)
+    },
   }
 
   const fetchProjectsIfNeeded = useCallback(() => {
@@ -411,13 +416,18 @@ export function ChecklistProvider({ children }: { children: ReactNode }) {
   // of the same item), shown at once, and sent in the background by syncNow.
   const markManually = useCallback(async (projectId: string, visitId: string, itemId: string, status: ChecklistStatus, reason?: string) => {
     if (!userId) throw new Error('Sesión no iniciada')
-    await enqueueOp({ kind: 'mark', projectId, visitId, itemId, body: { status, reason }, label: `Estado «${status}» del ítem ${itemId}`, userId })
-    const ops = await refreshQueue()
+    const key = visitKey(projectId, visitId)
+    const mark: QueuedOp = { kind: 'mark', projectId, visitId, itemId, body: { status, reason }, label: `Estado «${status}» del ítem ${itemId}`, userId, state: 'pending' }
+    // Remember the click synchronously (before any await) so concurrent loads can't overwrite it.
+    sessionMarks.current[key] = { ...sessionMarks.current[key], [itemId]: mark }
     setChecklistByVisit((prev) => {
-      const key = visitKey(projectId, visitId)
       const cur = prev[key]?.data
-      return cur ? { ...prev, [key]: { data: withQueued(projectId, visitId, cur, ops.filter((o) => o.kind === 'mark' && o.itemId === itemId).slice(-1)), loading: false, error: null } } : prev
+      return cur ? { ...prev, [key]: { data: applyOp(cur, mark), loading: false, error: null } } : prev
     })
+    await enqueueOp({ kind: 'mark', projectId, visitId, itemId, body: { status, reason }, label: mark.label, userId })
+    const ops = await refreshQueue()
+    const saved = ops.filter((o) => o.kind === 'mark' && o.itemId === itemId && o.visitId === visitId).slice(-1)[0]
+    if (saved && sessionMarks.current[key]?.[itemId]?.body === mark.body) sessionMarks.current[key][itemId] = { ...saved, state: 'pending' }
     void syncNow()
   }, [userId, refreshQueue, syncNow])
 

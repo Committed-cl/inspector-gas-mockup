@@ -126,7 +126,8 @@ export type SyncResult = {
   stopped: boolean
   // Why the run stopped (null when it ran to the end). `auth`: 401, the session must be renewed.
   blocked: SyncBlock | null
-  failedVisits: string[] // `${projectId}::${visitId}` of marks rejected for good in this run
+  // Last server response per visit, from non-mark ops only: a mark response never repaints the UI
+  // (the local state is the source of truth; a sent mark is just removed from the queue).
   lastByVisit: Record<string, unknown>
 }
 
@@ -145,19 +146,18 @@ const describe = (err: unknown) => (err instanceof ApiError ? `${err.status}: ${
 // 5xx stops the run: the op stays pending (with the reason) and order is kept. Any other 4xx is
 // definitive for that op only: it is marked failed and kept — never dropped — and the run goes on.
 export async function processQueue(userId: string, send: (req: ReturnType<typeof opRequest>) => Promise<unknown>): Promise<SyncResult> {
-  const result: SyncResult = { sent: 0, stopped: false, blocked: null, failedVisits: [], lastByVisit: {} }
+  const result: SyncResult = { sent: 0, stopped: false, blocked: null, lastByVisit: {} }
   for (const op of await listOps(userId)) {
     if (op.state !== 'pending') continue
     try {
       const res = await send(opRequest(op))
       await removeOp(op.seq!, userId)
       result.sent++
-      result.lastByVisit[`${op.projectId}::${op.visitId}`] = res
+      if (op.kind !== 'mark') result.lastByVisit[`${op.projectId}::${op.visitId}`] = res
     } catch (err) {
       const kind = classifyError(err)
       if (kind === 'fail') {
         await updateOp({ ...op, state: 'failed', error: describe(err) })
-        if (op.kind === 'mark') result.failedVisits.push(`${op.projectId}::${op.visitId}`)
         continue
       }
       await updateOp({ ...op, error: describe(err) })
