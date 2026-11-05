@@ -15,6 +15,7 @@ const items: Item[] = [
   { to: '/admin/informes', label: 'Informes', adminOnly: true },
   { to: '/checklist/nueva-obra', label: 'Nuevo proyecto', adminOnly: true },
   { to: '/admin/uso', label: 'Uso', adminOnly: true, globalOnly: true },
+  { to: '/admin/salud', label: 'Salud', adminOnly: true, globalOnly: true },
   { to: '/admin/ia', label: 'Configuración de IA', adminOnly: true, globalOnly: true },
 ]
 
