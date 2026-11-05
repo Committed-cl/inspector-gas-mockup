@@ -44,7 +44,7 @@ export default function Sidebar() {
 
   return (
     <>
-      <div className="md:hidden sticky top-0 z-30 h-14 flex items-center gap-1 pl-1 pr-3 pt-[env(safe-area-inset-top)] box-content border-b border-hairline bg-white print:hidden">
+      <div className="md:hidden sticky top-[var(--imp-bar,0px)] z-30 h-14 flex items-center gap-1 pl-1 pr-3 pt-[env(safe-area-inset-top)] box-content border-b border-hairline bg-white print:hidden">
         <button type="button" onClick={() => setOpen(true)} aria-label="Abrir menú" className="w-11 h-11 grid place-items-center rounded-lg text-ink hover:bg-brand/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand">
           <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round">
             <path d="M3 5.5h14M3 10h14M3 14.5h14" />
@@ -56,7 +56,7 @@ export default function Sidebar() {
       {open && <div className="md:hidden fixed inset-0 bg-ink/30 z-40 print:hidden" onClick={() => setOpen(false)} />}
 
       <aside
-        className={`w-60 shrink-0 border-r border-hairline bg-white md:bg-white/60 md:backdrop-blur p-5 fixed inset-y-0 left-0 z-50 overflow-y-auto flex flex-col transition-transform duration-200 md:sticky md:top-0 md:h-screen md:translate-x-0 print:hidden ${
+        className={`w-60 shrink-0 border-r border-hairline bg-white md:bg-white/60 md:backdrop-blur p-5 fixed top-[var(--imp-bar,0px)] bottom-0 left-0 z-50 overflow-y-auto flex flex-col transition-transform duration-200 md:sticky md:top-[var(--imp-bar,0px)] md:h-[calc(100vh-var(--imp-bar,0px))] md:translate-x-0 print:hidden ${
           open ? 'translate-x-0' : '-translate-x-full'
         }`}
       >

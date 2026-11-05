@@ -10,7 +10,11 @@ import { MIN_PASSWORD_LENGTH } from '../lib/password'
 const rolePicksProjects = (role: UserRole) => role !== 'lider-supervisores' && role !== 'admin-convenio'
 
 export default function AdminUsuarios() {
-  const { auth } = useAuth()
+  const { auth, impersonation, startImpersonation } = useAuth()
+  // Server-decided (IMPERSONATORS): the list of authorized emails never reaches the client.
+  const canImpersonate = !!auth?.user.canImpersonate && !impersonation
+  const [viewAsTarget, setViewAsTarget] = useState<AdminUser | null>(null)
+  const canViewAs = (u: AdminUser) => canImpersonate && u.role !== 'admin-general' && !u.isAdmin && u.id !== auth?.user.id
   const isGlobalAdmin = useIsGlobalAdmin()
   const ownCompanyId = auth?.user.companyId ?? ''
   const { companies: allCompanies } = useCompanies(isGlobalAdmin)
@@ -174,6 +178,11 @@ export default function AdminUsuarios() {
                 <button type="button" onClick={() => onResetPassword(u)} className="text-brand font-medium">
                   Restablecer contraseña
                 </button>
+                {canViewAs(u) && (
+                  <button type="button" onClick={() => setViewAsTarget(u)} className="text-brand font-medium">
+                    Entrar como
+                  </button>
+                )}
                 <button type="button" onClick={() => onDelete(u)} className="text-danger font-medium">
                   Eliminar
                 </button>
@@ -231,6 +240,11 @@ export default function AdminUsuarios() {
                       <button type="button" onClick={() => onResetPassword(u)} className="text-brand hover:underline">
                         Restablecer contraseña
                       </button>
+                      {canViewAs(u) && (
+                        <button type="button" onClick={() => setViewAsTarget(u)} className="text-brand hover:underline">
+                          Entrar como
+                        </button>
+                      )}
                       <button type="button" onClick={() => onDelete(u)} className="text-danger hover:underline">
                         Eliminar
                       </button>
@@ -362,8 +376,57 @@ export default function AdminUsuarios() {
           </button>
         </form>
       </main>
+      {viewAsTarget && <ViewAsModal user={viewAsTarget} onCancel={() => setViewAsTarget(null)} onConfirm={(reason) => startImpersonation(viewAsTarget.id, reason)} />}
       {resetTarget && <ResetPasswordModal user={resetTarget} onCancel={() => setResetTarget(null)} onConfirm={confirmReset} />}
     </div>
+  )
+}
+
+function ViewAsModal({ user, onCancel, onConfirm }: { user: AdminUser; onCancel: () => void; onConfirm: (reason: string) => Promise<void> }) {
+  const [reason, setReason] = useState('')
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  const submit = async (e: FormEvent) => {
+    e.preventDefault()
+    setBusy(true)
+    setError(null)
+    try {
+      await onConfirm(reason.trim())
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'No se pudo iniciar la sesión.')
+      setBusy(false)
+    }
+  }
+
+  return (
+    <Modal labelledBy="view-as-title" onClose={onCancel}>
+      <form onSubmit={submit} className="p-5 flex flex-col gap-3">
+        <h2 id="view-as-title" className="text-[13px] font-semibold text-ink">Entrar como {user.name}</h2>
+        <p className="text-[12px] text-muted">Verás el sistema como este usuario, solo lectura, hasta 30 minutos. Queda registrado en Salud.</p>
+        <label className="flex flex-col gap-1.5">
+          <span className="text-[11.5px] font-medium text-ink">Motivo (opcional)</span>
+          <input
+            type="text"
+            value={reason}
+            onChange={(e) => setReason(e.target.value)}
+            maxLength={120}
+            autoFocus
+            placeholder="Ej.: revisar por qué no ve un proyecto"
+            className="rounded-lg border border-hairline px-2.5 py-2 text-[13px] focus:outline-none focus:ring-2 focus:ring-brand/30 focus:border-brand"
+          />
+        </label>
+        {error && <p className="text-[12.5px] text-danger">{error}</p>}
+        <div className="flex items-center gap-3">
+          <button type="submit" disabled={busy} className="bg-brand hover:bg-brand-dark text-white font-semibold px-3.5 py-1.5 rounded-lg text-[12.5px] disabled:opacity-60">
+            {busy ? 'Entrando...' : 'Entrar'}
+          </button>
+          <button type="button" onClick={onCancel} className="text-[12.5px] text-muted hover:underline">
+            Cancelar
+          </button>
+        </div>
+      </form>
+    </Modal>
   )
 }
 

@@ -151,8 +151,9 @@ export function ChecklistProvider({ children }: { children: ReactNode }) {
   const observationsDebounce = useRef<Record<string, ReturnType<typeof setTimeout>>>({})
 
   const online = useOnline()
-  const { auth } = useAuth()
-  const userId = auth?.user.id ?? null
+  const { auth, impersonation } = useAuth()
+  // Offline queue is off in "view as" mode: nothing is queued or synced for the viewed user.
+  const userId = impersonation ? null : (auth?.user.id ?? null)
   const [queued, setQueued] = useState<QueuedOp[]>([])
   const [phase, setPhase] = useState<SyncInfo['phase']>('idle')
   const queuedRef = useRef<QueuedOp[]>([])

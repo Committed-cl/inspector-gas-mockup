@@ -28,6 +28,7 @@ type Health = {
   problems: Problem[]
   serverErrorsByRoute: { route: string; count: number; lastAt: string; lastMessage: string }[]
   appVersions: { version: string; users: number; current: boolean }[]
+  impersonations?: { id: string; at: string; kind: 'impersonation_started' | 'impersonation_ended'; adminName: string; companyName: string; message: string }[]
 }
 
 const TYPE_LABEL: Record<ProblemType, string> = {
@@ -186,6 +187,31 @@ export default function AdminSalud() {
                       <td className="px-4 py-3 text-ink font-medium">{r.route}</td>
                       <td className="px-4 py-3">{r.count}</td>
                       <td className="px-4 py-3">{dateTime(r.lastAt)} · {r.lastMessage}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            <h2 className="text-[15px] font-bold text-ink mt-8 mb-3">Sesiones «Entrar como»</h2>
+            <div className="bg-white rounded-xl border border-hairline overflow-x-auto">
+              <table className="w-full min-w-[520px] text-[13.5px]">
+                <thead className="bg-brand-soft/60 text-brand text-[11.5px] uppercase tracking-wide">
+                  <tr>
+                    <th className="text-left px-4 py-3">Cuándo</th>
+                    <th className="text-left px-4 py-3">Evento</th>
+                    <th className="text-left px-4 py-3">Detalle</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-hairline">
+                  {(health.impersonations ?? []).length === 0 && (
+                    <tr><td colSpan={3} className="px-4 py-4 text-muted italic">Sin sesiones «Entrar como» en el período.</td></tr>
+                  )}
+                  {(health.impersonations ?? []).map((i) => (
+                    <tr key={i.id}>
+                      <td className="px-4 py-3 whitespace-nowrap">{dateTime(i.at)}</td>
+                      <td className="px-4 py-3 font-medium text-ink">{i.kind === 'impersonation_started' ? 'Inicio' : 'Fin'}</td>
+                      <td className="px-4 py-3">{i.message}</td>
                     </tr>
                   ))}
                 </tbody>

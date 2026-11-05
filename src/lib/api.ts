@@ -14,8 +14,19 @@ export class ApiError extends Error {
   }
 }
 
+// "Entrar como": the impersonation token lives apart from the real session's and, while present, wins.
+const IMP_TOKEN_KEY = 'ig_imp_token'
+
 function getToken(): string | null {
-  return localStorage.getItem(TOKEN_KEY)
+  return localStorage.getItem(IMP_TOKEN_KEY) ?? localStorage.getItem(TOKEN_KEY)
+}
+
+export function setImpersonationToken(token: string) {
+  localStorage.setItem(IMP_TOKEN_KEY, token)
+}
+
+export function clearImpersonationToken() {
+  localStorage.removeItem(IMP_TOKEN_KEY)
 }
 
 export function setToken(token: string) {

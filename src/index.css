@@ -52,3 +52,9 @@ body {
     display: none;
   }
 }
+
+/* "Entrar como": admin screens have no per-control read-only flag, so their controls look disabled as a whole. */
+[data-view-as-admin] main :is(button, input, select, textarea) {
+  pointer-events: none;
+  opacity: 0.55;
+}
