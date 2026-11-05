@@ -2,6 +2,7 @@
 // Only plain checklist edits are queued — AI chat, closing a visit and sending
 // the report need a connection and are never stored here.
 import { ApiError } from './api'
+import { buildClientHealth, clearClientError, peekClientError, recordClientError, type ClientHealth } from './clientHealth'
 
 export type QueuedOpKind = 'mark' | 'evidence' | 'observations'
 
@@ -17,6 +18,7 @@ export type QueuedOp = {
   label: string // human description, shown if the change fails for good
   state: 'pending' | 'failed'
   error?: string
+  queuedAt?: number // ms epoch when enqueued (absent on older ops); feeds the oldest-pending age sent with /sync
   reason?: 'visit_closed' // the op is held (still pending, never dropped) because its visit is closed
 }
 
@@ -93,7 +95,7 @@ export async function enqueueOp(op: Omit<QueuedOp, 'seq' | 'state'>): Promise<vo
     )
     for (const o of stale) await tx('readwrite', (s) => s.delete(o.seq!))
   }
-  await tx('readwrite', (s) => s.add({ ...op, opId: op.opId ?? newOpId(), state: 'pending' }))
+  await tx('readwrite', (s) => s.add({ ...op, opId: op.opId ?? newOpId(), queuedAt: op.queuedAt ?? Date.now(), state: 'pending' }))
   notify()
 }
 
@@ -130,7 +132,7 @@ export const MAX_BATCH_OPS = 100
 export const MAX_BATCH_BYTES = 3_000_000
 const opSize = (op: QueuedOp) => JSON.stringify(op.body).length + 100
 
-export type BatchRequest = { path: string; body: { ops: ReturnType<typeof toWireOp>[] } }
+export type BatchRequest = { path: string; body: { ops: ReturnType<typeof toWireOp>[]; client?: ClientHealth } }
 export type BatchOpResult = { opId: string; status: 'ok' | 'rejected'; error?: string; code?: string }
 export type BatchResponse = { results: BatchOpResult[]; state?: unknown }
 
@@ -201,6 +203,8 @@ async function holdVisit(userId: string, visitId: string) {
 export async function processQueue(userId: string, send: (req: BatchRequest) => Promise<BatchResponse>): Promise<SyncResult> {
   const result: SyncResult = { sent: 0, stopped: false, blocked: null, lastByVisit: {} }
   for (const op of await listOps(userId)) if (isLegacyClosedOp(op)) await updateOp({ ...op, state: 'pending', error: VISIT_CLOSED_MESSAGE, reason: 'visit_closed' })
+  const client = buildClientHealth(await listOps(userId), Date.now())
+  const sentError = peekClientError()
   const byVisit = new Map<string, QueuedOp[]>()
   for (const op of await listOps(userId)) {
     if (op.state !== 'pending' || isHeldOp(op)) continue
@@ -211,7 +215,9 @@ export async function processQueue(userId: string, send: (req: BatchRequest) => 
     for (const batch of chunkOps(visitOps)) {
       if (held) break
       try {
-        const res = await send(batchRequest(batch))
+        const req = batchRequest(batch)
+        const res = await send({ ...req, body: { ...req.body, client } })
+        clearClientError(sentError)
         const byId = new Map(res.results.map((r) => [r.opId, r]))
         for (const op of batch) {
           const r = byId.get(wireOpId(op))
@@ -234,6 +240,7 @@ export async function processQueue(userId: string, send: (req: BatchRequest) => 
           continue
         }
         const kind = classifyError(err)
+        if (kind !== 'auth') recordClientError(err instanceof ApiError ? err.status : null, err instanceof Error ? err.message : 'Sin conexión con el servidor')
         if (kind === 'fail') {
           for (const op of batch) await updateOp({ ...op, state: 'failed', error: describe(err) })
           continue

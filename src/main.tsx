@@ -4,6 +4,9 @@ import { BrowserRouter } from 'react-router-dom'
 import App from './App'
 import { AuthProvider } from './lib/auth'
 import './index.css'
+import { installGlobalErrorCapture } from './lib/clientHealth'
+
+installGlobalErrorCapture()
 
 const basename = import.meta.env.BASE_URL.replace(/\/$/, '')
 

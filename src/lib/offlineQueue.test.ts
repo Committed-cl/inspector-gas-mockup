@@ -1,6 +1,7 @@
 import 'fake-indexeddb/auto'
 import { beforeEach, describe, expect, it } from 'vitest'
 import { ApiError } from './api'
+import { clearClientError, peekClientError, recordClientError } from './clientHealth'
 import { clearQueue, enqueueOp, isHeldOp, releaseVisit, listOps, MAX_BATCH_OPS, processQueue, removeOp, retryOp, VISIT_CLOSED_MESSAGE, type BatchRequest, type BatchResponse, type QueuedOp } from './offlineQueue'
 
 const U = 'userA'
@@ -231,5 +232,48 @@ describe('offline queue (batched sync)', () => {
     await processQueue(U, sentA.send)
     expect(sentA.requests).toEqual([['evidence:a']])
     expect(await listOps(U)).toHaveLength(0)
+  })
+})
+
+describe('client health attached to /sync', () => {
+  beforeEach(async () => {
+    await clearQueue()
+    clearClientError(peekClientError())
+  })
+
+  it('every request carries counters, the oldest pending age and no content', async () => {
+    await enqueueOp({ ...base, kind: 'mark', itemId: 'i1', body: { status: 'ok' }, queuedAt: Date.now() - 20 * 60_000 })
+    const seen: unknown[] = []
+    await processQueue(U, async (r) => {
+      seen.push(r.body.client)
+      return okAll(r)
+    })
+    expect(seen[0]).toMatchObject({ online: true, pendingCount: 1, heldClosedCount: 0 })
+    expect((seen[0] as { oldestPendingAgeSec: number }).oldestPendingAgeSec).toBeGreaterThanOrEqual(1200)
+    expect(seen[0]).not.toHaveProperty('lastError')
+  })
+
+  it('a 429 is remembered, sent with the next sync, then cleared once answered', async () => {
+    await mark('i1')
+    const first = await processQueue(U, async () => {
+      throw new ApiError(429, 'Too many requests')
+    })
+    expect(first.stopped).toBe(true)
+    expect(peekClientError()).toMatchObject({ status: 429, message: 'Too many requests' })
+
+    const seen: unknown[] = []
+    await processQueue(U, async (r) => {
+      seen.push(r.body.client)
+      return okAll(r)
+    })
+    expect(seen[0]).toMatchObject({ lastError: { status: 429, message: 'Too many requests' } })
+    expect(peekClientError()).toBeNull()
+  })
+
+  it('uncaught JS errors are summarized: first line, no query strings, truncated', () => {
+    recordClientError(null, `boom at https://x.cl/a?token=secret\n    at stack ${'x'.repeat(300)}`)
+    expect(peekClientError()!.message).toBe('boom at https://x.cl/a')
+    recordClientError(null, 'y'.repeat(500))
+    expect(peekClientError()!.message).toHaveLength(200)
   })
 })

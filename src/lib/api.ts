@@ -42,12 +42,16 @@ export function setPasswordChangeRequiredHandler(fn: () => void) {
   onPasswordChangeRequired = fn
 }
 
+// Build id (commit hash) injected by Vite; lets the API know which client version a user runs.
+const APP_VERSION = typeof __APP_VERSION__ === 'string' ? __APP_VERSION__ : 'dev'
+
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const token = getToken()
   const res = await fetch(`${BASE_URL}${path}`, {
     ...init,
     headers: {
       'Content-Type': 'application/json',
+      'X-App-Version': APP_VERSION,
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
       ...init?.headers,
     },
@@ -71,7 +75,7 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
 // public, so the bearer token has to travel with the request.
 export async function fetchBlob(path: string): Promise<Blob> {
   const token = getToken()
-  const res = await fetch(`${BASE_URL}${path}`, { headers: token ? { Authorization: `Bearer ${token}` } : {} })
+  const res = await fetch(`${BASE_URL}${path}`, { headers: { 'X-App-Version': APP_VERSION, ...(token ? { Authorization: `Bearer ${token}` } : {}) } })
   if (res.status === 401) onUnauthorized?.()
   if (!res.ok) {
     const body = await res.json().catch(() => ({}))
@@ -86,7 +90,7 @@ export async function putFile(path: string, file: Blob): Promise<void> {
   const token = getToken()
   const res = await fetch(`${BASE_URL}${path}`, {
     method: 'PUT',
-    headers: { 'Content-Type': file.type || 'application/octet-stream', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+    headers: { 'Content-Type': file.type || 'application/octet-stream', 'X-App-Version': APP_VERSION, ...(token ? { Authorization: `Bearer ${token}` } : {}) },
     body: file,
   })
   if (res.status === 401) onUnauthorized?.()
