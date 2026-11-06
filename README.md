@@ -1,12 +1,12 @@
 # Inspector Gas — Mockup
 
-Maqueta navegable de **Inspector Gas**, app móvil *voice-first* con IA para inspecciones de obra en instalaciones de gas natural.
+App de **Inspector Gas**, app móvil *voice-first* con IA para inspecciones de obra en instalaciones de gas natural.
 
 Propuesta construida por **Committed** para presentación a Metrogas.
 
 ## Demo en vivo
 
-Una vez desplegada, la maqueta estará disponible en:
+Una vez desplegada, la app estará disponible en:
 **https://committed-cl.github.io/inspector-gas-mockup/**
 
 ## Ejecutar localmente
