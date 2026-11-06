@@ -50,7 +50,7 @@ export default function Sidebar() {
             <path d="M3 5.5h14M3 10h14M3 14.5h14" />
           </svg>
         </button>
-        <p className="text-brand font-bold text-[15px] leading-none">Inspector Gas</p>
+        <p className="text-brand font-bold text-[15px] leading-none">Inspector Proyectos de Gas</p>
       </div>
 
       {open && <div className="md:hidden fixed inset-0 bg-ink/30 z-40 print:hidden" onClick={() => setOpen(false)} />}
@@ -62,7 +62,7 @@ export default function Sidebar() {
       >
         <div className="flex items-start justify-between mb-6">
           <Link to="/checklist" className="block" onClick={() => setOpen(false)}>
-            <p className="text-brand font-bold text-lg leading-none">Inspector Gas</p>
+            <p className="text-brand font-bold text-lg leading-none">Inspector Proyectos de Gas</p>
             <p className="text-muted text-xs mt-1">{isAdminUser ? 'Backoffice' : 'Checklist'}</p>
           </Link>
           <button type="button" onClick={() => setOpen(false)} aria-label="Cerrar menú" className="md:hidden text-muted w-11 h-11 -mt-2 -mr-2 grid place-items-center">

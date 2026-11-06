@@ -14,7 +14,7 @@ export default function PhoneFrame({ children, header, footer }: Props) {
         <div className="flex-1 overflow-y-auto thin-scroll">{children}</div>
         {footer}
       </div>
-      <p className="mt-4 text-xs text-muted font-mono">Inspector Gas</p>
+      <p className="mt-4 text-xs text-muted font-mono">Inspector Proyectos de Gas</p>
     </div>
   )
 }

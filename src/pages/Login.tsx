@@ -68,7 +68,7 @@ export default function Login() {
     <PhoneFrame>
       <div className="px-6 pt-10 pb-8 flex flex-col gap-8">
         <div>
-          <p className="text-brand font-bold text-2xl leading-none">Inspector Gas</p>
+          <p className="text-brand font-bold text-2xl leading-none">Inspector Proyectos de Gas</p>
           <p className="text-muted text-[13px] mt-1.5">Ingresa a tus proyectos asignados</p>
         </div>
 

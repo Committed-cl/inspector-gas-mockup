@@ -30,7 +30,7 @@ export default function MagicLogin() {
   return (
     <PhoneFrame>
       <div className="px-6 pt-10 pb-8 flex flex-col gap-4">
-        <p className="text-brand font-bold text-2xl leading-none">Inspector Gas</p>
+        <p className="text-brand font-bold text-2xl leading-none">Inspector Proyectos de Gas</p>
         {failed ? (
           <>
             <p className="text-[13px] text-danger">El enlace es inválido, ya fue usado o expiró.</p>

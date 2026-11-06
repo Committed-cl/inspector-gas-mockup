@@ -1,6 +1,6 @@
-# Inspector Gas — Mockup
+# Inspector Proyectos de Gas — Mockup
 
-App de **Inspector Gas**, app móvil *voice-first* con IA para inspecciones de obra en instalaciones de gas natural.
+App de **Inspector Proyectos de Gas**, app móvil *voice-first* con IA para inspecciones de obra en instalaciones de gas natural.
 
 Propuesta construida por **Committed** para presentación a Metrogas.
 
