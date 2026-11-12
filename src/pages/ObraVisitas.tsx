@@ -134,7 +134,7 @@ export default function ObraVisitas() {
           </Link>
           <h1 className="text-2xl font-bold text-ink md:mt-2">{projectData.name}</h1>
           <p className="text-[14px] md:text-[13px] text-muted mt-1">
-            {formName} · Contratista {projectData.installer}
+            {formName} · Contratista {projectData.installer || '—'}
           </p>
         </div>
       </header>

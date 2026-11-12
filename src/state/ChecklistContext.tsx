@@ -16,11 +16,11 @@ export type ProjectSummary = {
   clientId: string
   name: string
   address: string
-  builder: string
-  installer: string
-  floors: number
-  stageNumber: number
-  stageName: string
+  builder?: string
+  installer?: string
+  floors?: number
+  stageNumber?: number
+  stageName?: string
   projectCode?: string
   servicePressureKpa?: number
   matrixVolumeM3?: number
@@ -31,11 +31,11 @@ export type CreateProjectInput = {
   clientId: string
   name: string
   address: string
-  builder: string
-  installer: string
-  floors: number
-  stageNumber: number
-  stageName: string
+  builder?: string
+  installer?: string
+  floors?: number
+  stageNumber?: number
+  stageName?: string
   projectCode?: string
   servicePressureKpa?: number
   matrixVolumeM3?: number
