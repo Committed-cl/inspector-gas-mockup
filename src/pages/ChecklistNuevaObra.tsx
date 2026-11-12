@@ -1,7 +1,7 @@
 import { useState, type FormEvent } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useClients, useCompanies } from '../state/adminHooks'
-import { useCreateProject } from '../state/ChecklistContext'
+import { useCreateProject, useUpdateProjectTechnicalData } from '../state/ChecklistContext'
 import { ApiError } from '../lib/api'
 import Icon from '../components/Icon'
 
@@ -9,6 +9,7 @@ export default function ChecklistNuevaObra() {
   const { companies, loading: companiesLoading } = useCompanies()
   const { clients, loading: clientsLoading, createClient } = useClients()
   const createProject = useCreateProject()
+  const updateTechnicalData = useUpdateProjectTechnicalData()
   const nav = useNavigate()
 
   const [companyId, setCompanyId] = useState('')
@@ -22,6 +23,10 @@ export default function ChecklistNuevaObra() {
   const [projectCode, setProjectCode] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
+  // Step 2: set once the project exists; pressure / volume are optional.
+  const [createdId, setCreatedId] = useState<string | null>(null)
+  const [pressure, setPressure] = useState('')
+  const [volume, setVolume] = useState('')
 
   const submit = async (e: FormEvent) => {
     e.preventDefault()
@@ -45,12 +50,40 @@ export default function ChecklistNuevaObra() {
         stageName,
         ...(projectCode.trim() && { projectCode: projectCode.trim() }),
       })
-      nav(`/checklist/${id}`)
+      setCreatedId(id)
+      setSubmitting(false)
     } catch (err) {
       setError(err instanceof ApiError ? err.message : 'No se pudo crear el proyecto.')
       setSubmitting(false)
     }
   }
+
+  const parse = (v: string) => (v.trim() === '' ? undefined : Number(v.replace(',', '.')))
+  const p = parse(pressure)
+  const v = parse(volume)
+  const technicalInvalid = [p, v].some((n) => n !== undefined && (!Number.isFinite(n) || n <= 0))
+
+  const saveTechnical = async (e: FormEvent) => {
+    e.preventDefault()
+    if (!createdId) return
+    setError(null)
+    setSubmitting(true)
+    try {
+      if (p !== undefined || v !== undefined) {
+        await updateTechnicalData(createdId, {
+          ...(p !== undefined && { servicePressureKpa: p }),
+          ...(v !== undefined && { matrixVolumeM3: v }),
+        })
+      }
+      nav(`/checklist/${createdId}`)
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'No se pudieron guardar los datos técnicos.')
+      setSubmitting(false)
+    }
+  }
+
+  const inputCls =
+    'rounded-lg border border-hairline px-3 py-2.5 text-[14px] focus:outline-none focus:ring-2 focus:ring-brand/30 focus:border-brand'
 
   return (
     <div className="flex bg-base">
@@ -64,6 +97,43 @@ export default function ChecklistNuevaObra() {
       </header>
 
       <main className="px-6 py-8">
+        {createdId ? (
+          <form onSubmit={saveTechnical} className="max-w-lg mx-auto bg-white border border-hairline rounded-xl p-6 flex flex-col gap-4">
+            <div>
+              <h2 className="text-[15px] font-semibold text-ink">Paso 2: datos técnicos</h2>
+              <p className="text-[12.5px] text-muted mt-0.5">
+                Se usan para contrastar la prueba de hermeticidad. Puedes omitirlos y completarlos después en "Datos técnicos".
+              </p>
+            </div>
+            <label className="flex flex-col gap-1.5">
+              <span className="text-[12px] font-medium text-ink">Presión de servicio (kPa)</span>
+              <input inputMode="decimal" value={pressure} onChange={(e) => setPressure(e.target.value)} placeholder="Ej: 2,5" className={inputCls} />
+            </label>
+            <label className="flex flex-col gap-1.5">
+              <span className="text-[12px] font-medium text-ink">Volumen de la matriz (m³)</span>
+              <input inputMode="decimal" value={volume} onChange={(e) => setVolume(e.target.value)} placeholder="Ej: 0,4" className={inputCls} />
+            </label>
+            {technicalInvalid && <p className="text-[12.5px] text-danger">Ingresa números positivos.</p>}
+            {error && <p className="text-[12.5px] text-danger">{error}</p>}
+            <div className="flex items-center gap-3">
+              <button
+                type="submit"
+                disabled={submitting || technicalInvalid}
+                className="bg-brand hover:bg-brand-dark text-white font-semibold px-4 py-2.5 rounded-lg disabled:opacity-60"
+              >
+                {submitting ? 'Guardando...' : 'Guardar y continuar'}
+              </button>
+              <button
+                type="button"
+                disabled={submitting}
+                onClick={() => nav(`/checklist/${createdId}`)}
+                className="border border-hairline text-ink font-semibold px-4 py-2.5 rounded-lg hover:bg-base disabled:opacity-60"
+              >
+                Omitir
+              </button>
+            </div>
+          </form>
+        ) : (
         <form onSubmit={submit} className="max-w-lg mx-auto bg-white border border-hairline rounded-xl p-6 flex flex-col gap-4">
           <label className="flex flex-col gap-1.5">
             <span className="text-[12px] font-medium text-ink">Empresa</span>
@@ -180,6 +250,7 @@ export default function ChecklistNuevaObra() {
             {submitting ? 'Creando...' : 'Crear proyecto'}
           </button>
         </form>
+        )}
       </main>
       </div>
     </div>
