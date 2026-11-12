@@ -12,6 +12,7 @@ vi.mock('../state/adminHooks', () => ({
 }))
 vi.mock('../state/ChecklistContext', () => ({
   useCreateProject: () => createProject,
+  useUpdateProjectTechnicalData: () => vi.fn(),
   useProjects: () => ({ data: [project], loading: false, error: null }),
   useChecklist: () => ({ fetchProjectsIfNeeded: vi.fn() }),
 }))
