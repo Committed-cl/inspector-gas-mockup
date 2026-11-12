@@ -43,11 +43,11 @@ export default function ChecklistNuevaObra() {
         clientId,
         name,
         address,
-        builder,
-        installer,
-        floors: Number(floors),
-        stageNumber: Number(stageNumber),
-        stageName,
+        ...(builder.trim() && { builder: builder.trim() }),
+        ...(installer.trim() && { installer: installer.trim() }),
+        ...(floors.trim() && { floors: Number(floors) }),
+        ...(stageNumber.trim() && { stageNumber: Number(stageNumber) }),
+        ...(stageName.trim() && { stageName: stageName.trim() }),
         ...(projectCode.trim() && { projectCode: projectCode.trim() }),
       })
       setCreatedId(id)
@@ -186,20 +186,18 @@ export default function ChecklistNuevaObra() {
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <label className="flex flex-col gap-1.5">
-              <span className="text-[12px] font-medium text-ink">Constructora</span>
+              <span className="text-[12px] font-medium text-ink">Constructora (opcional)</span>
               <input
                 value={builder}
                 onChange={(e) => setBuilder(e.target.value)}
-                required
                 className="rounded-lg border border-hairline px-3 py-2.5 text-[14px] focus:outline-none focus:ring-2 focus:ring-brand/30 focus:border-brand"
               />
             </label>
             <label className="flex flex-col gap-1.5">
-              <span className="text-[12px] font-medium text-ink">Instaladora</span>
+              <span className="text-[12px] font-medium text-ink">Instaladora (opcional)</span>
               <input
                 value={installer}
                 onChange={(e) => setInstaller(e.target.value)}
-                required
                 className="rounded-lg border border-hairline px-3 py-2.5 text-[14px] focus:outline-none focus:ring-2 focus:ring-brand/30 focus:border-brand"
               />
             </label>
@@ -207,32 +205,29 @@ export default function ChecklistNuevaObra() {
 
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <label className="flex flex-col gap-1.5">
-              <span className="text-[12px] font-medium text-ink">Pisos</span>
+              <span className="text-[12px] font-medium text-ink">Pisos (opcional)</span>
               <input
                 type="number"
                 min={1}
                 value={floors}
                 onChange={(e) => setFloors(e.target.value)}
-                required
                 className="rounded-lg border border-hairline px-3 py-2.5 text-[14px] focus:outline-none focus:ring-2 focus:ring-brand/30 focus:border-brand"
               />
             </label>
             <label className="flex flex-col gap-1.5 sm:col-span-2">
-              <span className="text-[12px] font-medium text-ink">Etapa actual</span>
+              <span className="text-[12px] font-medium text-ink">Etapa actual (opcional)</span>
               <div className="flex gap-2">
                 <input
                   type="number"
                   min={1}
                   value={stageNumber}
                   onChange={(e) => setStageNumber(e.target.value)}
-                  required
                   placeholder="N°"
                   className="w-16 shrink-0 rounded-lg border border-hairline px-3 py-2.5 text-[14px] focus:outline-none focus:ring-2 focus:ring-brand/30 focus:border-brand"
                 />
                 <input
                   value={stageName}
                   onChange={(e) => setStageName(e.target.value)}
-                  required
                   placeholder="Nombre de la etapa"
                   className="flex-1 min-w-0 rounded-lg border border-hairline px-3 py-2.5 text-[14px] focus:outline-none focus:ring-2 focus:ring-brand/30 focus:border-brand"
                 />

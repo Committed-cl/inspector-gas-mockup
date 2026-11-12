@@ -24,7 +24,7 @@ export default function ChecklistProjects() {
 
   const q = query.trim().toLowerCase()
   const visible = (projects ?? []).filter(
-    (p) => !q || [p.name, p.address, p.projectCode ?? '', p.builder, p.installer].some((s) => s.toLowerCase().includes(q)),
+    (p) => !q || [p.name, p.address, p.projectCode ?? '', p.builder ?? '', p.installer ?? ''].some((s) => s.toLowerCase().includes(q)),
   )
 
   return (
@@ -91,10 +91,10 @@ export default function ChecklistProjects() {
                     </p>
                     <p className="text-[14px] md:text-[12.5px] text-muted mt-0.5">{p.address}</p>
                     <p className="md:hidden text-[14px] text-ink mt-1.5">
-                      Etapa {p.stageNumber} · {p.stageName}
+                      Etapa {p.stageNumber ?? '—'} · {p.stageName || '—'}
                     </p>
                     <p className="text-[13px] md:text-[12px] text-muted mt-1 md:mt-1.5">
-                      Constructora {p.builder} · Instaladora {p.installer}
+                      Constructora {p.builder || '—'} · Instaladora {p.installer || '—'}
                     </p>
                   </div>
                   <div className="md:text-right shrink-0 mt-1 md:mt-0 flex items-center justify-between md:block">
