@@ -13,6 +13,7 @@ type Usage = {
   byCompany: { companyId: string; companyName: string; users: number; active7d: number; active30d: number; visitsCreated: number; visitsClosed: number; reportsSent: number }[]
   byProject: { projectId: string; projectName: string; companyName: string; visitsCreated: number; visitsClosed: number; reportsSent: number }[]
   inactiveProjects: { projectId: string; projectName: string; companyName: string; lastActivityAt: string | null }[]
+  activeUsers?: { userId: string; name: string; companyName: string; role: string; logins: number; lastLoginAt: string }[]
   inactiveUsers: { userId: string; name: string; companyName: string; role: string; lastAccessAt: string | null }[]
 }
 
@@ -160,6 +161,14 @@ export default function AdminUso() {
                   head={['Proyecto', 'Empresa', 'Última actividad']}
                   rows={usage.inactiveProjects.map((p) => [p.projectName, p.companyName || '—', p.lastActivityAt ? formatDateCl(p.lastActivityAt) : null])}
                   empty="Todos los proyectos tuvieron actividad."
+                />
+
+                <h2 className="text-[15px] font-bold text-ink mt-8 mb-1">Usuarios activos</h2>
+                <p className="text-[12.5px] text-muted mb-3">Con al menos un inicio de sesión en el período. Se cuenta desde que se empezó a registrar; no hay histórico anterior.</p>
+                <Table
+                  head={['Nombre', 'Empresa', 'Rol', 'Accesos', 'Último acceso']}
+                  rows={(usage.activeUsers ?? []).map((u) => [u.name, u.companyName || '—', roleLabel(u.role), u.logins, formatDateCl(u.lastLoginAt)])}
+                  empty="Ningún usuario inició sesión en el período."
                 />
 
                 <h2 className="text-[15px] font-bold text-ink mt-8 mb-1">Usuarios inactivos</h2>
