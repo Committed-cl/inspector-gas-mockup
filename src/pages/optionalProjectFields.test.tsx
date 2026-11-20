@@ -38,6 +38,9 @@ describe('optional project fields', () => {
     fireEvent.submit(container.querySelector('form')!)
     await waitFor(() => expect(createProject).toHaveBeenCalledTimes(1))
     expect(createProject).toHaveBeenCalledWith({ clientId: 'c1', name: 'Edificio A', address: 'Calle 1' })
+    expect(await screen.findByText('Paso 2: datos técnicos')).toBeTruthy()
+    expect(screen.getByText(/Puedes omitirlos\./)).toBeTruthy()
+    expect(screen.queryByText(/Datos técnicos"/)).toBeNull()
   })
 
   it('shows "—" in the project list when builder, installer and stage are missing', () => {

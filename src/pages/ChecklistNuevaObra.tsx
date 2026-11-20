@@ -102,7 +102,7 @@ export default function ChecklistNuevaObra() {
             <div>
               <h2 className="text-[15px] font-semibold text-ink">Paso 2: datos técnicos</h2>
               <p className="text-[12.5px] text-muted mt-0.5">
-                Se usan para contrastar la prueba de hermeticidad. Puedes omitirlos y completarlos después en "Datos técnicos".
+                Se usan para contrastar la prueba de hermeticidad. Puedes omitirlos.
               </p>
             </div>
             <label className="flex flex-col gap-1.5">
