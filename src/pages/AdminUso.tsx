@@ -164,7 +164,7 @@ export default function AdminUso() {
                 />
 
                 <h2 className="text-[15px] font-bold text-ink mt-8 mb-1">Usuarios activos</h2>
-                <p className="text-[12.5px] text-muted mb-3">Con al menos un inicio de sesión en el período. Se cuenta desde que se empezó a registrar; no hay histórico anterior.</p>
+                <p className="text-[12.5px] text-muted mb-3">Con inicio de sesión en el período o con acceso en los últimos 14 días. Los inicios de sesión se cuentan desde que se empezó a registrar; no hay histórico anterior.</p>
                 <Table
                   head={['Nombre', 'Empresa', 'Rol', 'Accesos', 'Último acceso']}
                   rows={(usage.activeUsers ?? []).map((u) => [u.name, u.companyName || '—', roleLabel(u.role), u.logins, formatDateCl(u.lastLoginAt)])}
@@ -172,7 +172,7 @@ export default function AdminUso() {
                 />
 
                 <h2 className="text-[15px] font-bold text-ink mt-8 mb-1">Usuarios inactivos</h2>
-                <p className="text-[12.5px] text-muted mb-3">Sin acceso hace 14 días o más.</p>
+                <p className="text-[12.5px] text-muted mb-3">Sin acceso hace 14 días o más, o que nunca han ingresado.</p>
                 <Table
                   head={['Nombre', 'Empresa', 'Rol', 'Último acceso']}
                   rows={usage.inactiveUsers.map((u) => [u.name, u.companyName || '—', roleLabel(u.role), u.lastAccessAt ? formatDateCl(u.lastAccessAt) : null])}
